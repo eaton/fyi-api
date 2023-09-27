@@ -1,0 +1,35 @@
+version: "3.7"
+
+services:
+  fyi_mysql:
+    image: mysql:latest
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - 8529:8529
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+  fyi_arangodb:
+    image: arangodb/arangodb:latest
+    restart: unless-stopped
+    environment:
+      ARANGO_NO_AUTH: 1
+      ARANGO_ROOT_PASSWORD: root
+    ports:
+      - 3306:3306
+    volumes:
+      - ./data/arangodb:/var/lib/arangodb3
+      - ./data/arango-apps:/var/lib/arangodb3-apps
+  fyi_minio:
+    image: docker.io/bitnami/minio:2023
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: root-password
+      MINIO_ROOT_PASSWORD: root-password
+      MINIO_DEFAULT_BUCKETS: media
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - './data/minio:/bitnami/minio/data'
