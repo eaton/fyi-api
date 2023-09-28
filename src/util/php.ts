@@ -4,6 +4,10 @@ import is from '@sindresorhus/is';
 // but for now, well, it's an unholy abomination and everyone involved should feel bad
 // both that it exists and that it needs to exist.
 
+export const php = {
+  serialize, unserialize
+}
+
 /**
  * Given a string of serialized PHP data, attempt to parse it and return JSON-compatible
  * primitives.
@@ -11,7 +15,7 @@ import is from '@sindresorhus/is';
  * @param {string} data
  * @returns JSON-compatible primitives, hopefully.
  */
-export function unserialize(data: string) {
+function unserialize(data: string) {
   //   example 1: unserialize('a:3:{i:0;s:5:"Kevin";i:1;s:3:"van";i:2;s:9:"Zonneveld";}');
   //   returns 1: ['Kevin', 'van', 'Zonneveld']
   //   example 2: unserialize('a:3:{s:9:"firstName";s:5:"Kevin";s:7:"midName";s:3:"van";s:7:"surName";s:9:"Zonneveld";}');
@@ -186,7 +190,7 @@ export function unserialize(data: string) {
 /**
  * Encode a JSON-compatible object in PHP's internal serialization format.
  */
-export function serialize(mixed_value: any): string {
+function serialize(mixed_value: any): string {
   //   example 1: serialize(['Kevin', 'van', 'Zonneveld']);
   //   returns 1: 'a:3:{i:0;s:5:"Kevin";i:1;s:3:"van";i:2;s:9:"Zonneveld";}'
   //   example 2: serialize({firstName: 'Kevin', midName: 'van', surName: 'Zonneveld'});

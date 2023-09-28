@@ -1,6 +1,5 @@
 import { TwitterArchive } from "twitter-archive-reader";
-import { getDb } from '../index.js';
-import { Database } from "../database.js";
+import { Database } from '../index.js';
 
 await doImport();
 
@@ -14,7 +13,7 @@ export type TwitterFavorite = {
 };
 
 export async function doImport() {
-  const db = await getDb();
+  const db = await Database.setup();
   await db.ensure('twitter_post').then(() => db.empty('twitter_post'));
   await db.ensure('twitter_favorite').then(() => db.empty('twitter_favorite'));
 

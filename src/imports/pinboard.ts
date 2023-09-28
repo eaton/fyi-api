@@ -1,4 +1,5 @@
-import { getDb } from '../index.js';
+import { Database } from '../index.js';
+
 import fpkg from 'fs-extra';
 const { readJSONSync } = fpkg;
 
@@ -17,7 +18,7 @@ type PinboardBookmark = {
 await doImport();
 
 export async function doImport() {
-  const db = await getDb();
+  const db = await Database.setup();
   await db.ensure('pinboard_bookmark').then(() => db.empty('pinboard_bookmark'));
 
   const favs = readJSONSync('raw/pinboard.json') as PinboardBookmark[];

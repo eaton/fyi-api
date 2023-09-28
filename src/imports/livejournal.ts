@@ -6,8 +6,7 @@ const { readFileSync, statSync } = fpkg;
 
 import * as cheerio from 'cheerio';
 
-import { getDb } from '../index.js';
-import { Database } from '../database.js';
+import { Database } from '../index.js';
 
 import { decode } from 'entities';
 
@@ -37,7 +36,7 @@ type LivejournalComment = {
 }
 
 export async function doImport() {
-  const db = await getDb();
+  const db = await Database.setup();
   await db.ensure('lj_entry').then(() => db.empty('lj_entry'));
   await db.ensure('lj_comment').then(() => db.empty('lj_comment'));
 

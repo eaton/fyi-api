@@ -1,4 +1,4 @@
-import { getDb, makeUuid } from '../index.js';
+import { Database, uuid } from '../index.js';
 
 import fpkg from 'fs-extra';
 const { readJSONSync } = fpkg;
@@ -20,13 +20,13 @@ type InstagramMedia = {
 }
 
 export async function doImport() {
-  const db = await getDb();
+  const db = await Database.setup();
   await db.ensure('instagram_post').then(() => db.empty('instagram_post'));
 
   const posts = readJSONSync('raw/instagram/content/posts_1.json') as InstagramPost[];
 
   for (const post of posts) {
-    const postId = makeUuid(post);
+    const postId = uuid(post);
     if (post.media.length === 1) {
       await db.collection('instagram_post').save({
         _key: postId,

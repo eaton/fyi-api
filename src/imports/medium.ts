@@ -6,8 +6,7 @@ const { readFileSync } = fpkg;
 
 import * as cheerio from 'cheerio';
 
-import { getDb } from '../index.js';
-import { Database } from '../database.js';
+import { Database } from '../index.js';
 
 type MediumPost = {
   id: string,
@@ -24,7 +23,7 @@ await doImport();
 
 
 export async function doImport() {
-  const db = await getDb();
+  const db = await Database.setup();
   await db.ensure('medium_post').then(() => db.empty('medium_post'));
 
   const posts = await parseHtmlFiles();

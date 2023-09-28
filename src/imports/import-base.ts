@@ -1,5 +1,5 @@
-import { Database, CreateCollectionOptions } from "../database.js"
-import { Filestore } from "../filestore.js"
+import { Database, CreateCollectionOptions } from "../storage/database.js"
+import { Filestore } from "../storage/filestore.js"
 
 /**
  * Skeleton for raw migrations; it makes it easy-ish to avoid some of the frequent
