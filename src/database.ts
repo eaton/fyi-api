@@ -1,8 +1,8 @@
 import { Database as ArangoDB } from 'arangojs';
 import { CreateCollectionOptions } from 'arangojs/collection';
+export { CreateCollectionOptions } from 'arangojs/collection';
 
 export class Database extends ArangoDB {
-
   async ensure(name: string, document = true, options: CreateCollectionOptions = {}) {
     return this.collection(name).exists()
       .then(exists => {
