@@ -67,6 +67,7 @@
   "dependencies": {
     "@autogram/url-tools": "^2.5.4",
     "@salesforce/ts-types": "^2.0.7",
+    "@sindresorhus/is": "^6.0.0",
     "@types/cheerio": "^0.22.32",
     "@types/fs-extra": "^11.0.2",
     "@types/got": "^9.6.12",
