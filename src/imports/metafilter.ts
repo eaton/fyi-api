@@ -31,11 +31,10 @@ export type MetafilterPostData = {
   date?: string,
   author?: string,
   authorId?: number,
-  comments?: string,
+  comments?: number,
   favorites?: number,
-  projectVotes?: number,
   askSection?: string
-  tags?: string,
+  tags?: string[],
   links?: string[],
   body?: string,
   summary?: string,
@@ -147,6 +146,8 @@ export class Metafilter extends Import {
     }
 
     const user = (await readJSON(this.userFileName(uid))) as MetafilterUserData;
+    if (this.forceParse) this.extractUserProperties(user);
+
     const postsToCache: Record<string, string[]> = {};
     for (const [url, commentIds] of Object.entries(user.activity ?? [])) {
       if ((await exists(this.postFileName(url))) === false || options?.forcePosts) {
@@ -164,7 +165,7 @@ export class Metafilter extends Import {
 
   protected postFileName(url: URL | string) {
     const parsed = new ParsedUrl(url.toString());
-    return `raw/metafilter/${parsed.subdomain}/post-${parsed.path.slice(-1,1)}.json`;
+    return `raw/metafilter/${parsed.subdomain}/post-${parsed.path.slice(-2,1)}.json`;
   }
 
   async cacheUserData(uid: number) {
@@ -178,7 +179,7 @@ export class Metafilter extends Import {
 
     // First, get all the post listing pages
     let crawler = new CheerioCrawler({
-      maxConcurrency: 4,
+      maxConcurrency: 2,
       maxRequestsPerMinute: 120,
       requestHandler: async (context) => {
         const $ = cheerio.load(context.body);
@@ -218,6 +219,9 @@ export class Metafilter extends Import {
               }
             });
         }
+
+        // Turn the set into a simple array for serialization
+        user.activity = Object.fromEntries(Object.entries(activity).map(entry => [entry[0], [...entry[1]]]));
         
         await ensureDir('raw/metafilter');
         await writeJSON(this.userFileName(uid), user, { spaces: 2 });
@@ -240,7 +244,7 @@ export class Metafilter extends Import {
     console.log(`fetching ${Object.entries(activity).length} posts`);
 
     let crawler = new CheerioCrawler({
-      maxConcurrency: 1,
+      maxConcurrency: 2,
       maxRequestsPerMinute: 120,
       requestHandler: async (context) => {
         const url = context.request.url;
@@ -250,7 +254,7 @@ export class Metafilter extends Import {
         const post: MetafilterPostData = {
           id: pid,
           url: url,
-          raw: $('#posts h1.posttitle, #posts div.copy').first().html()?.trim() ?? ''
+          raw: $('#posts h1.posttitle, #posts div.copy, #threadside').toArray().map(e => $(e).prop('outerHTML')).join()
         }
         this.extractPostProperties(post);
 
@@ -281,7 +285,7 @@ export class Metafilter extends Import {
 
   extractUserProperties(user: MetafilterUserData) {
     const $ = cheerio.load(user.raw, {}, false);
-    user.handle = $('title').text()?.replace("'s profile | MetaFilter", '');
+    user.handle = $('h2.monthday').text().match(/\s*([\w-]+)'s profile/)?.[1];
     user.fullname = $('span.fn').text();
     user.website = $('h2.monthday a').first().attr('href') ?? '';
     user.social = $('a[rel=me]').toArray().map(e => $(e).attr('href')).filter(isString);
@@ -289,34 +293,40 @@ export class Metafilter extends Import {
 
   extractPostProperties(post: MetafilterPostData) {
     const $ = cheerio.load(post.raw, {}, false);
+    const dateline = $('h1.posttitle span.smallcopy').text().trim();
 
-    const title = $('title').text().replace(' | MetaFilter', '');
-    const date = $('h1.posttitle span.smallcopy').text().replace('Subscribe', '').trim();
-    const author = $('#posts div.copy span.postbyline a').first().text();
-    const authorId = $('#posts div.copy span.postbyline a').first().attr('href')?.split('/').pop() ?? '';
-    const comments = $('#posts div.copy span.postbyline').text().trim().match(/\((\d+) comment/)?.[1];
-    const favorites = $('#posts div.copy span.postbyline span[id^="favcnt"]').text().split(' ')?.shift();
-    const tags = $('#taglist a.taglink').toArray().map(e => $(e).text());
+    post.site = new ParsedUrl(post.url).subdomain;
+    post.title = $('h1.posttitle').text().replace(dateline, '').trim();
+    post.date = dateline.match(/([a-zA-Z]+\s+\d+,\s+\d+\s+\d+\:\d+\s+[AP]M)\s+Subscribe/)?.[1];
+    post.author = $('span.postbyline a').first().text();
+    post.authorId = Number.parseInt($('span.postbyline a').first().attr('href')?.split('/').pop() ?? '');
+    post.askSection = $('span.postbyline').text().match(/\s+to\s+(\w+)\s+at/)?.[1];
 
-    $('#posts div.copy span.postbyline').remove();
+    post.comments = Number.parseInt($('span.postbyline').text().trim().match(/\((\d+) comment/)?.[1] ?? '0');
+    post.favorites = Number.parseInt($('span.postbyline span[id^="favcnt"]').text().split(' ')?.shift() ?? '0');
+    post.tags = $('#taglist a.taglink').toArray().map(e => $(e).text().trim());
 
-    const links = $('#posts div.copy a').toArray().map(e => $(e).attr('href')).filter(Boolean);
-    const text = $('#posts div.copy').first().text().trim();
+    $('span.postbyline').remove();
+    post.links = $('div.copy a').toArray().map(e => $(e).attr('href') ?? ''),
+    post.body = $('div.copy').html()?.trim() ?? undefined,
+    post.details = $('div.copy div.miseperator').html()?.trim() ?? undefined,
+
+    $('div.copy div.miseperator').remove();
+    post.summary = $('div.copy').html()?.trim() ?? undefined;
   }
   
   extractCommentProperties(comment: MetafilterCommentData) {
     const $ = cheerio.load(comment.raw, {}, false);
 
-    const metaSelector = `a[name="${comment.id}"] + div span.smallcopy`
-    const time = $(metaSelector).text().match(/ at (\d+:\d+ [AP]M)\s+on /)?.[1];
-    const date = $(metaSelector).text().match(/\s+on ([a-zA-Z]+ \d+, \d+)/)?.[1];
-    const data = {
-      date: `${date} ${time}`,
-      author: $(metaSelector + ' a').first().text(),
-      authorId: $(metaSelector + ' a').first().attr('href')?.split('/').pop() ?? '',
-      favorites: $(metaSelector).text().match(/\[(\d+) favorite/)?.[1],
-      html: $(`a[name="${comment.id}"] + div`).html() ?? '',
-      text: $(`a[name="${comment.id}"] + div`).text(),
-    }
+    const time = $('span.smallcopy').text().match(/ at (\d+:\d+ [AP]M)\s+on /)?.[1];
+    const date = $('span.smallcopy').text().match(/\s+on ([a-zA-Z]+ \d+, \d+)/)?.[1];
+
+    comment.date = `${date} ${time}`;
+    comment.author = $('span.smallcopy a').first().text();
+    comment.authorId = Number.parseInt($('span.smallcopy a').first().attr('href')?.split('/').pop() ?? '');
+    comment.favorites = Number.parseInt($('span.smallcopy').text().match(/\[(\d+) favorite/)?.[1] ?? '');
+
+    $('span.smallcopy').remove();
+    comment.body = $.html()?.trim() ?? undefined;
   }
 }
