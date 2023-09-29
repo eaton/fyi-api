@@ -1,22 +1,29 @@
 import { Database, CreateCollectionOptions } from "../storage/database.js"
 import { Filestore } from "../storage/filestore.js"
 
+export interface ImportOptions extends Record<string, unknown> {
+  db?: Database,
+  files?: Filestore,
+  logLevel?: number,
+}
+
 /**
  * Skeleton for raw migrations; it makes it easy-ish to avoid some of the frequent
  * boilerplate code when doing cycles of testing.
  */
 export abstract class Import {
-  constructor(protected db: Database, protected files: Filestore) {};
+  logLevel: number = 0;
+  protected db?: Database;
+  protected files?: Filestore;
 
-  abstract collections: string | string[] | Record<string, CreateCollectionOptions>;
-  abstract relationships: string | string[] | Record<string, CreateCollectionOptions>;
+  constructor(options: ImportOptions = {}) {
+    if (options.db) this.db = options.db;
+    if (options.files) this.files = options.files;
+    if (options.logLevel) this.logLevel = options.logLevel;
+  };
 
-  /**
-   * Every import must implement doImport(); that's just the law.   
-   *
-   * @returns A promise that resolves to a list of messages logged during the migration.
-   */
-  abstract doImport(options?: Record<string, unknown>): Promise<Record<string, string>>
+  collections?: string[] | Record<string, CreateCollectionOptions> = [];
+  relationships?: string[] | Record<string, CreateCollectionOptions> = [];
 
   /**
    * A pre-migration step that can be used to fetch remote information or pre-process
@@ -25,9 +32,16 @@ export abstract class Import {
    *
    * @returns A promise that resolves to a list of messages logged during the preload.
    */
-  preload(options?: Record<string, unknown>): Promise<Record<string, string>> {
+  preload(): Promise<Record<string, string>> {
     return Promise.resolve({});
   }
+
+  /**
+   * Every import must implement doImport(); that's just the law.   
+   *
+   * @returns A promise that resolves to a list of messages logged during the migration.
+   */
+  abstract doImport(): Promise<string[]>
 
   /**
    * Check for any necessary ArangoDB collections and create them if they don't exists.   
@@ -35,7 +49,7 @@ export abstract class Import {
    * @returns A promise that resolves to a dictionary of collections, noting
    * whether they were already in place or created from scratch. 
    */
-  async ensureSchema(options?: Record<string, unknown>): Promise<Record<string, string>> {
+  async ensureSchema(): Promise<Record<string, string>> {
     return Promise.resolve({});
   }
 
