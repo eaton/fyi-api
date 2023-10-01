@@ -71,7 +71,11 @@ interface MetafilterImportOptions extends ImportOptions {
 }
 
 export class Metafilter extends Import {
-  collections = ['metafilter_user', 'metafilter_post', 'metafilter_comment'];
+  collections = {
+    metafilter_user: {},
+    metafilter_post: {},
+    metafilter_comment: {}
+  };
   forceUser = false;
   forcePosts = false;
   forceParse = false;
@@ -83,7 +87,7 @@ export class Metafilter extends Import {
     if (options.forceParse) this.forceParse = true;
   }
 
-  override async doImport(): Promise<string[]> {
+  async doImport(): Promise<string[]> {
     const cachedUser = (await glob('raw/metafilter/user-*.json')).pop();
     const cachedPosts = await glob('raw/metafilter/**/post-*.json');
     

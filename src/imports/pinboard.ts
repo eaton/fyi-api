@@ -1,4 +1,4 @@
-import { Database } from '../index.js';
+import { Import } from '../index.js';
 
 import fpkg from 'fs-extra';
 const { readJSONSync } = fpkg;
@@ -15,27 +15,30 @@ type PinboardBookmark = {
   tags?: string
 }
 
-await doImport();
+export class Pinboard extends Import {
+  collections = { pinboard_bookmark: {} };
 
-export async function doImport() {
-  const db = await Database.setup();
-  await db.ensure('pinboard_bookmark').then(() => db.empty('pinboard_bookmark'));
+  async doImport(): Promise<string[]> {
+    await this.ensureSchema();
+  
+    const favs = readJSONSync('raw/pinboard.json') as PinboardBookmark[];
 
-  const favs = readJSONSync('raw/pinboard.json') as PinboardBookmark[];
-  for (const fav of favs) {
-    await db.collection('pinboard_bookmark').save({
-      _key: fav.hash,
-      href: fav.href,
-      description: fav.description,
-      extended: fav.extended,
-      meta: fav.meta,
-      hash: fav.hash,
-      time: fav.time,
-      shared: fav.shared == 'yes',
-      toread: fav.toread == 'yes',
-      tags: fav.tags ? fav.tags.split(' ') : undefined
-    })
+    for (const fav of favs) {
+      this.db.push({
+        _key: fav.hash,
+        _collection: 'pinboard_bookmark',
+        href: fav.href,
+        description: fav.description,
+        extended: fav.extended,
+        meta: fav.meta,
+        hash: fav.hash,
+        time: fav.time,
+        shared: fav.shared == 'yes',
+        toread: fav.toread == 'yes',
+        tags: fav.tags ? fav.tags.split(' ') : undefined
+      })
+    }
+  
+    return Promise.resolve([`${favs.length} Pinboard bookmarks imported`]);
   }
-
-  return Promise.resolve(favs.length);
 }
