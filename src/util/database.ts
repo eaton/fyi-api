@@ -21,12 +21,24 @@ export class Database extends ArangoDB {
     }
   }
 
-  async push(item: any, collection?: string): Promise<boolean> {
-    const _collection = collection ?? item._collection;
+  async push(item: any, id?: string): Promise<boolean> {
+    // Set the _collection and _key variables from the incoming ID if it exists,
+    // and the item's own _id property if IT exists. If they're still not populated,
+    // try the item's _collection and _key properties.
+    let [_collection, _key] = ((id ?? item._id)?.split('/') ?? []);
+    _collection ??= item._collection;
+    _key ??= item._key;
+    const _id = [_collection, _key].join('/');
+
     if (_collection === undefined) {
       Promise.reject(new Error('Item has no _collection property, and no collection was specified.'));
     }
-    return this.collection(_collection).save(item, { overwriteMode: 'update' })
+    if (_key === undefined) {
+      Promise.reject(new Error('Item has no unique key, and none was given.'));
+    }
+
+    return this.collection(_collection)
+      .save({ ...item, _id, _key, _collection  }, { overwriteMode: 'update' })
       .then(() => true);
   }
 

@@ -1,4 +1,4 @@
-import { Database, CreateCollectionOptions } from "../storage/database.js"
+import { Database, CreateCollectionOptions } from "../util/database.js"
 import { Filestore } from "../storage/filestore.js"
 
 export interface ImportOptions extends Record<string, unknown> {
