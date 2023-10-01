@@ -1,4 +1,4 @@
-import { Import } from '../index.js';
+import { BaseImport } from '../index.js';
 
 type PinboardBookmark = {
   href: string,
@@ -12,7 +12,7 @@ type PinboardBookmark = {
   tags?: string
 }
 
-export class Pinboard extends Import {
+export class Pinboard extends BaseImport {
   collections = { pinboard_bookmark: {} };
 
   async doImport(): Promise<string[]> {

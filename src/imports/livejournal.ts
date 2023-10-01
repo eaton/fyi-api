@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { Import } from '../index.js';
+import { BaseImport } from '../index.js';
 import { decode } from 'entities';
 
 type LivejournalEntry = {
@@ -26,7 +26,7 @@ type LivejournalComment = {
   }
 }
 
-export class Livejournal extends Import {
+export class Livejournal extends BaseImport {
   collections = {
     lj_entry: {},
     ly_comment: {},

@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { Import } from '../index.js';
+import { BaseImport } from '../index.js';
 
 type MediumPost = {
   id: string,
@@ -11,7 +11,7 @@ type MediumPost = {
   published: string,
 }
 
-export class Medium extends Import {
+export class Medium extends BaseImport {
   collections = {
     medium_post: {}
   };

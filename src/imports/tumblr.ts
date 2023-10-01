@@ -1,6 +1,6 @@
 import 'dotenv/config'
 
-import { Import } from "./import-base.js";
+import { BaseImport } from "./base-import.js";
 import { Client } from 'tumblr.js';
 
 export type UserInfo = {
@@ -119,7 +119,7 @@ export type TumblrTheme = {
   title_font_weight: string
 };
 
-export class Tumblr extends Import {
+export class Tumblr extends BaseImport {
   doImport(): Promise<string[]> {
     throw new Error('Method not implemented.');
   }

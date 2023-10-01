@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio';
 
 import { ParsedUrl } from '@autogram/url-tools'
 
-import { Import, ImportOptions } from "./import-base.js";
+import { BaseImport, BaseImportOptions } from "./base-import.js";
 import { isString } from '@sindresorhus/is';
 
 export type MetafilterUserData = Record<string, unknown> & {
@@ -46,7 +46,7 @@ export type MetafilterCommentData = {
   body?: string,
 }
 
-interface MetafilterImportOptions extends ImportOptions {
+interface MetafilterImportOptions extends BaseImportOptions {
 
   /**
    * Download and cache user metadata even if it already exists.
@@ -64,7 +64,7 @@ interface MetafilterImportOptions extends ImportOptions {
   forceParse?: boolean,
 }
 
-export class Metafilter extends Import {
+export class Metafilter extends BaseImport {
   collections = {
     metafilter_user: {},
     metafilter_post: {},

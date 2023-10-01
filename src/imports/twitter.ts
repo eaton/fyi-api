@@ -1,5 +1,5 @@
 import { TwitterArchive } from "twitter-archive-reader";
-import { Import } from '../index.js';
+import { BaseImport } from '../index.js';
 
 
 export type TwitterFavorite = {
@@ -11,7 +11,7 @@ export type TwitterFavorite = {
   favorited?: string,
 };
 
-export class Twitter extends Import {
+export class Twitter extends BaseImport {
   collections = {
     twitter_post: {},
     twitter_favorite: {}

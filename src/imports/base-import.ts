@@ -1,7 +1,7 @@
 import { Database, CreateCollectionOptions } from "../util/database.js"
 import { Filestore } from "../util/filestore.js"
 
-export interface ImportOptions extends Record<string, unknown> {
+export interface BaseImportOptions extends Record<string, unknown> {
   db?: Database,
   files?: Filestore,
   logLevel?: number,
@@ -11,7 +11,7 @@ export interface ImportOptions extends Record<string, unknown> {
  * Skeleton for raw migrations; it makes it easy-ish to avoid some of the frequent
  * boilerplate code when doing cycles of testing.
  */
-export abstract class Import {
+export abstract class BaseImport {
   logLevel: number = 0;
 
   private _db?: Database;
@@ -30,7 +30,7 @@ export abstract class Import {
   collections?: Record<string, CreateCollectionOptions>;
   relationships?: Record<string, CreateCollectionOptions>;
 
-  constructor(options: ImportOptions = {}) {
+  constructor(options: BaseImportOptions = {}) {
     if (options.db) this._db = options.db;
     if (options.files) this._files = options.files;
     if (options.logLevel) this.logLevel = options.logLevel;

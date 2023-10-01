@@ -1,4 +1,4 @@
-import { Import, uuid } from '../index.js';
+import { BaseImport, uuid } from '../index.js';
 
 type InstagramPost = {
   title?: string,
@@ -14,7 +14,7 @@ type InstagramMedia = {
   cross_post_source?: unknown
 }
 
-export class Instagram extends Import {
+export class Instagram extends BaseImport {
   collections = { instagram_post: {} };
 
   async doImport(): Promise<string[]> {

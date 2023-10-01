@@ -1,3 +1,3 @@
-export * from './import-base.js';
+export * from './base-import.js';
 export * from './metafilter.js';
 export * from './tumblr.js';
