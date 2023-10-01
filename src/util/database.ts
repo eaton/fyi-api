@@ -6,11 +6,11 @@ export { CreateCollectionOptions } from 'arangojs/collection';
 export class Database extends ArangoDB {
   constructor(config?: Config) {
     const envDefaults = {
-      url: process.env.ARANGO_URL,
-      databaseName: process.env.ARANGO_DB,
+      url: process.env.ARANGODB_SERVER,
+      databaseName: process.env.ARANGODB_NAME,
       auth: {
-        username: process.env.ARANGO_USER ?? 'root',
-        password: process.env.ARANGO_PASS
+        username: process.env.ARANGODB_USER ?? 'root',
+        password: process.env.ARANGODB_PASS
       }
     };
 
