@@ -13,17 +13,28 @@ export interface ImportOptions extends Record<string, unknown> {
  */
 export abstract class Import {
   logLevel: number = 0;
-  protected db?: Database;
-  protected files?: Filestore;
+
+  private _db?: Database;
+  private _files?: Filestore;
+
+  get db(): Database {
+    if (this._db) return this._db;
+    throw new Error('No ArangoDB connection');
+  }
+
+  get files(): Filestore {
+    if (this._files) return this.files;
+    throw new Error('No filesystem wrapper');
+  }
+
+  collections?: string[] | Record<string, CreateCollectionOptions>;
+  relationships?: string[] | Record<string, CreateCollectionOptions>;
 
   constructor(options: ImportOptions = {}) {
-    if (options.db) this.db = options.db;
-    if (options.files) this.files = options.files;
+    if (options.db) this._db = options.db;
+    if (options.files) this._files = options.files;
     if (options.logLevel) this.logLevel = options.logLevel;
   };
-
-  collections?: string[] | Record<string, CreateCollectionOptions> = [];
-  relationships?: string[] | Record<string, CreateCollectionOptions> = [];
 
   /**
    * A pre-migration step that can be used to fetch remote information or pre-process
@@ -50,7 +61,37 @@ export abstract class Import {
    * whether they were already in place or created from scratch. 
    */
   async ensureSchema(): Promise<Record<string, string>> {
-    return Promise.resolve({});
+    const results: Record<string, string> = {};
+
+    if (this.db === undefined) {
+      // We can't ensure tables if that happens, duh
+    } else {
+      if (this.collections === undefined) {
+        // Do nothing!
+      } else if (Array.isArray(this.collections)) {
+        for (const name of this.collections) {
+          results[name] = await this.db?.ensureCollection(name).then(c => 'ensured')
+        }
+      } else {
+        for (const [name, options] of Object.entries(this.collections)) {
+          results[name] = await this.db?.ensureCollection(name, options).then(c => 'ensured')
+        }
+      }
+
+      if (this.relationships === undefined) {
+        // Do nothing!
+      } else if (Array.isArray(this.relationships)) {
+        for (const name of this.relationships) {
+          results[name] = await this.db?.ensureEdgeCollection(name).then(c => 'ensured')
+        }
+      } else {
+        for (const [name, options] of Object.entries(this.relationships)) {
+          results[name] = await this.db?.ensureEdgeCollection(name, options).then(c => 'ensured')
+        }
+      }
+    }
+
+    return Promise.resolve(results);
   }
 
   /**
@@ -66,6 +107,52 @@ export abstract class Import {
    * @returns {Promise<Record<string, number>>}
    */
   async destroySchema(): Promise<Record<string, string>> {
-    return Promise.resolve({});
+    const results: Record<string, string> = {};
+
+    if (this.db === undefined) {
+      // We can't ensure tables if that happens, duh
+    } else {
+      if (this.collections === undefined) {
+        // Do nothing!
+      } else if (Array.isArray(this.collections)) {
+        for (const name of this.collections) {
+          await this.db.collection(name).exists()
+            .then(exists => {
+              if (exists) return this.db.collection(name).drop().then(() => 'removed');
+              return 'already gone';
+            })
+        }
+      } else {
+        for (const [name] of Object.entries(this.collections)) {
+          await this.db.collection(name).exists()
+            .then(exists => {
+              if (exists) return this.db.collection(name).drop().then(() => 'removed');
+              return 'already gone';
+            })
+        }
+      }
+
+      if (this.relationships === undefined) {
+        // Do nothing!
+      } else if (Array.isArray(this.relationships)) {
+        for (const name of this.relationships) {
+          await this.db.collection(name).exists()
+            .then(exists => {
+              if (exists) return this.db.collection(name).drop().then(() => 'removed');
+              return 'already gone';
+            })
+        }
+      } else {
+        for (const [name] of Object.entries(this.relationships)) {
+          await this.db.collection(name).exists()
+            .then(exists => {
+              if (exists) return this.db.collection(name).drop().then(() => 'removed');
+              return 'already gone';
+            })
+        }
+      }
+    }
+
+    return Promise.resolve(results);
   }
 }

@@ -87,6 +87,8 @@ export class Metafilter extends Import {
     const cachedUser = (await glob('raw/metafilter/user-*.json')).pop();
     const cachedPosts = await glob('raw/metafilter/**/post-*.json');
     
+    await this.ensureSchema();
+
     const saved = {
       users: 0,
       posts: 0,
@@ -104,8 +106,11 @@ export class Metafilter extends Import {
     const user = await readJSON(cachedUser) as MetafilterUserData;
     if (this.forceParse) this.extractUserProperties(user);
 
+    user.raw = '';
+    user.activity = undefined;
+
     await this.db.collection('metafilter_user').save({
-      _key: user.id,
+      _key: user.id.toString(),
       ...user
     }, { overwriteMode: 'update' }).then(() => saved.users++);
 
@@ -113,19 +118,27 @@ export class Metafilter extends Import {
       const post = await readJSON(postFile) as MetafilterPostData;
       if (this.forceParse) this.extractPostProperties(post);
 
-      await this.db.collection('metafilter_post').save({
-        _key: `${post.site}-${post.id}`,
-        ...user
-      }, { overwriteMode: 'update' }).then(() => saved.posts++);
-
       for (const comment of post.savedComments ?? []) {
         if (this.forceParse) this.extractCommentProperties(comment);
-        await this.db.collection('metafilter_post').save({
-          _key: `${post.site}-${post.id}`,
+
+        // Bulky and unecessary, we don't likes it
+        comment.raw = '';
+
+        await this.db.collection('metafilter_comment').save({
+          _key: `${post.site}-${comment.id}`,
           post: `metafilter_post/${post.site}-${post.id}`,
           ...comment
         }, { overwriteMode: 'update' }).then(() => saved.comments++);
       }
+
+      // Bulky and unecessary, we don't likes it
+      post.raw = '';
+      post.savedComments = undefined;
+
+      await this.db.collection('metafilter_post').save({
+        _key: `${post.site}-${post.id}`,
+        ...post
+      }, { overwriteMode: 'update' }).then(() => saved.posts++);
     }
 
     return Promise.resolve([
@@ -299,7 +312,7 @@ export class Metafilter extends Import {
     post.title = $('h1.posttitle').text().replace(dateline, '').trim();
     post.date = dateline.match(/([a-zA-Z]+\s+\d+,\s+\d+\s+\d+\:\d+\s+[AP]M)\s+Subscribe/)?.[1];
     post.author = $('span.postbyline a').first().text();
-    post.authorId = Number.parseInt($('span.postbyline a').first().attr('href')?.split('/').pop() ?? '');
+    post.authorId = Number.parseInt($('span.postbyline a').first().attr('href')?.split('/').pop() ?? '') ?? undefined;
     post.askSection = $('span.postbyline').text().match(/\s+to\s+(\w+)\s+at/)?.[1];
 
     post.comments = Number.parseInt($('span.postbyline').text().trim().match(/\((\d+) comment/)?.[1] ?? '0');
@@ -308,11 +321,13 @@ export class Metafilter extends Import {
 
     $('span.postbyline').remove();
     post.links = $('div.copy a').toArray().map(e => $(e).attr('href') ?? ''),
-    post.body = $('div.copy').html()?.trim() ?? undefined,
-    post.details = $('div.copy div.miseperator').html()?.trim() ?? undefined,
+    post.details = brToNl($('div.copy div.miseperator').html() ?? undefined),
 
     $('div.copy div.miseperator').remove();
-    post.summary = $('div.copy').html()?.trim() ?? undefined;
+    post.summary = brToNl($('div.copy').html() ?? undefined);
+
+    // Let's think about this. Maybe we don't need the unified field.
+    post.body = undefined;
   }
   
   extractCommentProperties(comment: MetafilterCommentData) {
@@ -323,10 +338,19 @@ export class Metafilter extends Import {
 
     comment.date = `${date} ${time}`;
     comment.author = $('span.smallcopy a').first().text();
-    comment.authorId = Number.parseInt($('span.smallcopy a').first().attr('href')?.split('/').pop() ?? '');
-    comment.favorites = Number.parseInt($('span.smallcopy').text().match(/\[(\d+) favorite/)?.[1] ?? '');
+    comment.authorId = Number.parseInt($('span.smallcopy a').first().attr('href')?.split('/').pop() ?? '') ?? undefined;
+    comment.favorites = Number.parseInt($('span.smallcopy').text().match(/\[(\d+) favorite/)?.[1] ?? '0');
 
     $('span.smallcopy').remove();
-    comment.body = $.html()?.trim() ?? undefined;
+    comment.body = brToNl($.html()) ?? undefined;
   }
+}
+
+function brToNl(val?: string){
+  if (val) {
+    return val
+      .replaceAll('<span></span>', '')
+      .replaceAll(/<br[\w/]*>/g, '\n\n')
+      .replaceAll(/\n\n+/g, '\n\n').trim();
+  } else return val;
 }
