@@ -1,9 +1,8 @@
+import { ParsedUrl } from '@autogram/url-tools'
 import { CheerioCrawler, Request } from 'crawlee';
 import * as cheerio from 'cheerio';
 
-import { ParsedUrl } from '@autogram/url-tools'
-
-import { BaseImport, BaseImportOptions } from "./base-import.js";
+import { BaseImport, BaseImportOptions } from "../index.js";
 import { isString } from '@sindresorhus/is';
 
 export type MetafilterUserData = Record<string, unknown> & {
@@ -46,8 +45,7 @@ export type MetafilterCommentData = {
   body?: string,
 }
 
-interface MetafilterImportOptions extends BaseImportOptions {
-
+export interface MetafilterImportOptions extends BaseImportOptions {
   /**
    * Download and cache user metadata even if it already exists.
    */
@@ -70,12 +68,14 @@ export class Metafilter extends BaseImport {
     metafilter_post: {},
     metafilter_comment: {}
   };
+  
   forceUser = false;
   forcePosts = false;
   forceParse = false;
   
   constructor(options: MetafilterImportOptions = {}) {
     super(options);
+
     if (options.forceUser) this.forceUser = true;
     if (options.forcePosts) this.forcePosts = true;
     if (options.forceParse) this.forceParse = true;
@@ -148,7 +148,7 @@ export class Metafilter extends BaseImport {
    * For the Metafilter import, preload selectively downloads and caches
    * raw user profile, post, and comment data from the site for processing.
    */
-  override async preload(options: MetafilterImportOptions = {}): Promise<Record<string, string>> {
+  override async preload(options: MetafilterImportOptions = {}): Promise<string[]> {
     const uid = Number.parseInt(process.env.METAFILTER_USER_ID ?? '');
 
     // If there's no cached user file, retrieve it and save it.
@@ -167,7 +167,7 @@ export class Metafilter extends BaseImport {
     }
     await this.cachePostsAndComments(postsToCache);
 
-    return Promise.resolve({});
+    return Promise.resolve([]);
   }
 
   protected userFileName(uid: string | number) {

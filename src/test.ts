@@ -1,4 +1,4 @@
-import { Tumblr } from './index.js'
+import { MovableType } from "./imports/movabletype.js";
 
-const t = new Tumblr();
-await t.preload();
+const mt = new MovableType({ sqlDb: 'movabletype-2005' });
+console.log(await mt.preload());

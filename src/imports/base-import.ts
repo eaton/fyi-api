@@ -1,5 +1,4 @@
-import { Database, CreateCollectionOptions } from "../util/database.js"
-import { Filestore } from "../util/filestore.js"
+import { Filestore, Database, CreateCollectionOptions } from "../index.js"
 
 export interface BaseImportOptions extends Record<string, unknown> {
   db?: Database,
@@ -13,6 +12,8 @@ export interface BaseImportOptions extends Record<string, unknown> {
  */
 export abstract class BaseImport {
   logLevel: number = 0;
+  collections?: Record<string, CreateCollectionOptions> = undefined;
+  relationships?: Record<string, CreateCollectionOptions> = undefined;
 
   private _db?: Database;
   private _files?: Filestore;
@@ -31,9 +32,6 @@ export abstract class BaseImport {
     return this._files;
   }
 
-  collections?: Record<string, CreateCollectionOptions>;
-  relationships?: Record<string, CreateCollectionOptions>;
-
   constructor(options: BaseImportOptions = {}) {
     if (options.db) this._db = options.db;
     if (options.files) this._files = options.files;
@@ -47,8 +45,8 @@ export abstract class BaseImport {
    *
    * @returns A promise that resolves to a list of messages logged during the preload.
    */
-  preload(): Promise<Record<string, string>> {
-    return Promise.resolve({});
+  preload(): Promise<string[]> {
+    return Promise.resolve([]);
   }
 
   /**
