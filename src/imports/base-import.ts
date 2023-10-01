@@ -23,8 +23,10 @@ export abstract class BaseImport {
   }
 
   get files(): Filestore {
-    if (this._files) return this.files;
-    throw new Error('No filesystem wrapper');
+    if (this._files === undefined) {
+      this._files = new Filestore();
+    }
+    return this._files;
   }
 
   collections?: Record<string, CreateCollectionOptions>;
