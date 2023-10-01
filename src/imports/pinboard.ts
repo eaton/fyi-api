@@ -1,8 +1,5 @@
 import { Import } from '../index.js';
 
-import fpkg from 'fs-extra';
-const { readJSONSync } = fpkg;
-
 type PinboardBookmark = {
   href: string,
   description?: string,
@@ -21,7 +18,7 @@ export class Pinboard extends Import {
   async doImport(): Promise<string[]> {
     await this.ensureSchema();
   
-    const favs = readJSONSync('raw/pinboard.json') as PinboardBookmark[];
+    const favs = await this.files.read('raw/pinboard.json') as PinboardBookmark[];
 
     for (const fav of favs) {
       this.db.push({

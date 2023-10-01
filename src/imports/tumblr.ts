@@ -3,9 +3,6 @@ import 'dotenv/config'
 import { Import } from "./import-base.js";
 import { Client } from 'tumblr.js';
 
-import fpkg from 'fs-extra';
-const { ensureDir, writeJSON } = fpkg;
-
 export type UserInfo = {
   user: {
     name: string,
@@ -140,25 +137,25 @@ export class Tumblr extends Import {
       token_secret: process.env.TUMBLR_TOKEN_SECRET
     });
 
-    await ensureDir('raw/tumblr');
+    this.files.ensure('raw/tumblr');
 
     const userInfoResponse: UserInfo = await t.userInfo();
     const user = userInfoResponse.user;
-    await writeJSON(`raw/tumblr/${user.name}.json`, user, { spaces: 2 });
+    await this.files.write(`raw/tumblr/${user.name}.json`, user);
 
     for (const blogInfo of user.blogs) {
       if (blogIds.length > 0 && !blogIds.includes(blogInfo.name)) {
         continue;
       }
 
-      await ensureDir(`raw/tumblr/${blogInfo.name}`);
-      await writeJSON(`raw/tumblr/${blogInfo.name}/${blogInfo.name}-meta.json`, blogInfo, { spaces: 2 });
+      this.files.ensure(`raw/tumblr/${blogInfo.name}`);
+      await this.files.write(`raw/tumblr/${blogInfo.name}/${blogInfo.name}-meta.json`, blogInfo);
 
       // Bail out if a list of blogs was given, and the current one doesn't appear in it.
       const blogPostsResponse = await t.blogPosts(blogInfo.name) as { posts: BlogPost[] };
       for (const post of blogPostsResponse.posts) {
         const date = post.date.split(' ')[0];
-        await writeJSON(`raw/tumblr/${blogInfo.name}/${date}-${post.slug}.json`, post, { spaces: 2 });
+        await this.files.write(`raw/tumblr/${blogInfo.name}/${date}-${post.slug}.json`, post);
       }
     }
 

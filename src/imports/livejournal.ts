@@ -1,8 +1,3 @@
-import gpkg from 'fast-glob';
-const { async: glob } = gpkg;
-
-import fpkg from 'fs-extra';
-const { readFileSync, statSync } = fpkg;
 import * as cheerio from 'cheerio';
 import { Import } from '../index.js';
 import { decode } from 'entities';
@@ -76,15 +71,16 @@ export class Livejournal extends Import {
    * just a vestigial `<lj-poll>` element in the markup pointing to a long-dead ID. Alas.
    */
   async parseXmlFiles() {
-    const xmlFiles = await glob('raw/livejournal/*.xml');
+    const xmlFiles = await this.files.find('raw/livejournal/*.xml');
   
     const entries: LivejournalEntry[] = [];
     const comments: LivejournalComment[] = [];
   
     for (const path of xmlFiles) {
-      const file = readFileSync(path);
-      const $ = cheerio.load(file, { xmlMode: true });
+      const $ = await this.files.read(path)
+        .then(data => cheerio.load(data, { xmlMode: true }))
 
+      // Currently hard-coded for my own purposes. Blah.
       const firstPostDate = new Date('2001-06-04T21:45:00');
 
       $('entry')
@@ -135,12 +131,12 @@ export class Livejournal extends Import {
    * somewhere, but I only have like 20 of these files so this is good enough.
    */
   async parseSemagicFiles(offset = 0, limit?: number) {
-    let tempFiles = await glob('raw/livejournal/*.slj')
+    let tempFiles = await this.files.find('raw/livejournal/*.slj')
     const entries: LivejournalEntry[] = [];
 
     for (const path of tempFiles.slice(offset, limit ?? 1000)) {
       const tempId = Number.parseInt(path.replace('raw/livejournal/predicate.predicate.', '').replace('.slj', '-draft'));
-      const tempDate = statSync(path).mtime.toISOString();
+      const tempDate = this.files.stat(path).mtime.toISOString();
       
       entries.push(await this.populateFromSljBuffer({
         itemid: tempId,
@@ -152,11 +148,12 @@ export class Livejournal extends Import {
   }
   
   async populateFromSljBuffer(entry: Partial<LivejournalEntry>, path: string): Promise<LivejournalEntry> {
-    let data = readFileSync(path).toString('utf16le');
+    const data = await this.files.read(path);
+    const text = data.toString('utf16le');
     
     return Promise.resolve({
       ...entry,
-      ...this.parseSemagicFile(data)
+      ...this.parseSemagicFile(text)
     } as LivejournalEntry);
   }
 

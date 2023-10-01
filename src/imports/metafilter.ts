@@ -3,12 +3,6 @@ import * as cheerio from 'cheerio';
 
 import { ParsedUrl } from '@autogram/url-tools'
 
-import gpkg from 'fast-glob';
-const { async: glob } = gpkg;
-
-import fpkg from 'fs-extra';
-const { exists, ensureDir, readJSON, writeJSON } = fpkg;
-
 import { Import, ImportOptions } from "./import-base.js";
 import { isString } from '@sindresorhus/is';
 
@@ -88,8 +82,8 @@ export class Metafilter extends Import {
   }
 
   async doImport(): Promise<string[]> {
-    const cachedUser = (await glob('raw/metafilter/user-*.json')).pop();
-    const cachedPosts = await glob('raw/metafilter/**/post-*.json');
+    const cachedUser = (await this.files.find('raw/metafilter/user-*.json')).pop();
+    const cachedPosts = await this.files.find('raw/metafilter/**/post-*.json');
     
     await this.ensureSchema();
 
@@ -107,7 +101,7 @@ export class Metafilter extends Import {
       return Promise.resolve(['No ArangoDB connection.']);
     }
 
-    const user = await readJSON(cachedUser) as MetafilterUserData;
+    const user = await this.files.read(cachedUser) as MetafilterUserData;
     if (this.forceParse) this.extractUserProperties(user);
 
     user.raw = '';
@@ -119,7 +113,7 @@ export class Metafilter extends Import {
     }, { overwriteMode: 'update' }).then(() => saved.users++);
 
     for (const postFile of cachedPosts) {
-      const post = await readJSON(postFile) as MetafilterPostData;
+      const post = await this.files.read(postFile) as MetafilterPostData;
       if (this.forceParse) this.extractPostProperties(post);
 
       for (const comment of post.savedComments ?? []) {
@@ -158,16 +152,16 @@ export class Metafilter extends Import {
     const uid = Number.parseInt(process.env.METAFILTER_USER_ID ?? '');
 
     // If there's no cached user file, retrieve it and save it.
-    if ((await exists(this.userFileName(uid))) === false || options?.forceUser) {
+    if (this.files.exists(this.userFileName(uid)) === false || options?.forceUser) {
       await this.cacheUserData(uid);
     }
 
-    const user = (await readJSON(this.userFileName(uid))) as MetafilterUserData;
+    const user = (await this.files.read(this.userFileName(uid))) as MetafilterUserData;
     if (this.forceParse) this.extractUserProperties(user);
 
     const postsToCache: Record<string, string[]> = {};
     for (const [url, commentIds] of Object.entries(user.activity ?? [])) {
-      if ((await exists(this.postFileName(url))) === false || options?.forcePosts) {
+      if (this.files.exists(this.postFileName(url)) === false || options?.forcePosts) {
         postsToCache[url] = commentIds;
       }
     }
@@ -240,8 +234,8 @@ export class Metafilter extends Import {
         // Turn the set into a simple array for serialization
         user.activity = Object.fromEntries(Object.entries(activity).map(entry => [entry[0], [...entry[1]]]));
         
-        await ensureDir('raw/metafilter');
-        await writeJSON(this.userFileName(uid), user, { spaces: 2 });
+        this.files.ensure('raw/metafilter');
+        await this.files.write(this.userFileName(uid), user);
         return Promise.resolve();
       }
     });
@@ -288,8 +282,8 @@ export class Metafilter extends Import {
         }
         post.savedComments = savedComments;
 
-        await ensureDir(`raw/metafilter/${post.site}`);
-        await writeJSON(this.postFileName(url), post, { spaces: 2 });
+        this.files.ensure(`raw/metafilter/${post.site}`);
+        await this.files.write(this.postFileName(url), post);
         return Promise.resolve();
       }
     });

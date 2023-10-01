@@ -1,8 +1,5 @@
 import { Import, uuid } from '../index.js';
 
-import fpkg from 'fs-extra';
-const { readJSONSync } = fpkg;
-
 type InstagramPost = {
   title?: string,
   creation_timestamp?: number,
@@ -21,7 +18,7 @@ export class Instagram extends Import {
   collections = { instagram_post: {} };
 
   async doImport(): Promise<string[]> {
-    const posts = readJSONSync('raw/instagram/content/posts_1.json') as InstagramPost[];
+    const posts = await this.files.read('raw/instagram/content/posts_1.json') as InstagramPost[];
     let mediaCount = 0;
 
     for (const post of posts) {
