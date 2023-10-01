@@ -18,8 +18,10 @@ export abstract class BaseImport {
   private _files?: Filestore;
 
   get db(): Database {
-    if (this._db) return this._db;
-    throw new Error('No ArangoDB connection');
+    if (this._db === undefined) {
+      this._db = new Database();
+    }
+    return this._db;
   }
 
   get files(): Filestore {
