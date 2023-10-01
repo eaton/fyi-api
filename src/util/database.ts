@@ -21,6 +21,10 @@ export class Database extends ArangoDB {
     }
   }
 
+
+  /**
+   * Push data to ArangoDB, and attempt to intuit the id/key/collection if possible.
+   */
   async push(item: any, id?: string): Promise<boolean> {
     // Set the _collection and _key variables from the incoming ID if it exists,
     // and the item's own _id property if IT exists. If they're still not populated,
@@ -42,7 +46,11 @@ export class Database extends ArangoDB {
       .then(() => true);
   }
 
-  async delete(id: string, collection?: string) {
+
+  /**
+   * Delete the document with the given ID from ArangoDB.
+   */
+  async delete(id: string, collection?: string): Promise<boolean> {
     const _id = [id, collection].filter(Boolean).join('/');
     const [_collection, _key] = _id.split('/');
 
@@ -50,14 +58,26 @@ export class Database extends ArangoDB {
       .then(() => true);
   }
 
-  async ensureCollection(name: string, options: CreateCollectionOptions = {}) {
+  /**
+   * Ensure a given collection exists; if it doesn't, create it.
+   * 
+   * Returns a Promise that resolves to TRUE if the collection was created,
+   * FALSE if it already existed.
+   */
+  async ensureCollection(name: string, options: CreateCollectionOptions = {}): Promise<boolean> {
     return this.collection(name).exists()
       .then(exists => {
-        if (exists) return this.collection(name);
-        return this.createCollection(name, options);
+        if (exists) return false;
+        return this.createCollection(name, options).then(() => true);
       })
   }
 
+  /**
+   * Ensure a given edge collection exists; if it doesn't, create it.
+   * 
+   * Returns a Promise that resolves to TRUE if the collection was created,
+   * FALSE if it already existed.
+   */
   async ensureEdgeCollection(name: string, options: CreateCollectionOptions = {}) {
     return this.collection(name).exists()
       .then(exists => {
@@ -66,11 +86,35 @@ export class Database extends ArangoDB {
       })
   }
 
-  async empty(name: string) {
+  /**
+   * Blindly empties all the documents in a given collection.
+   * 
+   * Returns a Promise that resolves to the number of documents deleted; if the collection
+   * didn't exist at all, the count will be zero.
+   */
+  async empty(name: string): Promise<number> {
     return this.collection(name).exists()
       .then(exists => {
         if (exists) {
-          return this.collection(name).truncate().then(() => true);
+          return this.collection(name).count()
+            .then(count => this.collection(name).truncate().then(() => count.count));
+        } else {
+          return 0;
+        }
+      })
+  }
+
+  /**
+   * Blindly deletes a collection.
+   * 
+   * Returns a Promise that resolves to TRUE if the collection was deleted deleted, and
+   * FALSE if it didn't exist in the first place.
+   */
+  async destroy(name: string): Promise<boolean> {
+    return this.collection(name).exists()
+      .then(exists => {
+        if (exists) {
+          return this.collection(name).drop().then(() => true);
         } else {
           return false;
         }

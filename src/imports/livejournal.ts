@@ -32,7 +32,10 @@ type LivejournalComment = {
 }
 
 export class Livejournal extends Import {
-  collections = ['lj_entry', 'lj_comment'];
+  collections = {
+    lj_entry: {},
+    ly_comment: {},
+  };
 
   async doImport(): Promise<string[]> {
     await this.ensureSchema();
