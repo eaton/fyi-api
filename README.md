@@ -46,6 +46,7 @@ than archive it wholesale).
 | Facebook              |         |           |           |           |           |
 | Quora                 |         |           |           |           |           |
 | Instagram             | Yes     | archive   |           |           |           |
+| Flickr                |         |           |           |           |           |
 | Medium                |         | archive   |           |           |           |
 | Tumblr                | Yes     | json      |           |           |           |
 | Wordpress             |         |           |           |           |           |
