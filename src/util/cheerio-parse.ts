@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { cheerioJsonMapper, Options as ExtractOptions, getScope } from 'cheerio-json-mapper';
+import { cheerioJsonMapper, Options as ExtractOptions, getScope, PipeFn } from 'cheerio-json-mapper';
 
 type ExtractTemplateInput = Parameters<typeof cheerioJsonMapper>[1];
 type ExtendedCheerioOptions = Parameters<typeof cheerio.load>[1] & Partial<ExtractOptions>;
@@ -7,7 +7,7 @@ type CheerioInput = Parameters<typeof cheerio.load>[0];
 
 declare module 'cheerio' {
   interface Cheerio<T> {
-    extract(template: ExtractTemplateInput): Promise<unknown>;
+    extract<T = Record<string, unknown> | unknown[]>(template: ExtractTemplateInput): Promise<T>;
   }
 }
 
@@ -19,8 +19,28 @@ declare module 'cheerio' {
  */
 export function cheerioParse(content: CheerioInput, options?: ExtendedCheerioOptions, isDocument?: boolean) {
   options ??= {};
-  options.pipeFns ??= {};
-  options.pipeFns['html'] = htmlPipe;
+  const pipeFns: Record<string, PipeFn> = {
+    ...options.pipeFns ?? {},
+    html: (input: any) => {
+      const { $scope, selector, opts } = input;
+      return getScope($scope, selector, opts).html();
+    },
+    split: ({ value, args }) => {
+      if (value !== null && value !== void 0) {
+        const [arg1] = args ?? [];
+        const joiner = arg1?.toString() ?? ',';
+        return value.toString().split(joiner).map(value => value.trim());
+      }
+      return void 0;
+    },
+    shift: ({ value }) => Array.isArray(value) ? value.shift() : void 0,
+    pop: ({ value }) => Array.isArray(value) ? value.pop() : void 0,
+  }
+
+  options.pipeFns = {
+    ...options.pipeFns ?? {},
+    ...pipeFns
+  };
 
   const $ = cheerio.load(content, options, isDocument)
 
@@ -30,8 +50,3 @@ export function cheerioParse(content: CheerioInput, options?: ExtendedCheerioOpt
   
   return $;
 }
-
-const htmlPipe = (input: any) => {
-  const { $scope, selector, opts } = input;
-  return getScope($scope, selector, opts).html();
-};

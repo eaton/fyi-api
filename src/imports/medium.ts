@@ -2,41 +2,24 @@
 import { BaseImport } from '../index.js';
 import { cheerioParse } from '../util/cheerio-parse.js';
 
-export type MediumPost = {
-  id: string,
-  title: string,
-  hero_image?: string,
-  href: string,
-  summary?: string,
-  content: string,
-  published: string,
-}
-
 export type MediumUserInfo = {
-  id?: string,
-  twitter_username?: string,
-  bio?: string,
-  top_writer_in?: string[],
-  is_suspended:false,
-  username: string,
+  id: string,
+  url: string,
+  email: string,
+  name: string,
   fullname: string,
+  twitter_id?: string,
+  archive_exported_at: string,
   medium_member_at: string,
-  following_count: number,
-  followers_count: number,
-  is_writer_program_enrolled: boolean
-  allow_notes: boolean,
   image_url: string,
-  articles: string[],
+  publications: { writer?: unknown[], editor?: unknown[] }
 }
 
 export type MediumArticle = {
   id: string,
   filename: string,
   url: string,
-  author: {
-    url: string,
-    fullname: string,
-  },
+  author: Partial<MediumUserInfo>,
   title: string,
   subtitle: string,
   published_at: string,
@@ -77,36 +60,112 @@ export class Medium extends BaseImport {
   /**
    * Parses the raw HTML files from a downloaded Medium archive
    */
-  async parseArchivePosts() {
+  async parseArchive() {
+    const user = await this.parseUserProfile();
+    await this.files.writeCache(`user-${user.name}.json`, user);
+
     const files = {
-      profile: await this.files.findInput('profile/*.html'),
       posts: await this.files.findInput('posts/*.html'),
-      lists: await this.files.findInput('lists/lists-*.html'),
+      lists: await this.files.findInput('lists/*:*.html'),
       claps: await this.files.findInput('claps/claps-*.html'),
-      highlights: await this.files.findInput('highlights/highlights-*.html'),
       bookmarks: await this.files.findInput('bookmarks/bookmarks-*.html'),
     }
 
-    // const about = await this.files.readInput('profile/about.html');
-    // const profile = await this.files.readInput('profile/profile.html');
-    // const publications = await this.files.readInput('profile/publications.html');
-    // const memberships = await this.files.readInput('profile/memberships.html');
-
-    const posts: Record<string, Partial<MediumPost>> = {};
+    const posts: Record<string, Partial<MediumArticle>> = {};
     for (const postFile of files.posts) {
-      const post = await this.readMediumPost(postFile);
+      const post = await this.parseMediumPost(postFile);
       posts[post.id ?? 'ERR'] = post;
     }
 
+    const claps: Record<string, string>[] = [];
+    for (const file of files.claps) {
+      const $ = cheerioParse(await this.files.readInput(file));
+      const extracted = await $().extract<Record<string, string>[]>([{
+        $: 'li.h-entry',
+        title: 'a | text',
+        url: 'a | attr:href',
+        clapped_at: 'time',
+        claps: '| split:— | shift | substr:1 | trim',
+      }]);
+      extracted.forEach(c => claps.push(c));
+    }
+    await this.files.writeCache('claps.json', claps);
+
+    const lists: Record<string, unknown> = {};
+    for (const file of files.lists) {
+      const $ = cheerioParse(await this.files.readInput(file));
+      const extracted = await $().extract<Record<string, string>>({
+        title: 'h1.p-name',
+        url: 'footer a:nth(1) | attr:href',
+        published_at: 'footer time.dt-published | attr:datetime',
+        articles: [{
+          $: 'li',
+          title: 'a | text',
+          url: 'a | attr:href',
+        }]
+      });
+      lists[extracted.title] = extracted;
+    }
+    await this.files.writeCache('lists.json', lists);
+
+    const bookmarks: Record<string, string>[] = [];
+    for (const file of files.bookmarks) {
+      const $ = cheerioParse(await this.files.readInput(file));
+      const extracted = await $().extract<Record<string, string>[]>([{
+        $: 'li',
+        title: 'a',
+        url: 'a | attr:href',
+        bookmarked_at: 'time',
+      }]);
+      extracted.forEach(b => bookmarks.push(b));
+    }
+    await this.files.writeCache('bookmarks.json', bookmarks);
+
     // console.log(posts);
     for (const post of Object.values(posts)) {
-      await this.files.writeCache(`post-${post.id}.json`, post);
+      await this.files.writeCache(`posts/post-${post.id}.json`, post);
     }
 
     return Promise.resolve();
   }
 
-  protected async readMediumPost(file: string): Promise<Partial<MediumPost>> {
+  protected async parseUserProfile(): Promise<Partial<MediumUserInfo>> {
+    let $ = cheerioParse(await this.files.readInput('profile/about.html') ?? '');
+    const archive_exported_at = $('footer p').text().slice(24, -1).trim();
+
+    $ = cheerioParse(await this.files.readInput('profile/profile.html') ?? '')
+    const profile = await $().extract<Record<string, string>>({
+      id: 'li:nth(3) | split:\: | pop',
+      name: 'li:nth(0) | split:\: | pop | substr:1',
+      fullname: 'li:nth(1) | split:\: | pop',
+      email: 'li:nth(2) | split:\: | pop',
+      medium_member_at: 'li:nth(4) | substr:12',
+      image_url: 'img.u-photo | attr:src',
+      twitter_id: 'li:nth(6) | split:\: | pop'
+    });
+    
+    $ = cheerioParse(await this.files.readInput('profile/publications.html') ?? '');
+    const publications = await $().extract({
+      editor: [{
+        $: 'ul:nth(0) > li',
+        title: 'a',
+        url: 'a | attr:href',
+      }],
+      writer: [{
+        $: 'ul:nth(1) > li',
+        title: 'a',
+        url: 'a | attr:href',
+      }],
+    });
+
+    return Promise.resolve({
+      ...profile,
+      ...publications,
+      archive_exported_at
+    });
+  }
+
+  protected async parseMediumPost(file: string): Promise<Partial<MediumArticle>> {
     let [filename, slugDate, id] = file.match(/posts\/(.*)_.*-([a-z0-9]+).html/) ?? [];
     const html = await this.files.readInput(file);
     const draft = slugDate === 'draft';
@@ -122,8 +181,9 @@ export class Medium extends BaseImport {
       image_url: 'section.section--body.section--first > div.section-content > div.section-inner.sectionLayout--fullWidth > figure > img | attr:src',
       author: {
         $: 'footer > p > a.p-author',
-        url: '| attr:href',
+        name: '| attr:href | substr:20',
         fullname: '$',
+        url: '| attr:href',
       },
     };
 
