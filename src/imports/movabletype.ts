@@ -23,12 +23,12 @@ export class MovableType extends BaseImport {
     this.sqlDb = options?.sqlDb ?? process.env.MYSQL_DB
   }
 
-  async doImport(): Promise<string[]> {
+  async doImport(): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
-  async preload() {  
-    this.files.ensure('raw/movabletype/unfiltered');
+  async fillCache(): Promise<void> {  
+    this.files.ensureOutput('movabletype/unfiltered');
   
     const conn = await mysql.createConnection({
       host: this.sqlHost,
@@ -37,30 +37,28 @@ export class MovableType extends BaseImport {
       database: this.sqlDb
     });
 
-    const messages: string[] = [];
-
     await conn.execute('SELECT * FROM `mt_blog`')
-      .then(results => this.files.write('raw/movabletype/unfiltered/blogs.json', results[0]))
-      .then(() => messages.push('Blogs saved'));
+      .then(results => this.files.writeCache('movabletype/blogs.json', results[0]))
+      .then(() => this.log('Blogs cached'));
   
     await conn.execute('SELECT * FROM `mt_author`')
-      .then(results => this.files.write('raw/movabletype/unfiltered/authors.json', results[0]))
-      .then(() => messages.push('Authors saved'));
+      .then(results => this.files.writeCache('movabletype/authors.json', results[0]))
+      .then(() => this.log('Authors cached'));
   
     await conn.execute('SELECT * FROM `mt_category`')
-      .then(results => this.files.write('raw/movabletype/unfiltered/categories.json', results[0]))
-      .then(() => messages.push('Categories saved'));
+      .then(results => this.files.writeCache('movabletype/categories.json', results[0]))
+      .then(() => this.log('Categories cached'));
   
     await conn.execute('SELECT * FROM `mt_entry`')
-      .then(results => this.files.write('raw/movabletype/unfiltered/entries.json', results[0]))
-      .then(() => messages.push('Entries saved'));
+      .then(results => this.files.writeCache('movabletype/entries.json', results[0]))
+      .then(() => this.log('Entries cached'));
   
     await conn.execute('SELECT * FROM `mt_comment` WHERE comment_visible = 1')
-      .then(results => this.files.write('raw/movabletype/unfiltered/comments.json', results[0]))
-      .then(() => messages.push('Comments saved'));
+      .then(results => this.files.writeCache('movabletype/comments.json', results[0]))
+      .then(() => this.log('Comments cached'));
   
     await conn.end();
   
-    return Promise.resolve(messages);
+    return Promise.resolve();
   }
 }

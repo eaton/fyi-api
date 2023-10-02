@@ -110,3 +110,6 @@ package-lock.json
 data/
 raw/
 storage/
+input/
+cache/
+output/

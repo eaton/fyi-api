@@ -124,11 +124,11 @@ export class Tumblr extends BaseImport {
     tumblr_post: {},
   }
 
-  doImport(): Promise<string[]> {
+  doImport(): Promise<void> {
     throw new Error('Method not implemented.');
   }
   
-  async preload(): Promise<string[]> {
+  async fillCache(): Promise<void> {
     let blogIds: string[] = [];
     if (process.env.TUMBLR_BLOGS) {
       blogIds = process.env.TUMBLR_BLOGS?.split(',').map(b => b.trim()) ?? [];
@@ -141,7 +141,7 @@ export class Tumblr extends BaseImport {
       token_secret: process.env.TUMBLR_TOKEN_SECRET
     });
 
-    this.files.ensure('raw/tumblr');
+    this.files.ensureOutput('tumblr');
 
     const userInfoResponse: UserInfo = await t.userInfo();
     const user = userInfoResponse.user;
@@ -163,6 +163,6 @@ export class Tumblr extends BaseImport {
       }
     }
 
-    return Promise.resolve([]);
+    return Promise.resolve();
   }
 }

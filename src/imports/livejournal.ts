@@ -32,7 +32,7 @@ export class Livejournal extends BaseImport {
     ly_comment: {},
   };
 
-  async doImport(): Promise<string[]> {
+  async doImport(): Promise<void> {
     await this.ensureSchema();
 
     const results: string[] = [];
@@ -54,7 +54,7 @@ export class Livejournal extends BaseImport {
     }
     results.push(`${tmpEntries.length} entries were found in Semagic files.`);
 
-    return Promise.resolve([]);
+    return Promise.resolve();
   }
 
   /**
@@ -71,7 +71,7 @@ export class Livejournal extends BaseImport {
    * just a vestigial `<lj-poll>` element in the markup pointing to a long-dead ID. Alas.
    */
   async parseXmlFiles() {
-    const xmlFiles = await this.files.find('raw/livejournal/*.xml');
+    const xmlFiles = await this.files.find('input/livejournal/*.xml');
   
     const entries: LivejournalEntry[] = [];
     const comments: LivejournalComment[] = [];
@@ -131,11 +131,11 @@ export class Livejournal extends BaseImport {
    * somewhere, but I only have like 20 of these files so this is good enough.
    */
   async parseSemagicFiles(offset = 0, limit?: number) {
-    let tempFiles = await this.files.find('raw/livejournal/*.slj')
+    let tempFiles = await this.files.find('input/livejournal/*.slj')
     const entries: LivejournalEntry[] = [];
 
     for (const path of tempFiles.slice(offset, limit ?? 1000)) {
-      const tempId = Number.parseInt(path.replace('raw/livejournal/predicate.predicate.', '').replace('.slj', '-draft'));
+      const tempId = Number.parseInt(path.replace('input/livejournal/predicate.predicate.', '').replace('.slj', '-draft'));
       const tempDate = this.files.stat(path).mtime.toISOString();
       
       entries.push(await this.populateFromSljBuffer({

@@ -15,10 +15,10 @@ type PinboardBookmark = {
 export class Pinboard extends BaseImport {
   collections = { pinboard_bookmark: {} };
 
-  async doImport(): Promise<string[]> {
+  async doImport(): Promise<void> {
     await this.ensureSchema();
   
-    const favs = await this.files.read('raw/pinboard.json') as PinboardBookmark[];
+    const favs = await this.files.read('input/pinboard.json') as PinboardBookmark[];
 
     for (const fav of favs) {
       this.db.push({
@@ -35,7 +35,8 @@ export class Pinboard extends BaseImport {
         tags: fav.tags ? fav.tags.split(' ') : undefined
       })
     }
-  
-    return Promise.resolve([`${favs.length} Pinboard bookmarks imported`]);
+    this.log(`${favs.length} Pinboard bookmarks imported`);
+    
+    return Promise.resolve();
   }
 }

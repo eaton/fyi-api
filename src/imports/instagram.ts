@@ -17,8 +17,8 @@ type InstagramMedia = {
 export class Instagram extends BaseImport {
   collections = { instagram_post: {} };
 
-  async doImport(): Promise<string[]> {
-    const posts = await this.files.read('raw/instagram/content/posts_1.json') as InstagramPost[];
+  async doImport(): Promise<void> {
+    const posts = await this.files.read('input/instagram/content/posts_1.json') as InstagramPost[];
     let mediaCount = 0;
 
     for (const post of posts) {
@@ -40,6 +40,8 @@ export class Instagram extends BaseImport {
       }
     }
 
-    return Promise.resolve([`Saved ${posts.length} posts, ${mediaCount} media items.`]);
+    this.log(`Saved ${posts.length} posts, ${mediaCount} media items.`)
+    
+    return Promise.resolve();
   }
 }

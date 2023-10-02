@@ -3,3 +3,4 @@ export * from './filestore.js';
 
 export * from './php.js';
 export * from './uuid.js';
+export * from './cheerio.js';

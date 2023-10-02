@@ -7,3 +7,4 @@ export * from './livejournal.js';
 export * from './medium.js';
 export * from './pinboard.js';
 export * from './twitter.js';
+export * from './jekyll.js';

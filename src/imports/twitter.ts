@@ -1,5 +1,5 @@
 import { TwitterArchive } from "twitter-archive-reader";
-import { BaseImport } from '../index.js';
+import { BaseImport, BaseImportOptions } from '../index.js';
 
 
 export type TwitterFavorite = {
@@ -11,20 +11,37 @@ export type TwitterFavorite = {
   favorited?: string,
 };
 
+
+export interface TwitterImportOptions extends BaseImportOptions {
+  onlyLatestArchive: boolean,
+}
+
 export class Twitter extends BaseImport {
   collections = {
     twitter_post: {},
     twitter_favorite: {}
   }
 
-  async doImport(): Promise<string[]> {
+  async doImport(): Promise<void> {
     await this.ensureSchema();
-    const archive = await this.loadTwitterArchive('raw/twitter.zip');
+    const archive = await this.loadTwitterArchive('input/twitter.zip');
   
     await this.saveTweets(archive);
     await this.saveFavorites(archive);  
 
-    return Promise.resolve([]);
+    return Promise.resolve();
+  }
+
+  async fillCache(): Promise<void> {
+    const analytics = await this.files.findInput('**/daily_tweet_activity_metrics_*.csv');
+    for (const csv of analytics) {
+      this.log(`Found ${csv}`);
+    }
+
+    const archives = await this.files.findInput('**/twitter-*.zip');
+    for (const arc of archives) {
+      this.log(`Found ${arc}`);
+    }
   }
 
   async loadTwitterArchive(path = 'twitter.zip') {

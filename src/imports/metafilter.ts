@@ -81,9 +81,9 @@ export class Metafilter extends BaseImport {
     if (options.forceParse) this.forceParse = true;
   }
 
-  async doImport(): Promise<string[]> {
-    const cachedUser = (await this.files.find('raw/metafilter/user-*.json')).pop();
-    const cachedPosts = await this.files.find('raw/metafilter/**/post-*.json');
+  async doImport(): Promise<void> {
+    const cachedUser = (await this.files.find('input/metafilter/user-*.json')).pop();
+    const cachedPosts = await this.files.find('input/metafilter/**/post-*.json');
     
     await this.ensureSchema();
 
@@ -94,11 +94,13 @@ export class Metafilter extends BaseImport {
     };
 
     if (cachedUser === undefined || cachedPosts.length === 0) {
-      return Promise.resolve(['No Metafilter data to import.']);
+      this.log('No Metafilter data to import.')
+      return Promise.resolve();
     }
 
     if (this.db === undefined) {
-      return Promise.resolve(['No ArangoDB connection.']);
+      this.log('No ArangoDB connection.')
+      return Promise.resolve();
     }
 
     const user = await this.files.read(cachedUser) as MetafilterUserData;
@@ -139,16 +141,15 @@ export class Metafilter extends BaseImport {
       }, { overwriteMode: 'update' }).then(() => saved.posts++);
     }
 
-    return Promise.resolve([
-      `Metafilter: Saved ${saved.users} users, ${saved.posts} posts, and ${saved.comments} comments.`,
-    ])
+    this.log(`Saved ${saved.users} users, ${saved.posts} posts, and ${saved.comments} comments.`)
+    return Promise.resolve();
   }
 
   /**
    * For the Metafilter import, preload selectively downloads and caches
    * raw user profile, post, and comment data from the site for processing.
    */
-  override async preload(options: MetafilterImportOptions = {}): Promise<string[]> {
+  override async fillCache(options: MetafilterImportOptions = {}) {
     const uid = Number.parseInt(process.env.METAFILTER_USER_ID ?? '');
 
     // If there's no cached user file, retrieve it and save it.
@@ -167,7 +168,7 @@ export class Metafilter extends BaseImport {
     }
     await this.cachePostsAndComments(postsToCache);
 
-    return Promise.resolve([]);
+    return Promise.resolve();
   }
 
   protected userFileName(uid: string | number) {
@@ -234,7 +235,7 @@ export class Metafilter extends BaseImport {
         // Turn the set into a simple array for serialization
         user.activity = Object.fromEntries(Object.entries(activity).map(entry => [entry[0], [...entry[1]]]));
         
-        this.files.ensure('raw/metafilter');
+        this.files.ensureCache('metafilter');
         await this.files.write(this.userFileName(uid), user);
         return Promise.resolve();
       }
@@ -252,7 +253,7 @@ export class Metafilter extends BaseImport {
   }
 
   async cachePostsAndComments(activity: Record<string, string[]>) {
-    console.log(`fetching ${Object.entries(activity).length} posts`);
+    this.log(`fetching ${Object.entries(activity).length} posts`);
 
     let crawler = new CheerioCrawler({
       maxConcurrency: 2,

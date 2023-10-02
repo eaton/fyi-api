@@ -1,4 +1,5 @@
-import { MovableType } from "./imports/movabletype.js";
+import { Medium } from "./index.js";
 
-const mt = new MovableType({ sqlDb: 'movabletype-2005' });
-console.log(await mt.preload());
+
+const t = new Medium();
+await t.parseArchivePosts();

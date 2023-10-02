@@ -1,9 +1,11 @@
-import { Filestore, Database, CreateCollectionOptions } from "../index.js"
+import { Filestore, Database, CreateCollectionOptions, FilestoreOptions } from "../index.js"
+import chalk from 'chalk';
 
 export interface BaseImportOptions extends Record<string, unknown> {
+  name?: string,
+  files?: Filestore | FilestoreOptions;
   db?: Database,
-  files?: Filestore,
-  logLevel?: number,
+  logger?: (...data: unknown[]) => void;
 }
 
 /**
@@ -11,32 +13,50 @@ export interface BaseImportOptions extends Record<string, unknown> {
  * boilerplate code when doing cycles of testing.
  */
 export abstract class BaseImport {
-  logLevel: number = 0;
   collections?: Record<string, CreateCollectionOptions> = undefined;
   relationships?: Record<string, CreateCollectionOptions> = undefined;
 
-  private _db?: Database;
-  private _files?: Filestore;
+  constructor(protected options: BaseImportOptions = {}) {};
+
+  get status() {
+    return {
+      name: this.name,
+      input: this.files.input,
+      cache: this.files.cache,
+      output: this.files.output,
+    }
+  }
+
+  get name(): string {
+    return this.options.name ?? this.constructor.name;
+  }
 
   get db(): Database {
-    if (this._db === undefined) {
-      this._db = new Database();
+    if (this.options.db === undefined) {
+      this.options.db = new Database();
     }
-    return this._db;
+    return this.options.db;
   }
 
   get files(): Filestore {
-    if (this._files === undefined) {
-      this._files = new Filestore();
+    if (this.options.files instanceof Filestore) {
+      return this.options.files;
+    } else {
+      this.options.files = new Filestore({
+        bucket: this.name,
+        ...this.options.files
+      });
+      return this.options.files;
     }
-    return this._files;
   }
 
-  constructor(options: BaseImportOptions = {}) {
-    if (options.db) this._db = options.db;
-    if (options.files) this._files = options.files;
-    if (options.logLevel) this.logLevel = options.logLevel;
-  };
+  log(...data: unknown[]) {
+    if (this.options.logger) {
+      this.options.logger(data)
+    } else {
+      console.log(`${chalk.bold(this.name)}:`, ...data);
+    }
+  }
 
   /**
    * A pre-migration step that can be used to fetch remote information or pre-process
@@ -45,8 +65,8 @@ export abstract class BaseImport {
    *
    * @returns A promise that resolves to a list of messages logged during the preload.
    */
-  preload(): Promise<string[]> {
-    return Promise.resolve([]);
+  fillCache(): Promise<void> {
+    return Promise.resolve();
   }
 
   /**
@@ -54,7 +74,7 @@ export abstract class BaseImport {
    *
    * @returns A promise that resolves to a list of messages logged during the migration.
    */
-  abstract doImport(): Promise<string[]>
+  abstract doImport(): Promise<void>
 
   /**
    * Check for any necessary ArangoDB collections and create them if they don't exists.   
@@ -62,21 +82,20 @@ export abstract class BaseImport {
    * @returns A promise that resolves to a dictionary of collections, noting
    * whether they were already in place or created from scratch. 
    */
-  async ensureSchema(): Promise<string[]> {
-    const results: string[] = [];
+  async ensureSchema(): Promise<void> {
     if (this.collections || this.relationships) {
       for (const [name, options] of Object.entries(this.collections ?? {})) {
-        results.push(
+        this.log(
           await this.db.ensureCollection(name, options).then(() => `${name} was ensured`)
         );
       }
       for (const [name, options] of Object.entries(this.relationships ?? {})) {
-        results.push(
+        this.log(
           await this.db.ensureEdgeCollection(name, options).then(() => `${name} was ensured`)
         );
       }
     }
-    return Promise.resolve(results);
+    return Promise.resolve();
   }
 
   /**
@@ -91,12 +110,10 @@ export abstract class BaseImport {
    *
    * @returns {Promise<Record<string, number>>}
    */
-  async destroySchema(): Promise<string[]> {
-    const results: string[] = [];
-
+  async destroySchema(): Promise<void> {
     if (this.collections || this.relationships) {
       for (const [name] of Object.entries(this.collections ?? {})) {
-        results.push(await this.db.collection(name).exists()
+        this.log(await this.db.collection(name).exists()
           .then(exists => {
             if (exists) return this.db.collection(name).drop().then(() => `${name} destroyed`);
             return `${name} did not exist`;
@@ -104,13 +121,13 @@ export abstract class BaseImport {
       }
 
       for (const [name] of Object.entries(this.relationships ?? {})) {
-        results.push(await this.db.collection(name).exists()
+        this.log(await this.db.collection(name).exists()
           .then(exists => {
             if (exists) return this.db.collection(name).drop().then(() => `${name} destroyed`);
             return `${name} did not exist`;
           }));
       }
     }
-    return Promise.resolve(results);
+    return Promise.resolve();
   }
 }
