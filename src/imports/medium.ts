@@ -1,6 +1,6 @@
 // import * as cheerio from 'cheerio';
 import { BaseImport } from '../index.js';
-import { parseMarkup } from '../util/cheerio.js';
+import { cheerioParse } from '../util/cheerio-parse.js';
 
 export type MediumPost = {
   id: string,
@@ -111,7 +111,7 @@ export class Medium extends BaseImport {
     const html = await this.files.readInput(file);
     const draft = slugDate === 'draft';
 
-    const $ = parseMarkup(html);
+    const $ = cheerioParse(html);
 
     const template = {
       title: 'h1.p-name',

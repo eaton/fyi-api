@@ -7,11 +7,7 @@ type CheerioInput = Parameters<typeof cheerio.load>[0];
 
 declare module 'cheerio' {
   interface Cheerio<T> {
-    extract(
-      this: Cheerio<T>,
-      template: ExtractTemplateInput,
-      options?: Partial<ExtractOptions>
-    ): Promise<unknown>;
+    extract(template: ExtractTemplateInput): Promise<unknown>;
   }
 }
 
@@ -21,15 +17,15 @@ declare module 'cheerio' {
  * `$.extract(template)` shims in the behavior of cheerio's committed-but-not-yet-released
  * bulk property extraction feature. See https://github.com/denkan/cheerio-json-mapper. 
  */
-export function parseMarkup(content: CheerioInput, options?: ExtendedCheerioOptions, isDocument?: boolean) {
+export function cheerioParse(content: CheerioInput, options?: ExtendedCheerioOptions, isDocument?: boolean) {
   options ??= {};
   options.pipeFns ??= {};
   options.pipeFns['html'] = htmlPipe;
 
-  const $ = cheerio.load(content, options, isDocument);
+  const $ = cheerio.load(content, options, isDocument)
 
   $.prototype.extract = (template: ExtractTemplateInput) => {
-    return cheerioJsonMapper($(), template, options);
+    return cheerioJsonMapper($.root(), template, options);
   }
   
   return $;
