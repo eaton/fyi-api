@@ -1,4 +1,5 @@
-import { BaseImport } from '../../index.js';
+import { JsonTemplate } from 'cheerio-json-mapper';
+import { BaseImport, extractWithCheerio } from '../../index.js';
 import { Html } from '../../index.js';
 
 export type MediumUserInfo = {
@@ -63,6 +64,8 @@ export class Medium extends BaseImport {
     const user = await this.parseUserProfile();
     await this.files.writeCache(`user-${user.name}.json`, user);
 
+    let template: JsonTemplate = {};
+
     const files = {
       posts: await this.files.findInput('posts/*.html'),
       lists: await this.files.findInput('lists/*:*.html'),
@@ -77,46 +80,49 @@ export class Medium extends BaseImport {
     }
 
     const claps: Record<string, unknown>[] = [];
+    template = [{
+      $: 'li.h-entry',
+      title: 'a | text',
+      url: 'a | attr:href',
+      clapped_at: 'time',
+      claps: '| split:— | shift | substr:1 | trim',
+    }];
     for (const file of files.claps) {
-      const $ = Html.toCheerio(await this.files.readInput(file));
-      const extracted = ($().extract([{
-        $: 'li.h-entry',
-        title: 'a | text',
-        url: 'a | attr:href',
-        clapped_at: 'time',
-        claps: '| split:— | shift | substr:1 | trim',
-      }])) as Record<string, unknown>[];
-      claps.push(...extracted);
+      const extracted = await this.files.readInput(file)
+        .then(data => Html.extractWithCheerio(data, template));
+      claps.push(...extracted as Record<string, unknown>[]);
     }
     await this.files.writeCache('claps.json', claps);
 
     const lists: Record<string, unknown> = {};
+    template = {
+      title: 'h1.p-name',
+      url: 'footer a:nth(1) | attr:href',
+      published_at: 'footer time.dt-published | attr:datetime',
+      articles: [{
+        $: 'li',
+        title: 'a | text',
+        url: 'a | attr:href',
+      }]
+    };
     for (const file of files.lists) {
-      const $ = Html.toCheerio(await this.files.readInput(file));
-      const extracted = ($().extract({
-        title: 'h1.p-name',
-        url: 'footer a:nth(1) | attr:href',
-        published_at: 'footer time.dt-published | attr:datetime',
-        articles: [{
-          $: 'li',
-          title: 'a | text',
-          url: 'a | attr:href',
-        }]
-      })) as Record<string, unknown>;
+      const extracted = await this.files.readInput(file)
+        .then(data => Html.extractWithCheerio(data, template)) as Record<string, unknown>;
       lists[extracted?.title?.toString() ?? ''] = extracted;
     }
     await this.files.writeCache('lists.json', lists);
 
     const bookmarks: Record<string, unknown>[] = [];
+    template = [{
+      $: 'li',
+      title: 'a',
+      url: 'a | attr:href',
+      bookmarked_at: 'time',
+    }];
     for (const file of files.bookmarks) {
-      const $ = Html.toCheerio(await this.files.readInput(file));
-      const extracted = ($().extract([{
-        $: 'li',
-        title: 'a',
-        url: 'a | attr:href',
-        bookmarked_at: 'time',
-      }])) as Record<string, unknown>[];
-      bookmarks.push(...extracted);
+      const extracted = await this.files.readInput(file)
+        .then(data => Html.extractWithCheerio(data, template));
+      bookmarks.push(...extracted as Record<string, unknown>[]);
     }
     await this.files.writeCache('bookmarks.json', bookmarks);
 
@@ -132,8 +138,7 @@ export class Medium extends BaseImport {
     let $ = Html.toCheerio(await this.files.readInput('profile/about.html') ?? '');
     const archive_exported_at = $('footer p').text().slice(24, -1).trim();
 
-    $ = Html.toCheerio(await this.files.readInput('profile/profile.html') ?? '')
-    const profile = $().extract({
+    let template: JsonTemplate = {
       id: 'li:nth(3) | split:\: | pop',
       name: 'li:nth(0) | split:\: | pop | substr:1',
       fullname: 'li:nth(1) | split:\: | pop',
@@ -141,10 +146,12 @@ export class Medium extends BaseImport {
       medium_member_at: 'li:nth(4) | substr:12',
       image_url: 'img.u-photo | attr:src',
       twitter_id: 'li:nth(6) | split:\: | pop'
-    }) as Record<string, unknown>;
+    };
+
+    const profile = await this.files.readInput('profile/profile.html')
+      .then(data => extractWithCheerio(data, template)) as Record<string, unknown>
     
-    $ = Html.toCheerio(await this.files.readInput('profile/publications.html') ?? '');
-    const publications = $().extract({
+    template = {
       editor: [{
         $: 'ul:nth(0) > li',
         title: 'a',
@@ -155,7 +162,9 @@ export class Medium extends BaseImport {
         title: 'a',
         url: 'a | attr:href',
       }],
-    }) as Record<string, unknown>;
+    };
+    const publications = await this.files.readInput('profile/publications.html')
+      .then(data => extractWithCheerio(data, template)) as Record<string, unknown>
 
     return Promise.resolve({
       ...profile,
@@ -166,10 +175,7 @@ export class Medium extends BaseImport {
 
   protected async parseMediumPost(file: string): Promise<Partial<MediumArticle>> {
     let [filename, slugDate, id] = file.match(/posts\/(.*)_.*-([a-z0-9]+).html/) ?? [];
-    const html = await this.files.readInput(file);
     const draft = slugDate === 'draft';
-
-    const $ = Html.toCheerio(html);
 
     const template = {
       title: 'h1.p-name',
@@ -185,8 +191,8 @@ export class Medium extends BaseImport {
         url: '| attr:href',
       },
     };
-
-    const extracted = ($().extract(template)) as Record<string, unknown>;
+    const extracted = await this.files.readInput(file)
+      .then(data => extractWithCheerio(data, template))
     const post: Partial<MediumArticle> = { id, filename, ...extracted, draft };
     return Promise.resolve(post);
   }
