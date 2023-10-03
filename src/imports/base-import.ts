@@ -12,7 +12,7 @@ export interface BaseImportOptions extends Record<string, unknown> {
  * Skeleton for raw migrations; it makes it easy-ish to avoid some of the frequent
  * boilerplate code when doing cycles of testing.
  */
-export abstract class BaseImport {
+export abstract class BaseImport<CacheType = void> {
   collections?: Record<string, CreateCollectionOptions> = undefined;
   relationships?: Record<string, CreateCollectionOptions> = undefined;
 
@@ -59,22 +59,34 @@ export abstract class BaseImport {
   }
 
   /**
+   * A pre-migration step that loads any locally cached data for the migration into memory.
+   * 
+   * @returns A promise that resolves to a dictionary of all cached data.
+   */
+  loadCache(): Promise<Record<string, CacheType> | void> {
+    this.log('No cache loader implemented. ')
+    return Promise.resolve();
+  }
+  
+  /**
    * A pre-migration step that can be used to fetch remote information or pre-process
    * files. `preload()` might scrape pages from a site and store them in the `/raw` directory,
    * while `doImport()` actually populates the ArangoDB instance.
    *
-   * @returns A promise that resolves to a list of messages logged during the preload.
+   * @returns A promise that resolves to a dictionary of all cached data.
    */
-  fillCache(): Promise<void> {
+  fillCache(): Promise<Record<string, CacheType> | void> {
+    this.log('No cache fill implemented. ')
     return Promise.resolve();
   }
-
+  
   /**
    * Every import must implement doImport(); that's just the law.   
-   *
-   * @returns A promise that resolves to a list of messages logged during the migration.
    */
-  abstract doImport(): Promise<void>
+  doImport(): Promise<void> {
+    this.log('No data import implemented. ')
+    return Promise.resolve();
+  }
 
   /**
    * Check for any necessary ArangoDB collections and create them if they don't exists.   

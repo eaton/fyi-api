@@ -1,53 +1,6 @@
 import { TwitterArchive } from "twitter-archive-reader";
 import { BaseImport, BaseImportOptions } from '../../index.js';
-
-export type TwitterAnalyticsSet = {
-  username: string,
-  start: string,
-  end: string,
-  rows: TwitterAnalyticsRow[],
-}
-
-export type TwitterAnalyticsRow = {
-  date: string,
-  tweets?: number,
-  impressions?: number,
-  engagements?: number,
-  engagementRate?: number,
-  retweets?: number,
-  replies?: number,
-  likes?: number,
-  profileClicks?: number,
-  urlClicks?: number,
-  hashtagClick?: number,
-  detailExpands?: number,
-  permalinkClicks?: number,
-  appOpens?: number,
-  appInstalls?: number,
-  follows?: number,
-  emailTweet?: number,
-  dialPhone?: number,
-  mediaViews?: number,
-  mediaEngagements?: number,
-  promotedImpressions?: number,
-  promotedEngagements?: number,
-  promotedEngagementRate?: number,
-  promotedRetweets?: number,
-  promotedReplies?: number,
-  promotedLikes?: number,
-  promotedUserProfileClicks?: number,
-  promotedUrlClicks?: number,
-  promotedHashtagClicks?: number,
-  promotedDetailExpands?: number,
-  promotedPermalinkClicks?: number,
-  promotedAppOpens?: number,
-  promotedAppInstalls?: number,
-  promotedFollows?: number,
-  promotedEmailTweet?: number,
-  promotedDialPhone?: number,
-  promotedMediaViews?: number,
-  promotedMediaEngagements?: number
-};
+// import { TwitterAnalyticsRow, TwitterAnalyticsSet } from "./types.js";
 
 export type TwitterFavorite = {
   id: string,
@@ -80,7 +33,6 @@ export class Twitter extends BaseImport {
   }
 
   async fillCache(): Promise<void> {
-
     const archives = await this.files.findInput('**/twitter-*.zip');
     for (const arc of archives) {
       this.log(`Found ${arc}`);
