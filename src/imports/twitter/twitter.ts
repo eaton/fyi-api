@@ -1,6 +1,53 @@
 import { TwitterArchive } from "twitter-archive-reader";
-import { BaseImport, BaseImportOptions } from '../index.js';
+import { BaseImport, BaseImportOptions } from '../../index.js';
 
+export type TwitterAnalyticsSet = {
+  username: string,
+  start: string,
+  end: string,
+  rows: TwitterAnalyticsRow[],
+}
+
+export type TwitterAnalyticsRow = {
+  date: string,
+  tweets?: number,
+  impressions?: number,
+  engagements?: number,
+  engagementRate?: number,
+  retweets?: number,
+  replies?: number,
+  likes?: number,
+  profileClicks?: number,
+  urlClicks?: number,
+  hashtagClick?: number,
+  detailExpands?: number,
+  permalinkClicks?: number,
+  appOpens?: number,
+  appInstalls?: number,
+  follows?: number,
+  emailTweet?: number,
+  dialPhone?: number,
+  mediaViews?: number,
+  mediaEngagements?: number,
+  promotedImpressions?: number,
+  promotedEngagements?: number,
+  promotedEngagementRate?: number,
+  promotedRetweets?: number,
+  promotedReplies?: number,
+  promotedLikes?: number,
+  promotedUserProfileClicks?: number,
+  promotedUrlClicks?: number,
+  promotedHashtagClicks?: number,
+  promotedDetailExpands?: number,
+  promotedPermalinkClicks?: number,
+  promotedAppOpens?: number,
+  promotedAppInstalls?: number,
+  promotedFollows?: number,
+  promotedEmailTweet?: number,
+  promotedDialPhone?: number,
+  promotedMediaViews?: number,
+  promotedMediaEngagements?: number
+};
 
 export type TwitterFavorite = {
   id: string,
@@ -11,7 +58,6 @@ export type TwitterFavorite = {
   favorited?: string,
 };
 
-
 export interface TwitterImportOptions extends BaseImportOptions {
   onlyLatestArchive: boolean,
 }
@@ -19,7 +65,8 @@ export interface TwitterImportOptions extends BaseImportOptions {
 export class Twitter extends BaseImport {
   collections = {
     twitter_post: {},
-    twitter_favorite: {}
+    twitter_favorite: {},
+    twitter_media: {}
   }
 
   async doImport(): Promise<void> {
@@ -33,14 +80,19 @@ export class Twitter extends BaseImport {
   }
 
   async fillCache(): Promise<void> {
-    const analytics = await this.files.findInput('**/daily_tweet_activity_metrics_*.csv');
-    for (const csv of analytics) {
-      this.log(`Found ${csv}`);
-    }
 
     const archives = await this.files.findInput('**/twitter-*.zip');
     for (const arc of archives) {
       this.log(`Found ${arc}`);
+    }
+  }
+  
+  async loadAnalyticsExports() {
+    const analytics = await this.files.findInput('**/daily_tweet_activity_metrics_*.csv');
+    
+    for (const csv of analytics) {
+      // const [base, user, start, end, locale] = csv.match(/daily_tweet_activity_metrics_(.+)_(\d{8})_(\d{8})_(\w+).csv/) ?? [];
+      this.log(`Found ${csv}`);
     }
   }
 

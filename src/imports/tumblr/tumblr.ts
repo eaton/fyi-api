@@ -1,4 +1,4 @@
-import { BaseImport } from "../index.js";
+import { BaseImport } from "../../index.js";
 import { Client } from 'tumblr.js';
 
 export type UserInfo = {

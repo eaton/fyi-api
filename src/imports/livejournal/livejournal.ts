@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { BaseImport } from '../index.js';
+import { BaseImport } from '../../index.js';
 import { decode } from 'entities';
 
 type LivejournalEntry = {

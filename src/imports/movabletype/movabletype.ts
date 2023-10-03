@@ -1,4 +1,4 @@
-import { BaseImport, BaseImportOptions } from '../index.js';
+import { BaseImport, BaseImportOptions } from '../../index.js';
 import mysql from 'mysql2/promise';
 
 export interface MovableTypeOptions extends BaseImportOptions {

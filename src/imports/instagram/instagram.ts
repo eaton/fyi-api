@@ -1,4 +1,4 @@
-import { BaseImport, uuid } from '../index.js';
+import { BaseImport, uuid } from '../../index.js';
 
 type InstagramPost = {
   title?: string,

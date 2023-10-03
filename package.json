@@ -108,6 +108,7 @@
     "tumblr.js": "^4.0.1",
     "turndown": "^7.1.2",
     "twitter-archive-reader": "^7.2.0",
+    "type-fest": "^4.3.3",
     "typescript": "^5.2.0",
     "uuid": "^9.0.1",
     "windows-1252": "^3.0.4",
