@@ -1,6 +1,9 @@
 # The EatonFYI Migration
 
-This is a giant pile of utility code meant to migrate things from all the services I've posted on to a centralized database that I own. It's meant to be relatively clean but it's migration code for my old tumblr posts, not banking infrastructure. It's ugly.
+This is a giant pile of utility code meant to migrate things from all the services
+I've posted on to a centralized database that I own. It's meant to be relatively
+clean but it's migration code for my old tumblr posts, not banking infrastructure.
+It's ugly.
 
 ## How it works
 
@@ -9,14 +12,13 @@ a handful of helpful wrappers for database and filesystem work,  and a giant pil
 of scraping, parsing, and data transformation tools dragged along for the ride.
 
 Each service gets its own importer (aka, something that implements the Importer
-class). Importers are all expected to handle (or politely error out of) six basic
+class). Importers are all expected to handle (or politely error out of) a few basic
 operations:
 
-- *Raw archiving*: Via scraping or the use of an official API, hoover up everything
-  that can be found for a particular user account. For any currently-operating
-  services, this is kind of ground zero.
-- *Structured import*: Importing the service data into the database/knowledge graph
-  for happiness.
+- *Parsing and retrieving*: Via scraping, the use of an official API, or parsing of
+  already-downloaded files, hoover up everything that can be found for a particular
+  user account.
+- *Local cacheing*:
 - *Data normalization*: Normalizing the service data into a consistent schema. (i.e.,
   Tumblr 'link' posts and Pinboard bookmarks treated as the same entity type)
 - *Incremental updates*: Re-archive or re-import new additions from a service without
@@ -101,3 +103,34 @@ the project's dependency tree are useful across many imports:
 | Jekyll                |         | markdown  |           |           |           |
 | Movable Type          |         | sql       |           |           |           |
 | Drupal                |         | sql*      |           |           |           |
+
+## Some philosophical points
+
+- Making an all-encompassing archive of one's own stuff is technically interesting,
+  and psychologically risky. It's probably good that a lot of old stuff died,
+  because most of our hot takes are trash. I solve that by archiving everything
+  and adding a layer of 'destinations', each of which can have their own logic for
+  publishing or ignoring stuff in the repository.
+- Original content should be preserved in as close a form to its original one as
+  possible. All of the migrations have a 'cache' step where data is turned into
+  pre-parsed JSON files. Separating and grouping the data differently (i.e.,
+  splitting huge everything-from-2020.xml files into separate ones) is fine
+  at that stage, but any *changes* to the data happen later. That makes it
+  possible to back up the cache for later re-processing, even if the source of
+  the cached data is lost. Canonical examples include remapping URLs, fixing
+  broken and/or horrifying HTML, translating between HTML, Markdown, and plaintext,
+  etc.
+- Enormous media files, if they still exist in their 'original' location, should
+  be archived and backed up but the remote links should be preserved as long as
+  VC funded cloud services are giving everybody piles of free storage and bandwidth.
+  Don't look a gift server in the mouth, but keep a local cache handy.
+- This tool is for making a *repository of stuff one person created*, not a universal
+  everything archive. An edge case is the parent/reply relationship. If the user wrote
+  a comment on a post, archiving the original post for context might make sense. If the
+  user wrote a post and other people commented on it in its original location,
+  preserving those comments probably makes sense, too. The Twitter importer handles
+  this by attempting to cache quote-tweeted tweets before the service makes that
+  impossible, and may eventually try to cache tweets-being-replied-to for the same
+  reason. The Metafilter importer caches the *original post* that a user's comment
+  lived on, but makes no attempt to preserve the whole discussion thread. [pause]
+  Ah, shit, we probably could actually. Hmmm.
