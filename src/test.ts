@@ -1,4 +1,5 @@
-import { Twitter, Tumblr, Wordpress } from "./index.js";
+import 'dotenv/config';
+import { Twitter, Tumblr, Wordpress, Livejournal } from "./index.js";
 
 await tumblr();
 
@@ -7,18 +8,17 @@ export async function tumblr() {
   await t.doImport();
 }
 
+export async function livejournal() {
+  const t = new Livejournal({ files: { input: process.env.LIVEJOURNAL_INPUT } });
+  await t.doImport();
+}
+
 export async function twitter() {
-  const t = new Twitter({
-    files: {
-      input: '/Volumes/archives/Backup/Service Migration Downloads/twitter'
-    }
-  });
+  const t = new Twitter({ files: { input: process.env.TWITTER_INPUT } });
   await t.fillCache();
 }
 
 export async function wordpress() {
-  const w = new Wordpress({
-    files: { input: '/Volumes/archives/Backup/Service Migration Downloads/wordpress' }
-  });
+  const w = new Wordpress({ files: { input: process.env.WORDPRESS_INPUT } });
   await w.doImport();
 }
