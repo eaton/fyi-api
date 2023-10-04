@@ -124,11 +124,11 @@ export class Tumblr extends BaseImport {
     tumblr_post: {},
   }
 
-  doImport(): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-  
   async fillCache(): Promise<void> {
+    return this.fillCacheFromApi();
+  }
+
+  async fillCacheFromApi(): Promise<void> {
     let blogIds: string[] = [];
     if (process.env.TUMBLR_BLOGS) {
       blogIds = process.env.TUMBLR_BLOGS?.split(',').map(b => b.trim()) ?? [];
@@ -141,27 +141,26 @@ export class Tumblr extends BaseImport {
       token_secret: process.env.TUMBLR_TOKEN_SECRET
     });
 
-    this.files.ensureOutput('tumblr');
-
     const userInfoResponse: UserInfo = await t.userInfo();
     const user = userInfoResponse.user;
-    await this.files.write(`raw/tumblr/user-${user.name}.json`, user);
+    await this.files.writeCache(`user-${user.name}.json`, user);
 
     for (const blogInfo of user.blogs) {
       if (blogIds.length > 0 && !blogIds.includes(blogInfo.name)) {
         continue;
       }
 
-      this.files.ensure(`raw/tumblr/${blogInfo.name}`);
-      await this.files.write(`raw/tumblr/${blogInfo.name}/blog-${blogInfo.name}.json`, blogInfo);
+      await this.files.writeCache(`${blogInfo.name}/blog-${blogInfo.name}.json`, blogInfo);
 
       // Bail out if a list of blogs was given, and the current one doesn't appear in it.
       const blogPostsResponse = await t.blogPosts(blogInfo.name) as { posts: BlogPost[] };
       for (const post of blogPostsResponse.posts) {
         const date = post.date.split(' ')[0];
-        await this.files.write(`raw/tumblr/${blogInfo.name}/post-${date}-${post.slug}.json`, post);
+        await this.files.writeCache(`${blogInfo.name}/post-${date}-${post.slug}.json`, post);
       }
     }
+
+    this.log(`Cached ${user.blogs.length} blogs owned by ${user.name}`);
 
     return Promise.resolve();
   }

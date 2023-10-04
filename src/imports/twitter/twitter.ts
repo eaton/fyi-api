@@ -15,7 +15,7 @@ export type TwitterFavorite = {
 };
 
 export interface TwitterImportOptions extends BaseImportOptions {
-  onlyLatestArchive: boolean,
+  parseMultipleArchives: boolean,
 }
 
 export class Twitter extends BaseImport {
@@ -26,27 +26,41 @@ export class Twitter extends BaseImport {
   }
 
   async doImport(): Promise<void> {
-    await this.ensureSchema();
     await this.loadCache();
     return Promise.resolve();
   }
 
   async fillCache(): Promise<void> {
-    const analytics = await this.parseAnalyticsExports();
-    for (const [user, data] of Object.entries(analytics)) {
-      const analyticsCacheFile = await this.files.writeCache(`${user}/analytics.json`, analytics);
-      this.log(`Cached ${analyticsCacheFile} with ${data.rows.length} records`);
-    }
-
+    await this.fillAnalyticsCache();
+    await this.fillTweetCache()
     return Promise.resolve();
+  }
+  
 
+  /**
+   * Because Twitter's API has gone from one of the marvels of the modern web
+   * to a cautionary tale that makes Oracle licensing look charitable, no actual
+   * API interaction happens here. Instead, we read in the raw zip archives that
+   * Twitter provides when you ask to "download all your data."
+   * 
+   * There's a lot of data in each archive, and this cache step does several things:
+   * 
+   * 1. Resolves thread relationships, as long as all tweets are by the archive user.
+   * 2. Splits original tweets, replies, retweets, media entities, media *files*,
+   *    mentioned users, and shortened URLs to facilitate selective post-processing.
+   * 3. Optionally ingests multiple archives in one go, in case tweets disappear
+   *    from a later archive but exist in an older one.
+   *
+   * @returns {Promise<void>}
+   */
+  async fillTweetCache(): Promise<void> {
     const archives = await this.files.findInput('**/twitter-*.zip');
     for (const arc of archives) {
       await this.fillCacheFromArchive(arc);
     }
   }
   
-  async parseAnalyticsExports() {
+  async fillAnalyticsCache() {
     const analytics = await this.files.findInput('**/daily_tweet_activity_metrics_*.csv');
     const allData: Record<string, TwitterAnalyticsSet> = {};
 
@@ -83,7 +97,12 @@ export class Twitter extends BaseImport {
           })
         );
     }
-    return Promise.resolve(allData);
+
+    for (const [user, data] of Object.entries(allData)) {
+      await this.files.writeCache(`${user}/analytics.json`, analytics);
+      this.log(`Cached ${user} analytics (${data.rows.length} records)`);
+    }
+    return Promise.resolve();
   }
 
   async fillCacheFromArchive(path: string): Promise<void> {
@@ -102,32 +121,42 @@ export class Twitter extends BaseImport {
     this.log(archive.info);
     this.log(archive.synthetic_info);
     
-    await this.cacheUser(archive);
+    await this.prepUser(archive);
 
     // for (const t of archive.tweets.sortedIterator('asc')) {
     //   await this.cacheTweet(t, archive);
     // }
   }
 
-  protected async cacheUser(a: TwitterArchive): Promise<void> {
+  protected async prepUser(a: TwitterArchive): Promise<void> {
     this.log('caching user');
     return Promise.resolve();
   }
 
-  protected async cacheTweet(t: PartialTweet, a: TwitterArchive): Promise<void> {
+  protected async prepTweet(t: PartialTweet, a: TwitterArchive): Promise<void> {
     return Promise.resolve();
   }
 
-  protected async cacheMedia(f: PartialFavorite, a: TwitterArchive): Promise<void> {
+  protected async prepMedia(t: PartialTweet, a: TwitterArchive): Promise<void> {
+    for (const m of t.extended_entities?.media ?? []) {
+      m.display_url;
+      m.expanded_url;
+      m.id_str;
+      m.media_alt;
+      m.media_url_https;
+      m.source_status_id;
+      m.type;
+      m.video_info;
+    }
     return Promise.resolve();
   }
 
-  protected async cacheFavorite(f: PartialFavorite, a: TwitterArchive): Promise<void> {
+  protected async prepFavorite(f: PartialFavorite, a: TwitterArchive): Promise<void> {
     return Promise.resolve();
   }
 
   protected pathToTweet(t: PartialTweet): string {
-    return t.id_str;
+    return `${t.user.name}/${t.created_at_d?.getFullYear ?? '0000'}/tweet/${t.id_str}.json`;
   }
 
 

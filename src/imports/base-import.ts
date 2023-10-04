@@ -59,12 +59,22 @@ export abstract class BaseImport<CacheType = void> {
   }
 
   /**
+   * Every import must implement doImport(); that's just the law.   
+   */
+  async doImport(): Promise<void> {
+    this.log('No data migration; loading the cache.');
+    await this.loadCache()
+    return Promise.resolve();
+  }
+  
+  /**
    * A pre-migration step that loads any locally cached data for the migration into memory.
    * 
    * @returns A promise that resolves to a dictionary of all cached data.
    */
-  loadCache(): Promise<Record<string, CacheType> | void> {
-    this.log('No cache loader implemented. ')
+  async loadCache(): Promise<Record<string, CacheType> | void> {
+    this.log('No cache loader; filling the cache. ')
+    await this.fillCache();
     return Promise.resolve();
   }
   
@@ -75,17 +85,19 @@ export abstract class BaseImport<CacheType = void> {
    *
    * @returns A promise that resolves to a dictionary of all cached data.
    */
-  fillCache(): Promise<Record<string, CacheType> | void> {
-    this.log('No cache fill implemented. ')
+  async fillCache(): Promise<Record<string, CacheType> | void> {
+    this.log('No caching implementation.')
     return Promise.resolve();
   }
   
   /**
-   * Every import must implement doImport(); that's just the law.   
+   * Deletes the cached data for the current import process.
+   * 
+   * This should probably be used sparingly, unless you're testing configuration.
    */
-  doImport(): Promise<void> {
-    this.log('No data import implemented. ')
-    return Promise.resolve();
+  async clearCache(): Promise<string[]> {
+    this.log('No cache-clearing implementation.')
+    return Promise.resolve([]);
   }
 
   /**

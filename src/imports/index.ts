@@ -1,10 +1,15 @@
 export * from './base-import.js';
+
+// First pass stuff, move these into directories, add READMEs, etc
 export * from './metafilter.js';
-export * from './tumblr/tumblr.js';
+export * from './pinboard.js';
+export * from './jekyll.js';
 export * from './movabletype/movabletype.js';
 export * from './instagram/instagram.js';
 export * from './livejournal/livejournal.js';
-export * from './medium/medium.js';
-export * from './pinboard.js';
-export * from './twitter/twitter.js';
-export * from './jekyll.js';
+
+// Incomplete but broken out to follow the new convention
+export * from './tumblr/index.js';
+export * from './medium/index.js';
+export * from './twitter/index.js';
+export * from './wordpress/index.js';

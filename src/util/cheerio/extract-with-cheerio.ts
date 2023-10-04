@@ -1,6 +1,8 @@
 import { cheerioJsonMapper, getScope, PipeFnMap, JsonTemplate } from 'cheerio-json-mapper'
 import * as cheerio from 'cheerio';
 
+export type CheerioExtractTemplate = JsonTemplate;
+
 const pipeFns: PipeFnMap = {
   html: ({ $scope, selector, opts }) => getScope($scope, selector, opts).html(),
   shift: ({ value }) => Array.isArray(value) ? value.shift() : void 0,
