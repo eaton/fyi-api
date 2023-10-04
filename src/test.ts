@@ -1,9 +1,8 @@
-import { MovableType } from "./index.js";
-const t = new MovableType({
-  sqlDb: 'movabletype-2005',
-  tables: {
-    plugins: 'mt_plugindata',
-    templates: 'mt_template',
+import { Twitter } from "./index.js";
+
+const t = new Twitter({
+  files: {
+    input: '/Volumes/archives/Backup/Service Migration Downloads/twitter'
   }
 });
 await t.fillCache();

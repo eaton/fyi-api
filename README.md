@@ -73,8 +73,8 @@ the project's dependency tree are useful across many imports:
 - General utility
   - [fast-glob](https://github.com/mrmlnc/fast-glob) for file-finding in the piles of raw data
   - [date-fns](https://date-fns.org) for date parsing, because yuck
-  - [mysql2](https://github.com/sidorares/node-mysql2) and [ts-sql-query](https://github.com/juanluispaz/ts-sql-query)
-    for yoinking stuff out of MySQL databases and simplified query-building
+  - [mysql2](https://github.com/sidorares/node-mysql2) for yoinking stuff out of MySQL;
+    might switch to something agnostic later
   - [uuid](https://github.com/uuidjs/uuid) and [object-hash](https://github.com/puleos/object-hash) for quickly generating hashes *and* random identifiers with no fuss or muss
 
 ## Planned/Supported sources

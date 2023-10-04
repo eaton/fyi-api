@@ -6,7 +6,6 @@ type GlobOptions = Parameters<typeof glob>[1];
 
 import fpkg, { PathLike } from 'fs-extra';
 const { readFile, readJson, writeFile, writeJson, statSync, existsSync, ensureDirSync } = fpkg;
-
 import { parse as parseYaml, stringify as serializeYaml } from 'yaml';
 
 import is from "@sindresorhus/is";
