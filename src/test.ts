@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Twitter, Tumblr, Wordpress, Livejournal } from "./index.js";
 
-await tumblr();
+await twitter();
 
 export async function tumblr() {
   const t = new Tumblr({
@@ -21,8 +21,21 @@ export async function livejournal() {
 }
 
 export async function twitter() {
-  const t = new Twitter({ files: { input: process.env.TWITTER_INPUT } });
-  await t.fillCache();
+  const t = new Twitter({
+    auth: {
+      apiKey: process.env.TWITTER_API_KEY,
+      apiKeySecret: process.env.TWITTER_API_KEY_SECRET,
+      accessToken: process.env.TWITTER_ACCESS_TOKEN,
+      accessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
+      clientId: process.env.TWITTER_CLIENT_ID,
+      clientSecret: process.env.TWITTER_CLIENT_SECRET,
+      bearerToken: process.env.TWITTER_BEARER_TOKEN,
+    },
+    useApi: true,
+    files: { input: process.env.TWITTER_INPUT }
+  });
+  const c = await t.getOAuth2Client();
+  console.log(await c.currentUserV2())
 }
 
 export async function wordpress() {

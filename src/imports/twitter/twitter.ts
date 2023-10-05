@@ -4,8 +4,26 @@ import { TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite } from "./typ
 import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
+import * as twitterApiMethods from "./auth.js";
+import { TwitterApi } from "twitter-api-v2";
 
 export interface TwitterImportOptions extends BaseImportOptions {
+
+  /**
+   * Look for zipped Twitter archive files in the `input` directory, and use
+   * them as a migration source.
+   *
+   * @defaultValue `true`
+   */
+  parseArchives?: boolean,
+
+  /**
+   * Look for day-by-day analytics exports in CSV format, and use them as
+   * a migration source.
+   *
+   * @defaultValue `true`
+   */
+  parseMetrics?: boolean,
 
   /**
    * When multiple Twitter archives are found, parse them oldest-to-newest,
@@ -16,7 +34,25 @@ export interface TwitterImportOptions extends BaseImportOptions {
    *
    * @defaultValue `false`
    */
-  parseOldArchives: boolean,
+  parseOldArchives?: boolean,
+
+  /**
+   * Twitter's API is strictly rate-limited, and paid access is pricey a f.
+   * Even if credentials are present, we default to NOT touching it.
+   *
+   * @defaultValue `false`
+   */
+  useApi?: boolean,
+
+  auth?: {
+    apiKey?: string,
+    apiKeySecret?: string,
+    bearerToken?: string,
+    accessToken?: string,
+    accessTokenSecret?: string,
+    clientId?: string,
+    clientSecret?: string
+  }
 }
 
 export class Twitter extends BaseImport {
@@ -88,8 +124,9 @@ export class Twitter extends BaseImport {
       ]),'yyyy-MM-dd');
     }
 
+    const metricsRegex = /daily_tweet_activity_metrics_(.+)_\d{8}_\d{8}_(\w+).csv/;
     for (const file of analytics) {
-      const [username, locale] = file.match(/daily_tweet_activity_metrics_(.+)_\d{8}_\d{8}_(\w+).csv/)?.slice(1) ?? [];
+      const [username, locale] = file.match(metricsRegex)?.slice(1) ?? [];
       allData[username] ??= { username, start: undefined, end: undefined, locale, rows: [] };
       
       // ridic. inefficient, but it works for now
@@ -117,9 +154,9 @@ export class Twitter extends BaseImport {
   async fillCacheFromArchive(path: string): Promise<void> {
     const buffer = this.files.readInput(path, { parse: false });
 
-    const archive = new TwitterArchive(buffer, {
-      ignore: ['ad', 'block', 'dm', 'moment', 'mute']
-    });
+    const archive = new TwitterArchive(
+      buffer, { ignore: ['ad', 'block', 'dm', 'moment', 'mute'] }
+    );
 
     await archive.ready().then(() => {
       archive.releaseZip();
@@ -196,4 +233,20 @@ export class Twitter extends BaseImport {
   async saveMedia(archive: TwitterArchive) {
     return Promise.resolve();
   }
+
+
+  /**
+   * Authenticated client calls go here; the class was getting ungainly, but
+   * it really needs the import internal state.
+   */
+
+  bearerClient?: TwitterApi = undefined;
+  oAuth1Client?: TwitterApi = undefined;
+  oAuth2Client?: TwitterApi = undefined;
+  
+  getBearerClient = twitterApiMethods.getBearerClient.bind(this);
+  getOAuth1Client = twitterApiMethods.getOAuth1Client.bind(this);
+  getOAuth2Client = twitterApiMethods.getOAuth2Client.bind(this);
+  
+  cacheBookmarks = twitterApiMethods.cacheBookmarks.bind(this);
 }
