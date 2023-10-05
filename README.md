@@ -74,6 +74,7 @@ in the project that get used and reused across the various importers.
 
 ## Supported/planned services
 
+- [ ] Obsidian
 - [x] Twitter (from account archive .zips & saved analytics CSVs)
 - [ ] Bluesky
 - [ ] Mastodon
@@ -111,7 +112,7 @@ ongoing burden on a particular server, but I'm always up for improving things.
   - [crawlee](https://crawlee.dev) for complicated scraping
   - [playwright](https://github.com/Microsoft/playwright) for screenshots and dynamic stuff
   - [tumblr.js](https://github.com/tumblr/tumblr.js/), [node-pinboard](https://github.com/maxmechanic/node-pinboard),
-    and a growing list of others for direct API access.
+    [node-twitter-api-v2](twitter-api-v2), and a growing list of others for direct API access.
 - Parsing and munging
   - [url-tools](https://github.com/autogram-is/url-tools) for parsing, filtering, and normalizing URLs
   - [turndown](https://github.com/mixmark-io/turndown) for converting HTML into markdown
