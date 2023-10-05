@@ -9,7 +9,7 @@
 //   it's a small set of users but as good a place as any to start.
 // - Request the URL and return the chain of redirects, prioritizing the final one.
 //   For particularly egregious shorteners that use JS based redirects, this might
-//   get hairy.
+//   get hairy. De-AMPing URLs would be good, too.
 // - Use the library of dead URL shortening sites hosted by the Internet Archive to
 //   resolve dead shortlinks
 // - For dead links, consider checkign the wayback machine, at least to generate a
