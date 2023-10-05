@@ -1,5 +1,5 @@
 import path from 'path';
-import { BaseImport } from "../base-import";
+import { BaseImport } from "../base-import.js";
 
 export class Wordpress extends BaseImport {
 
