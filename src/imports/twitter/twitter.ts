@@ -1,24 +1,27 @@
 import { PartialFavorite, PartialTweet, TwitterArchive } from "twitter-archive-reader";
 import { BaseImport, BaseImportOptions } from '../../index.js';
-import { TwitterAnalyticsRow, TwitterAnalyticsSet } from "./types.js";
+import { TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite } from "./types.js";
 import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
 
-export type TwitterFavorite = {
-  id: string,
-  url?: string,
-  user?: string,
-  created?: string,
-  text?: string,
-  favorited?: string,
-};
-
 export interface TwitterImportOptions extends BaseImportOptions {
-  parseMultipleArchives: boolean,
+
+  /**
+   * When multiple Twitter archives are found, parse them oldest-to-newest,
+   * adding new tweets, media, etc. to the cache. Slow, but useful when newer
+   * archives inexplicably drop old tweets. It's been known to happen.
+   * 
+   * By default, only the newest archive for a given user will be parsed.
+   *
+   * @defaultValue `false`
+   */
+  parseOldArchives: boolean,
 }
 
 export class Twitter extends BaseImport {
+  declare options: TwitterImportOptions;
+
   collections = {
     twitter_post: {},
     twitter_favorite: {},
@@ -36,7 +39,6 @@ export class Twitter extends BaseImport {
     return Promise.resolve();
   }
   
-
   /**
    * Because Twitter's API has gone from one of the marvels of the modern web
    * to a cautionary tale that makes Oracle licensing look charitable, no actual
@@ -49,12 +51,19 @@ export class Twitter extends BaseImport {
    * 2. Splits original tweets, replies, retweets, media entities, media *files*,
    *    mentioned users, and shortened URLs to facilitate selective post-processing.
    * 3. Optionally ingests multiple archives in one go, in case tweets disappear
-   *    from a later archive but exist in an older one.
+   *    from a later archive but exist in an older one. It's rare, but does happen.
    *
    * @returns {Promise<void>}
    */
   async fillTweetCache(): Promise<void> {
-    const archives = await this.files.findInput('**/twitter-*.zip');
+    // Ensure everything is in chronological order
+    let archives = (await this.files.findInput('**/twitter-*.zip')).sort();
+
+    if (this.options.parseOldArchives !== true) {
+      // Drop the old archives and only use the most recent one.
+      archives = archives.reverse().slice(0,1);
+    }
+
     for (const arc of archives) {
       await this.fillCacheFromArchive(arc);
     }

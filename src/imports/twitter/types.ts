@@ -1,3 +1,37 @@
+export type TwitterUser = Record<string, unknown> & {
+  id: string,
+  name: string,
+  fullName?: string
+}
+
+export type TwitterPost = Record<string, unknown> & {
+  id: string
+  userId: string,
+  userName: string,
+  threadId?: string,
+  repliesToTweetId?: string,
+  repliesToUserId?: string,
+  retweetOf?: string | Partial<TwitterPost>,
+  date: string,
+  text: string,
+  media: string[],
+  urls: string[],
+  mentions: string[],
+  favorites: number,
+  replies: number,
+  presentInArchive?: [],
+}
+
+export type TwitterMedia = Record<string, unknown> & {
+  id: string,
+  tweetId: string,
+}
+
+export type TwitterFavorite = Record<string, unknown> & {
+  id: string,
+  text?: string,
+}
+
 export type TwitterAnalyticsSet = {
   username?: string,
   start?: string,
