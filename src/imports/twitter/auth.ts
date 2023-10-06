@@ -68,11 +68,14 @@ export type TwitterAuthData = {
 
 export async function getOAuth1Client(apiKey: string, apiSecret: string) {
   // first, check for cached credentials. if they exist, go straight to logging in.
-
+  const localUrl = 'http://localhost:9000/oauth';
   const linkRequestClient = new TwitterApi({ appKey: apiKey, appSecret: apiSecret });
 
-  const { url, oauth_token, oauth_token_secret } = await linkRequestClient.generateAuthLink('http://localhost:9000/oauth');
-  const { request } = await listenOnLocalhost({ launchBrowser: url });
+  const { url, oauth_token, oauth_token_secret } = await linkRequestClient.generateAuthLink(localUrl);
+  const { request } = await listenOnLocalhost({
+    launchBrowser: url,
+    listen: ( req, body, res) => res.write('Authorization successful. You can close this window!')
+  });
   const verifier = new URL(request.url!, 'http://localhost').searchParams.get('oauth_verifier') ?? '';
 
   const loginClient = new TwitterApi({
@@ -84,18 +87,22 @@ export async function getOAuth1Client(apiKey: string, apiSecret: string) {
 
   return loginClient.login(verifier)
     .then(({ client, accessToken, accessSecret }) => {
-      console.log(`Permanent Token: ${accessToken}`);
-      console.log(`Permanent Secret: ${accessSecret}`);
+      console.log(`OAuth1 Token: ${accessToken}`);
+      console.log(`OAuth2 Secret: ${accessSecret}`);
       return client;
     });
 }
 
 export async function getOAuth2Client(clientId: string, clientSecret: string, scope?: string[]) {
+  const localUrl = 'http://localhost:9000/oauth';
   scope ??= [ 'tweet.read', 'users.read', 'bookmark.read', 'offline.access' ];
 
   const linkRequestClient = new TwitterApi({ clientId, clientSecret });
-  const { url, codeVerifier } = linkRequestClient.generateOAuth2AuthLink('http://localhost:9000/oauth', { scope });
-  let { request } = await listenOnLocalhost({ launchBrowser: url });
+  const { url, codeVerifier } = linkRequestClient.generateOAuth2AuthLink(localUrl, { scope });
+  let { request } = await listenOnLocalhost({
+    launchBrowser: url,
+    listen: ( req, body, res) => res.write('Authorization successful. You can close this window!')
+  });
   const code = new URL(request.url!, 'http://localhost').searchParams.get('code') ?? '';
 
   const loginClient = new TwitterApi({ clientId, clientSecret });
