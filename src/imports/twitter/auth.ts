@@ -1,5 +1,6 @@
 import { TwitterApi } from 'twitter-api-v2';
 import { Filestore, listenOnLocalhost } from '../../index.js';
+import { TwitterApiRateLimitPlugin } from '@twitter-api-v2/plugin-rate-limit';
 
 /**
  * There are five basic ways of accessing Twitter data:
@@ -107,12 +108,13 @@ export async function authorizeOAuth1(apiKey: string, apiSecret: string) {
   });
   const verifier = new URL(request.url!, 'http://localhost').searchParams.get('oauth_verifier') ?? '';
 
+  const rateLimitPlugin = new TwitterApiRateLimitPlugin();
   const loginClient = new TwitterApi({
     appKey: apiKey,
     appSecret: apiSecret,
     accessToken: oauth_token,
     accessSecret: oauth_token_secret
-  });
+  }, { plugins: [rateLimitPlugin] });
 
   return loginClient.login(verifier);
 }
@@ -158,6 +160,8 @@ export async function authorizeOAuth2(clientId: string, clientSecret: string, sc
   });
   const code = new URL(request.url!, 'http://localhost').searchParams.get('code') ?? '';
 
-  const loginClient = new TwitterApi({ clientId, clientSecret });
+  const rateLimitPlugin = new TwitterApiRateLimitPlugin();
+
+  const loginClient = new TwitterApi({ clientId, clientSecret }, { plugins: [rateLimitPlugin] });
   return loginClient.loginWithOAuth2({ code, codeVerifier, redirectUri: 'http://localhost:9000/oauth' });
 }
