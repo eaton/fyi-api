@@ -10,9 +10,11 @@ type Options = {
   port?: number,
 
   /**
-   * Launch a browser window and open a URL; if none is given, `http://localhost:port` is used.
+   * Launch a browser window and open a URL; if set to TRUE, `http://localhost:port` is used.
+   * 
+   * @defaultValue `false`
    */
-  launchBrowser?: true | string,
+  launchBrowser?: boolean | string,
 
   /**
    * A callback function that can write to the response, and optionally tell
