@@ -1,107 +1,109 @@
-import { Twitter } from "../../index.js";
-import { TwitterApi } from "twitter-api-v2";
-import prompts from 'prompts';
-import open from 'open';
+import { TwitterApi } from 'twitter-api-v2';
+import { listenOnLocalhost } from '../../index.js';
 
-export async function cacheBookmarks(this: Twitter) {
-  if (this.options.useApi === true) {
-    const client = await this.getOAuth2Client();
-    const user = await client.currentUser();
+/**
+ * There are five basic ways of accessing Twitter data:
+ * 
+ * 1. Unauthenticated scraping, y'all. Mostly via the OEmbed endpoint
+ *    at publish.twitter.com.
+ * 2. Authenticated scraping: Log into twitter and make simple URL requests,
+ *    parsing what appears on screen. No mechanism provided for that yet.
+ * 3. API, with application bearer token: No fuss, no muss, but only works
+ *    with a tiny handful of endpoints, none of them terribly useful.
+ * 4. API, with OAuth1 user context: ???
+ * 5. API, with OAuth2 user context: Most of the useful stuff requires this.
+ *    Appropriately, it is the most annoying. Also requires the auth flow
+ *    request specific permission scopes.
+ */
 
-    // We SHOULD check for already-cached bookmarks here
-    
-    const bookmarks = await client.v2.bookmarks({ expansions: ['referenced_tweets.id'] })
-    
-    for await (const bookmark of bookmarks) {
-      const quotedTweet = bookmarks.includes.quote(bookmark)
-      if (quotedTweet) {
-        this.files.writeCache(`${user.id}/bookmarks/bookmark-${bookmark.id}.json`, bookmark);
-        this.files.writeCache(`${user.id}/bookmarks/tweet-${quotedTweet.id}.json`, quotedTweet);
-      }
-    }
-  }
-  return Promise.resolve();
-}
+/**
+ * A bundle of assorted authentication bits for the Twitter API, annotated
+ * for clarity.
+ */
+export type TwitterAuthData = {
+  /**
+   * General bag for other properties we might find
+   */
+  [index: string]: string | undefined,
 
-export async function getBearerClient(this: Twitter): Promise<TwitterApi> {
-  if (this.options.useApi !== true) return Promise.reject();
-  if (this.bearerClient) {
-    return Promise.resolve(this.bearerClient);
-  }
+  /**
+   * Can be used in place of the apiKey and apiKeySecret, if available.
+   * It's exclusive to the auth flow used to generate it, so a token from
+   * the OAuth1 flow can't be used with and endpoint that's OAuth2 only.
+   * 
+   * Might split this into appBearerToken and userBearerToken.
+   */
+  bearerToken?: string,
 
-  if (this.options.auth?.bearerToken) {
-    this.bearerClient = new TwitterApi(this.options.auth.bearerToken);
-    return Promise.resolve(this.bearerClient);
-  }
+  /**
+   * Keys exclusive to the application, used to request an authorization URL
+   * and kick off the auth process. Once that flow is successful, we use the
+   * clientId and clientSecret to do real API stuff.
+   */
+  apiKey?: string,
+  apiKeySecret?: string,
 
-  // TODO: If we have stored OAuth1 login credentials, we can request a fresh
-  // bearer token and save it, too. But right now we don't.
+  /**
+   * Access tokens for the OAuth1 user flow
+   */
+  accessToken?: string,
+  accessTokenSecret?: string,
+  refreshToken?: string,
 
-  return Promise.reject();
-}
-
-// This implements the OAuth 1.0a User Context login flow.
-// Regrettably, some features require the OAuth 2.0 User Context; we'll deal with that later.
-export async function getOAuth1Client(this: Twitter): Promise<TwitterApi> {
-  if (this.options.useApi !== true) return Promise.reject();
+  /**
+   * Used for the OAuth2 scoped user flow.
+   */
+  clientId?: string,
+  clientSecret?: string,
   
-  if (this.oAuth1Client) {
-    return Promise.resolve(this.oAuth1Client);
-  }
-
-  const auth = {
-    appKey: this.options.auth?.apiKey ?? '',
-    appSecret: this.options.auth?.apiKeySecret ?? '',
-    accessToken: this.options.auth?.accessToken ?? '',
-    accessSecret: this.options.auth?.accessTokenSecret ?? ''
-  }
-
-  if (this.files.existsCache('login-credentials.json')) {
-    // We have fully cached credentials — use them and return a client!
-    const { accessToken, accessSecret } = await this.files.readCache('login-credentials.json');
-    auth.accessToken = accessToken;
-    auth.accessSecret = accessSecret;
-    this.oAuth1Client = new TwitterApi(auth);
-    return Promise.resolve(this.oAuth1Client);
-} else {
-    // Time to make an auth link!
-    let authClient = new TwitterApi(auth);
-    const { url, oauth_token, oauth_token_secret } = await authClient.generateAuthLink();
-    const { ready } = await prompts({ type: 'confirm', initial: true, name: 'ready', message: 'Open Twitter to authorize app?' });
-    if (ready === false) { return Promise.reject(); }
-
-    await open(url);
-    const { pin } = await prompts({ type: 'text', name: 'pin', message: 'Twitter PIN' });
-
-    if (pin) {
-      // Log in again with the freshly returned token and secret…
-      authClient = new TwitterApi({
-        appKey: auth.appKey,
-        appSecret: auth.appSecret,
-        accessToken: oauth_token,
-        accessSecret: oauth_token_secret,
-      });
-      const { client: loggedClient, accessToken, accessSecret } = await authClient.login(pin);
-      await this.files.writeCache('login-credentials.json', { accessToken, accessSecret });
-      this.oAuth1Client = loggedClient;
-      return Promise.resolve(this.oAuth1Client);
-    } else {
-      return Promise.reject();
-    }
-  }
-  return Promise.reject();
+  /**
+   * Used for a split second during the OAuth 1.0 authorization flow;
+   * we open a browser window, let the user give access to their account,
+   * then they copy the PIN it displays and paste it to the command line.
+   * Once that happens, the PIN is unecessary and we can use/cache the keys
+   * and secrets Twitter hands us.
+   */
+  loginPin?: string,
 }
 
-export async function getOAuth2Client(this: Twitter): Promise<TwitterApi> {
-  if (this.options.useApi !== true) return Promise.reject();
+export async function getOAuth1Client(apiKey: string, apiSecret: string) {
+  // first, check for cached credentials. if they exist, go straight to logging in.
 
-  if (this.options.auth?.bearerToken) {
-    return Promise.resolve(new TwitterApi(this.options.auth.bearerToken));
-  }
+  const linkRequestClient = new TwitterApi({ appKey: apiKey, appSecret: apiSecret });
 
-  if (this.options.auth?.clientId && this.options.auth?.clientSecret) {
-    return Promise.reject();
-  } else {
-    return Promise.reject();
-  }
+  const { url, oauth_token, oauth_token_secret } = await linkRequestClient.generateAuthLink('http://localhost:9000/oauth');
+  const { request } = await listenOnLocalhost({ launchBrowser: url });
+  const verifier = new URL(request.url!, 'http://localhost').searchParams.get('oauth_verifier') ?? '';
+
+  const loginClient = new TwitterApi({
+    appKey: apiKey,
+    appSecret: apiSecret,
+    accessToken: oauth_token,
+    accessSecret: oauth_token_secret
+  });
+
+  return loginClient.login(verifier)
+    .then(({ client, accessToken, accessSecret }) => {
+      console.log(`Permanent Token: ${accessToken}`);
+      console.log(`Permanent Secret: ${accessSecret}`);
+      return client;
+    });
+}
+
+export async function getOAuth2Client(clientId: string, clientSecret: string, scope?: string[]) {
+  scope ??= [ 'tweet.read', 'users.read', 'bookmark.read', 'offline.access' ];
+
+  const linkRequestClient = new TwitterApi({ clientId, clientSecret });
+  const { url, codeVerifier } = linkRequestClient.generateOAuth2AuthLink('http://localhost:9000/oauth', { scope });
+  let { request } = await listenOnLocalhost({ launchBrowser: url });
+  const code = new URL(request.url!, 'http://localhost').searchParams.get('code') ?? '';
+
+  const loginClient = new TwitterApi({ clientId, clientSecret });
+  return loginClient.loginWithOAuth2({ code, codeVerifier, redirectUri: 'http://localhost:9000/oauth' })
+    .then(async ({ client, accessToken, refreshToken, expiresIn }) => {
+      console.log(`OAuth2 Token: ${accessToken}`);
+      console.log(`Expires In: ${refreshToken}`);
+      console.log(`Refresh Token: ${refreshToken}`);
+      return client;
+    });
 }

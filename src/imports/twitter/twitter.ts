@@ -4,8 +4,7 @@ import { TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite } from "./typ
 import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
-import * as twitterApiMethods from "./auth.js";
-import { TwitterApi } from "twitter-api-v2";
+import type { TwitterAuthData } from "./auth.js";
 
 export interface TwitterImportOptions extends BaseImportOptions {
 
@@ -38,21 +37,12 @@ export interface TwitterImportOptions extends BaseImportOptions {
 
   /**
    * Twitter's API is strictly rate-limited, and paid access is pricey a f.
-   * Even if credentials are present, we default to NOT touching it.
+   * this property contains various bundles of tokens, keys, and secrets
+   * but can be set to `false` to prevent any authenticated requests.
    *
    * @defaultValue `false`
    */
-  useApi?: boolean,
-
-  auth?: {
-    apiKey?: string,
-    apiKeySecret?: string,
-    bearerToken?: string,
-    accessToken?: string,
-    accessTokenSecret?: string,
-    clientId?: string,
-    clientSecret?: string
-  }
+  auth?: false | TwitterAuthData,
 }
 
 export class Twitter extends BaseImport {
@@ -239,14 +229,4 @@ export class Twitter extends BaseImport {
    * Authenticated client calls go here; the class was getting ungainly, but
    * it really needs the import internal state.
    */
-
-  bearerClient?: TwitterApi = undefined;
-  oAuth1Client?: TwitterApi = undefined;
-  oAuth2Client?: TwitterApi = undefined;
-  
-  getBearerClient = twitterApiMethods.getBearerClient.bind(this);
-  getOAuth1Client = twitterApiMethods.getOAuth1Client.bind(this);
-  getOAuth2Client = twitterApiMethods.getOAuth2Client.bind(this);
-  
-  cacheBookmarks = twitterApiMethods.cacheBookmarks.bind(this);
 }

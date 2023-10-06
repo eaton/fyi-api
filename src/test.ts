@@ -1,8 +1,6 @@
 import 'dotenv/config';
 import { Twitter, Tumblr, Wordpress, Livejournal } from "./index.js";
 
-await twitter();
-
 export async function tumblr() {
   const t = new Tumblr({
     auth: {
@@ -34,8 +32,7 @@ export async function twitter() {
     useApi: true,
     files: { input: process.env.TWITTER_INPUT }
   });
-  const c = await t.getOAuth2Client();
-  console.log(await c.currentUserV2())
+  console.log(t);
 }
 
 export async function wordpress() {
