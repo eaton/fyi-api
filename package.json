@@ -49,6 +49,7 @@
     "@salesforce/ts-types": "^2.0.7",
     "@sindresorhus/is": "^6.0.0",
     "@sindresorhus/slugify": "^2.2.1",
+    "@twitter-api-v2/plugin-rate-limit": "^1.1.0",
     "@types/fs-extra": "^11.0.2",
     "@types/got": "^9.6.12",
     "@types/html-to-text": "^9.0.2",

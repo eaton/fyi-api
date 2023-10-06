@@ -6,6 +6,8 @@ import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
 
+import { getOAuth2Client } from './auth.js';
+
 export class Twitter extends BaseImport {
   declare options: TwitterImportOptions;
 
@@ -195,4 +197,34 @@ export class Twitter extends BaseImport {
    * Authenticated client calls go here; the class was getting ungainly, but
    * it really needs the import internal state.
    */
+
+  async loadBookmarks() {
+    // Lord, what a shitshow Twitter is.
+    await this.cacheApiBookmarks();
+  }
+
+
+  /**
+   * Attempts to download the full list of a user's saved bookmarks
+   * via the API. Note that this endpoint is only available to paid
+   * developer accounts, and even then it seems to break constantly.
+   */
+  async cacheApiBookmarks() {
+    if (this.options.auth) {
+      const { clientId, clientSecret } = this.options.auth;
+      const client = await getOAuth2Client(clientId!, clientSecret!, this.files);
+
+      // We're casting a wide net, mostly in hopes of getting as much
+      // as we can with a small number of requests.
+      const bookmarks = await client.v2.bookmarks({
+        'expansions': ['author_id', 'attachments.media_keys', 'referenced_tweets.id', 'referenced_tweets.id.author_id'],
+        'tweet.fields': ['id', 'author_id', 'conversation_id', 'created_at', 'text', 'attachments', 'source', 'context_annotations'],
+        'user.fields': ['id', 'username', 'name', 'description', 'location', 'profile_image_url', 'created_at', 'verified', 'verified_type']
+      });
+
+      for (const bookmark of bookmarks) {
+        await this.files.writeCache(`bookmarks/bookmark-${bookmark.id}.json`, bookmark);
+      }
+    }
+  }
 }

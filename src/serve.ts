@@ -1,6 +1,5 @@
 import 'dotenv/config';
-import { getOAuth2Client } from "./imports/twitter/auth.js"
-import { Filestore } from './util/filestore.js';
+import { Twitter } from './index.js';
 
 const auth = {
   apiKey: process.env.TWITTER_API_KEY,
@@ -12,8 +11,5 @@ const auth = {
   bearerToken: process.env.TWITTER_BEARER_TOKEN,
 };
 
-const fs = new Filestore({ cache: 'test/cache' });
-
-// const client = await getOAuth1Client(auth.apiKey!, auth.apiKeySecret!);
-const client = await getOAuth2Client(auth.clientId!, auth.clientSecret!, fs);
-console.log(await client.currentUserV2());
+const t = new Twitter({ auth, bookmarks: true, files: { import: process.env.TWITTER_INPUT } });
+await t.cacheApiBookmarks();
