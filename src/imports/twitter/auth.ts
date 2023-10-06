@@ -125,11 +125,11 @@ export async function authorizeOAuth1(apiKey: string, apiSecret: string) {
  * 
  * @param clientId your Twitter application's "OAuth2 Client ID"
  * @param clientSecret your application's "OAuth2 Client Secret"
- * @param scope an array of strings containing OAuth2 permission scopes
  * @param cache a Filestore instance to retrieve and save generated auth identifiers
+ * @param scope an array of strings containing OAuth2 permission scopes
  * @returns a promise that resolves to a logged-in TwitterAPI client
  */
-export async function getOAuth2Client(clientId: string, clientSecret: string, scope?: string[], cache?: Filestore) {
+export async function getOAuth2Client(clientId: string, clientSecret: string, cache?: Filestore, scope?: string[]) {
   const file = 'twitter-v2-credentials.json';
 
   if (cache && cache.existsCache(file)) {
