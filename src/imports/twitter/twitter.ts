@@ -10,11 +10,48 @@ export interface TwitterImportOptions extends BaseImportOptions {
 
   /**
    * Look for zipped Twitter archive files in the `input` directory, and use
-   * them as a migration source.
+   * them as a migration source. If this property is set to 'newest' or 'oldest'
+   * and multiple archives are found, only one will be processed.
    *
    * @defaultValue `true`
    */
-  parseArchives?: boolean,
+  archives?: boolean | 'newest' | 'oldest',
+
+  /**
+   * Process favorited tweets from saved Twitter Archives.
+   *
+   * @defaultValue `true`
+   */
+  favorites?: boolean,
+
+  /**
+   * Process retweets from saved Twitter Archives.
+   *
+   * @defaultValue `true`
+   */
+  retweets?: boolean,
+
+  /**
+   * Process standalone tweets (i.e., tweets that are not part of a thread)
+   * from saved Twitter Archives.
+   *
+   * @defaultValue `true`
+   */
+  singles?: boolean,
+
+  /**
+   * Process multi-tweet threads by the Twitter Archive's user.
+   *
+   * @defaultValue `true`
+   */
+  threads?: boolean
+
+  /**
+   * Process replies to other users' tweets from saved Twitter Archives.
+   *
+   * @defaultValue `true`
+   */
+  replies?: boolean,
 
   /**
    * Look for day-by-day analytics exports in CSV format, and use them as
@@ -22,23 +59,38 @@ export interface TwitterImportOptions extends BaseImportOptions {
    *
    * @defaultValue `true`
    */
-  parseMetrics?: boolean,
+  metrics?: boolean,
 
   /**
-   * When multiple Twitter archives are found, parse them oldest-to-newest,
-   * adding new tweets, media, etc. to the cache. Slow, but useful when newer
-   * archives inexplicably drop old tweets. It's been known to happen.
-   * 
-   * By default, only the newest archive for a given user will be parsed.
+   * Use the Twitter API to migrate bookmarked tweets.
+   *
+   * @defaultValue `true`
+   */
+  bookmarks?: false,
+
+  /**
+   * Use the Twitter API to retrieve alt text for media items in processed
+   * tweet archives.
    *
    * @defaultValue `false`
    */
-  parseOldArchives?: boolean,
+  populateAltText?: boolean,
+
+  /**
+   * Use the Twitter API to migrate bookmarked tweets.
+   *
+   * @defaultValue `true`
+   */
+  populateFavorites?: false,
 
   /**
    * Twitter's API is strictly rate-limited, and paid access is pricey a f.
    * this property contains various bundles of tokens, keys, and secrets
    * but can be set to `false` to prevent any authenticated requests.
+   * 
+   * If you do want to use the API to pull in additional metadata (like alt
+   * text for media, and twitter bookmarks), you'll need to register at the
+   * {@link Twitter Developer Portal | 
    *
    * @defaultValue `false`
    */
