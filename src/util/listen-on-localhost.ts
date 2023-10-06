@@ -2,7 +2,6 @@ import http from 'http';
 import open from 'open';
 
 type Options = {
-
   /**
    * The port to listen on.
    *

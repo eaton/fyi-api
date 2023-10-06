@@ -1,101 +1,10 @@
+import { BaseImport } from '../index.js';
+import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite } from "./types.js";
+
 import { PartialFavorite, PartialTweet, TwitterArchive } from "twitter-archive-reader";
-import { BaseImport, BaseImportOptions } from '../../index.js';
-import { TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite } from "./types.js";
 import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
-import type { TwitterAuthData } from "./auth.js";
-
-export interface TwitterImportOptions extends BaseImportOptions {
-
-  /**
-   * Look for zipped Twitter archive files in the `input` directory, and use
-   * them as a migration source. If this property is set to 'newest' or 'oldest'
-   * and multiple archives are found, only one will be processed.
-   *
-   * @defaultValue `true`
-   */
-  archives?: boolean | 'newest' | 'oldest',
-
-  /**
-   * Process favorited tweets from saved Twitter Archives.
-   *
-   * @defaultValue `true`
-   */
-  favorites?: boolean,
-
-  /**
-   * Process retweets from saved Twitter Archives.
-   *
-   * @defaultValue `true`
-   */
-  retweets?: boolean,
-
-  /**
-   * Process standalone tweets (i.e., tweets that are not part of a thread)
-   * from saved Twitter Archives.
-   *
-   * @defaultValue `true`
-   */
-  singles?: boolean,
-
-  /**
-   * Process multi-tweet threads by the Twitter Archive's user.
-   *
-   * @defaultValue `true`
-   */
-  threads?: boolean
-
-  /**
-   * Process replies to other users' tweets from saved Twitter Archives.
-   *
-   * @defaultValue `true`
-   */
-  replies?: boolean,
-
-  /**
-   * Look for day-by-day analytics exports in CSV format, and use them as
-   * a migration source.
-   *
-   * @defaultValue `true`
-   */
-  metrics?: boolean,
-
-  /**
-   * Use the Twitter API to migrate bookmarked tweets.
-   *
-   * @defaultValue `true`
-   */
-  bookmarks?: false,
-
-  /**
-   * Use the Twitter API to retrieve alt text for media items in processed
-   * tweet archives.
-   *
-   * @defaultValue `false`
-   */
-  populateAltText?: boolean,
-
-  /**
-   * Use the Twitter API to migrate bookmarked tweets.
-   *
-   * @defaultValue `true`
-   */
-  populateFavorites?: false,
-
-  /**
-   * Twitter's API is strictly rate-limited, and paid access is pricey a f.
-   * this property contains various bundles of tokens, keys, and secrets
-   * but can be set to `false` to prevent any authenticated requests.
-   * 
-   * If you do want to use the API to pull in additional metadata (like alt
-   * text for media, and twitter bookmarks), you'll need to register at the
-   * {@link Twitter Developer Portal | 
-   *
-   * @defaultValue `false`
-   */
-  auth?: false | TwitterAuthData,
-}
 
 export class Twitter extends BaseImport {
   declare options: TwitterImportOptions;
@@ -112,7 +21,7 @@ export class Twitter extends BaseImport {
   }
 
   async fillCache(): Promise<void> {
-    await this.fillAnalyticsCache();
+    await this.cacheAnalytics();
     await this.fillTweetCache()
     return Promise.resolve();
   }
@@ -143,11 +52,16 @@ export class Twitter extends BaseImport {
     }
 
     for (const arc of archives) {
-      await this.fillCacheFromArchive(arc);
+      await this.cacheArchives(arc);
     }
   }
   
-  async fillAnalyticsCache() {
+  async loadAnalytics() {
+    // Is there analytics stuff? Maybe? Whatevs.
+    return this.cacheAnalytics();
+  }
+
+  async cacheAnalytics() {
     const analytics = await this.files.findInput('**/daily_tweet_activity_metrics_*.csv');
     const allData: Record<string, TwitterAnalyticsSet> = {};
 
@@ -171,7 +85,8 @@ export class Twitter extends BaseImport {
       const [username, locale] = file.match(metricsRegex)?.slice(1) ?? [];
       allData[username] ??= { username, start: undefined, end: undefined, locale, rows: [] };
       
-      // ridic. inefficient, but it works for now
+      // ridic. inefficient, but it works for now. We should cache in headers/rows
+      // nested array format rather than full named object mode.
       await this.files.readInput(file, { parse: false })
         .then(raw => parseString(raw, { headers: true })
           .on('error', error => this.log(error))
@@ -187,13 +102,13 @@ export class Twitter extends BaseImport {
     }
 
     for (const [user, data] of Object.entries(allData)) {
-      await this.files.writeCache(`${user}/analytics.json`, analytics);
-      this.log(`Cached ${user} analytics (${data.rows.length} records)`);
+      await this.files.writeCache(`analytics.json`, analytics);
+      this.log(`Cached ${user} analytics (covering ${data.rows.length} days)`);
     }
     return Promise.resolve();
   }
 
-  async fillCacheFromArchive(path: string): Promise<void> {
+  async cacheArchives(path: string): Promise<void> {
     const buffer = this.files.readInput(path, { parse: false });
 
     const archive = new TwitterArchive(
@@ -255,7 +170,7 @@ export class Twitter extends BaseImport {
     return Promise.resolve();
   }
 
-  async saveFavorites(archive: TwitterArchive) {
+  async cacheFavorites(archive: TwitterArchive) {
     for (const raw of archive.favorites.all) {
       const fav: TwitterFavorite = {
         id: raw.tweetId,
@@ -275,7 +190,6 @@ export class Twitter extends BaseImport {
   async saveMedia(archive: TwitterArchive) {
     return Promise.resolve();
   }
-
 
   /**
    * Authenticated client calls go here; the class was getting ungainly, but
