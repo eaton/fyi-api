@@ -1,5 +1,5 @@
 import { TwitterApi } from 'twitter-api-v2';
-import { listenOnLocalhost } from '../../index.js';
+import { Filestore, listenOnLocalhost } from '../../index.js';
 
 /**
  * There are five basic ways of accessing Twitter data:
@@ -66,8 +66,37 @@ export type TwitterAuthData = {
   loginPin?: string,
 }
 
-export async function getOAuth1Client(apiKey: string, apiSecret: string) {
-  // first, check for cached credentials. if they exist, go straight to logging in.
+/**
+ * Returns an "API V1.1" compatible authenticated TwitterAPI client.
+ * 
+ * This version of Twitter's API is deprecated and endpoints are steadily
+ * being moved over to the V2 API. However, we use it to retrieve media
+ * entity alt text, which the "Twitter Archive Export" feature ignores.
+ * 
+ * Keys can be generated at {@link the Twitter API Developer Dashboard | 
+ * https://developer.twitter.com/en/portal/dashboard}
+ * 
+ * @param appKey your Twitter application's "Consumer API Key"
+ * @param appSecret your Twitter application's "Consumer Secret"
+ * @param cache a Filestore instance to retrieve and save generated auth identifiers
+ * @returns a promise that resolves to a logged-in TwitterAPI client
+ */
+export async function getOAuth1Client(appKey: string, appSecret: string, cache?: Filestore): Promise<TwitterApi> {
+  const file = 'twitter-v1-credentials.json';
+
+  if (cache && cache.existsCache(file)) {
+    const { accessToken, accessSecret } = await cache.readCache(file);
+    return new TwitterApi({ appKey, appSecret, accessToken, accessSecret });
+  } else {
+    const { client, accessToken, accessSecret } = await authorizeOAuth1(appKey, appSecret);
+    if (cache) {
+      await cache.writeCache(file, { accessToken, accessSecret });
+    }
+    return Promise.resolve(client);
+  }
+}
+
+export async function authorizeOAuth1(apiKey: string, apiSecret: string) {
   const localUrl = 'http://localhost:9000/oauth';
   const linkRequestClient = new TwitterApi({ appKey: apiKey, appSecret: apiSecret });
 
@@ -85,15 +114,39 @@ export async function getOAuth1Client(apiKey: string, apiSecret: string) {
     accessSecret: oauth_token_secret
   });
 
-  return loginClient.login(verifier)
-    .then(({ client, accessToken, accessSecret }) => {
-      console.log(`OAuth1 Token: ${accessToken}`);
-      console.log(`OAuth2 Secret: ${accessSecret}`);
-      return client;
-    });
+  return loginClient.login(verifier);
 }
 
-export async function getOAuth2Client(clientId: string, clientSecret: string, scope?: string[]) {
+/**
+ * Returns an "API V2" compatible authenticated TwitterAPI client.
+ * 
+ * ID and Secret can be generated at {@link the Twitter API Developer Dashboard | 
+ * https://developer.twitter.com/en/portal/dashboard}.
+ * 
+ * @param clientId your Twitter application's "OAuth2 Client ID"
+ * @param clientSecret your application's "OAuth2 Client Secret"
+ * @param scope an array of strings containing OAuth2 permission scopes
+ * @param cache a Filestore instance to retrieve and save generated auth identifiers
+ * @returns a promise that resolves to a logged-in TwitterAPI client
+ */
+export async function getOAuth2Client(clientId: string, clientSecret: string, scope?: string[], cache?: Filestore) {
+  const file = 'twitter-v2-credentials.json';
+
+  if (cache && cache.existsCache(file)) {
+    // Check for cached credentials. If they exist, things are easy peasy.
+    // TODO: check refreshToken and expiresIn, and renew accessToken if necessary.
+    const { accessToken } = await cache.readCache(file);
+    return new TwitterApi(accessToken);
+  } else {
+    const { client, accessToken, refreshToken, expiresIn } = await authorizeOAuth2(clientId, clientSecret, scope);
+    if (cache) {
+      await cache.writeCache(file, { accessToken, refreshToken, expiresIn });
+    }
+    return Promise.resolve(client);  
+  }
+}
+
+export async function authorizeOAuth2(clientId: string, clientSecret: string, scope?: string[]) {
   const localUrl = 'http://localhost:9000/oauth';
   scope ??= [ 'tweet.read', 'users.read', 'bookmark.read', 'offline.access' ];
 
@@ -106,11 +159,5 @@ export async function getOAuth2Client(clientId: string, clientSecret: string, sc
   const code = new URL(request.url!, 'http://localhost').searchParams.get('code') ?? '';
 
   const loginClient = new TwitterApi({ clientId, clientSecret });
-  return loginClient.loginWithOAuth2({ code, codeVerifier, redirectUri: 'http://localhost:9000/oauth' })
-    .then(async ({ client, accessToken, refreshToken, expiresIn }) => {
-      console.log(`OAuth2 Token: ${accessToken}`);
-      console.log(`Expires In: ${refreshToken}`);
-      console.log(`Refresh Token: ${refreshToken}`);
-      return client;
-    });
+  return loginClient.loginWithOAuth2({ code, codeVerifier, redirectUri: 'http://localhost:9000/oauth' });
 }
