@@ -48,13 +48,14 @@ export class Twitter extends BaseImport {
     // Ensure everything is in chronological order
     let archives = (await this.files.findInput('**/twitter-*.zip')).sort();
 
-    if (this.options.parseOldArchives !== true) {
-      // Drop the old archives and only use the most recent one.
-      archives = archives.reverse().slice(0,1);
+    if (this.options.archives === 'newest') {
+      archives = archives.slice(0,1);
+    } else if (this.options.archives === 'oldest') {
+      archives = archives.slice(-1,1);
     }
 
-    for (const arc of archives) {
-      await this.cacheArchives(arc);
+    for (const archive of archives) {
+      await this.cacheArchives(archive);
     }
   }
   
@@ -110,31 +111,89 @@ export class Twitter extends BaseImport {
     return Promise.resolve();
   }
 
+
+
+  /**
+   * Our target cache structure looks something like this:
+   * 
+   * archive-[yyyy-MM-dd].json
+   * user-[@handle].json
+   * singles/[yyyy]/tweet-[tweet-id].json
+   * retweets/[yyyy]/retweet-[retweeted-tweet-id].json
+   * replies/reply-[tweet-id].json
+   * threads/thread-[tweet-id].json
+   * favorites/favorite-[tweet-id].json
+   * bookmarks/bookmark-[tweet-id].json
+   * media/[yyyy]/media-[media-id].json
+   * files/[yyyy]/[media-id].[extension]
+   */
   async cacheArchives(path: string): Promise<void> {
     const buffer = this.files.readInput(path, { parse: false });
-
     const archive = new TwitterArchive(
       buffer, { ignore: ['ad', 'block', 'dm', 'moment', 'mute'] }
     );
 
     await archive.ready().then(() => {
       archive.releaseZip();
-      return archive;
     });
-
-    this.log(`Processing ${path}`);
-    this.log(archive.info);
-    this.log(archive.synthetic_info);
     
-    await this.prepUser(archive);
 
-    // for (const t of archive.tweets.sortedIterator('asc')) {
-    //   await this.cacheTweet(t, archive);
-    // }
+    await this.files.writeCache(
+      `archive-${archive.generation_date.toISOString()}.json`,
+      archive.synthetic_info
+    );
+    await this.cacheUser(archive);
+
+    if (this.options.singles || this.options.replies || this.options.retweets || this.options.threads) {
+      for (const t of archive.tweets.sortedIterator('asc')) {
+        if (this.options.singles) {
+
+        }
+
+        if (this.isRetweet(t) && this.options.retweets) {
+          // Process a retweet
+        }
+
+        if (this.isReply(t) && this.options.replies) {
+
+        }
+      }
+    } else {
+      // No possible scenarios where tweets would be cached. Whoops.
+    }
+
+    if (this.options.favorites) {
+      // Do favorite processing
+    }
+
+    if (this.options.bookmarks) {
+      // Do favorite processing
+    }
   }
 
-  protected async prepUser(a: TwitterArchive): Promise<void> {
-    this.log('caching user');
+  isStandalone(t: PartialTweet): boolean {
+    return (t.in_reply_to_status_id_str === undefined && t.retweeted_status === undefined);
+  }
+
+  isRetweet(t: PartialTweet): boolean {
+    return (t.retweeted_status !== undefined || !!t.retweeted);
+  }
+
+  isReply(t: PartialTweet): boolean {
+    return (!!t.in_reply_to_status_id_str && t.in_reply_to_user_id_str !== t.user.id_str);
+  }
+  
+  isThreadChild(t: PartialTweet, a: TwitterArchive): boolean  {
+    return (!!t.in_reply_to_status_id_str && t.in_reply_to_user_id_str === t.user.id_str);
+  }
+
+  isThreadParent(t: PartialTweet, a: TwitterArchive): boolean  {
+    // This will be expensive.
+    return false;
+  }
+
+  protected async cacheUser(a: TwitterArchive): Promise<void> {
+    await this.files.writeCache(`user-${a.user.screen_name}.json`, a.user);
     return Promise.resolve();
   }
 

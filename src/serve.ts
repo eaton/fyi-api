@@ -1,15 +1,26 @@
 import 'dotenv/config';
-import { Twitter } from './index.js';
+import { Filestore } from './index.js';
 
-const auth = {
-  apiKey: process.env.TWITTER_API_KEY,
-  apiKeySecret: process.env.TWITTER_API_KEY_SECRET,
-  accessToken: process.env.TWITTER_ACCESS_TOKEN,
-  accessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET,
-  clientId: process.env.TWITTER_CLIENT_ID,
-  clientSecret: process.env.TWITTER_CLIENT_SECRET,
-  bearerToken: process.env.TWITTER_BEARER_TOKEN,
-};
+import { captureTweets } from './imports/twitter/scrape.js';
 
-const t = new Twitter({ auth, bookmarks: true, files: { import: process.env.TWITTER_INPUT } });
-await t.cacheApiBookmarks();
+const f = new Filestore({ cache: 'storage' });
+
+const process = true;
+if (process) {
+  const testTweets = [
+    '841652377841209345',   // Simple text tweet, second in a thread
+    '1666840107452620803',  // Tweet with url embed, first in a thread
+    '1624448832607068164',  // Standalone, multiple media, with alt
+    '1604694281234546689',  // Orphaned thread child; interim tweet deleted; interim tweet by different user,
+    '1467915664459538436',  // Four photos with alt
+  ];
+
+  const results = await captureTweets(testTweets, { screenshot: true });
+  for (const t of results) {
+    if (t.success) {
+      const { screenshot, success, ...json } = t;
+      if (t.screenshot) await f.writeCache(`screenshots/tweet-${t.id}.${t.screenshotFormat}`, t.screenshot);
+      f.writeCache(`favorites/favorite-${json.id}.json`, json);
+    }
+  }
+}
