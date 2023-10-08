@@ -1,6 +1,10 @@
 import ky from 'ky';
-import { chromium, Browser, Page } from 'playwright';
+import { Browser, Page } from 'playwright';
 import { Html, changeDate, extractWithCheerio } from '../../index.js';
+
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+
 
 /**
  * Twitter has become increasingly agressive about moving any automated
@@ -119,8 +123,8 @@ export async function captureTweets(id: string | string[], options: TweetCapture
 
   if (!options.page) {
     // Running in headless is deeply annoying, but it'll have to do.
-    // 
-    browser = await chromium.launch({ headless: false });
+    chromium.use(StealthPlugin());
+    browser = await chromium.launch();
     const context = await browser.newContext({
 
       colorScheme: 'light',
