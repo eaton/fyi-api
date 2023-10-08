@@ -6,4 +6,5 @@ export * from './listen-on-localhost.js';
 
 export * from './formats/index.js';
 export * from './cheerio/index.js';
-export * from './change-case.js'
+export * from './change-case.js';
+export * from './change-date.js';
