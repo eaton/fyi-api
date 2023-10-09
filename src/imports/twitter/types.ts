@@ -1,5 +1,58 @@
-import type { TwitterAuthData } from "./auth.js";
 import { BaseImportOptions } from "../index.js";
+
+// TODO: We can't really retrieve bookmarks proper from Twitter without
+// paying stupid money for the privelege. Instead, we'll accept named text
+// files with URLs or Tweet IDs, and process them as if they were named bookmark
+// groups. That will also make it possible to archive arbitrary lists of tweets
+// complete with screenshots, which is probably interesting on its own.
+
+/**
+ * Favorites, quote tweets, media alt text, and a number of other important parts
+ * of a user's twitter archive are sparsely or inconsistntly populated in the
+ * default Twitter Archive. The Twitter Import allows you to turn each kind of
+ * entity on and off for the import, AND allows you to specify how much work it
+ * should to do look up the missing bits.
+ * 
+ * - metadata: Use Twitter's OEmbed endpoint to get username, post date, and raw text.
+ *   mostly useful for favorites, which come in with almost no data at all.
+ * - scrape: Use a headless browser to load the tweet data. This gets the same
+ *   stuff that 'metadata' does, but can also capture alt text on images, like and
+ *   favorite counts, etc.
+ * - unshorten: If any links are found in the tweet, attempt to unshorten them —
+ *   looking up the actual destination of t.co links and so on.
+ * - receipts: Get all of the previous data, and take a screenshot of the tweet
+ *   for archival purposes.
+ */
+export type TwitterLookupLevel = 'metadata' | 'scrape' | 'unshorten' | 'receipts';
+
+
+/**
+ * A text or CSV file containing a return-delimited list of tweet URLs or IDs
+ * to be archived.
+ */
+export type TwitterCustomImport = {
+
+  /**
+   * An optional name for the set of imported tweets.
+   */
+  name?: string,
+
+  /**
+   * The filename to be imported and processed; relative paths will be treated
+   * as relative to the filestore's `import` directory.
+   * 
+   * If the filename contains glob wildcards, and multiple files are matched,
+   * their contents will be deduplicated and combined for processing as a single
+   * list.
+   */
+  filename: string,
+
+  /**
+   * The level of rigor to use when looking up the tweets; if no level is
+   * specified, 'metadata' will be used for the sake of speed.
+   */
+  level?: TwitterLookupLevel
+}
 
 export interface TwitterImportOptions extends BaseImportOptions {
   /**
@@ -12,14 +65,9 @@ export interface TwitterImportOptions extends BaseImportOptions {
   archives?: boolean | 'newest' | 'oldest',
 
   /**
-   * Process favorited tweets from saved Twitter Archives.
-   *
-   * @defaultValue `true`
-   */
-  favorites?: boolean,
-
-  /**
-   * Process retweets from saved Twitter Archives.
+   * Process retweets from saved Twitter Archives. Because Retweets generally
+   * come with full data for the underlying tweet, we don't bother with the
+   * full Lookup options.
    *
    * @defaultValue `true`
    */
@@ -56,39 +104,20 @@ export interface TwitterImportOptions extends BaseImportOptions {
   metrics?: boolean,
 
   /**
-   * Use the Twitter API to migrate bookmarked tweets.
+   * Process favorited tweets from saved Twitter Archives.
    *
    * @defaultValue `true`
    */
-  bookmarks?: boolean,
+  favorites?: boolean | TwitterLookupLevel,
 
   /**
-   * Use the Twitter API to retrieve alt text for media items in processed
-   * tweet archives.
-   *
-   * @defaultValue `false`
-   */
-  populateAltText?: boolean,
-
-  /**
-   * Use the Twitter API to migrate bookmarked tweets.
-   *
-   * @defaultValue `true`
-   */
-  populateFavorites?: boolean,
-
-  /**
-   * Twitter's API is strictly rate-limited, and paid access is pricey a f.
-   * this property contains various bundles of tokens, keys, and secrets
-   * but can be set to `false` to prevent any authenticated requests.
+   * One or more list of tweets to retrieve and process, in addition to the
+   * tweets in the archive.
    * 
-   * If you do want to use the API to pull in additional metadata (like alt
-   * text for media, and twitter bookmarks), you'll need to register at the
-   * {@link Twitter Developer Portal | 
-   *
-   * @defaultValue `false`
+   * This can be a simple array of Tweet URLs, Tweet IDs, or an array of
+   * pointers to txt and csv file full of tweets.
    */
-  auth?: false | TwitterAuthData,
+  custom?: TwitterCustomImport[] | string[];
 }
 
 export type TwitterUser = Record<string, unknown> & {
@@ -100,7 +129,7 @@ export type TwitterUser = Record<string, unknown> & {
 export type TwitterPost = Record<string, unknown> & {
   id: string
   userId: string,
-  userName: string,
+  name: string,
   threadId?: string,
   repliesToTweetId?: string,
   repliesToUserId?: string,
@@ -122,6 +151,8 @@ export type TwitterMedia = Record<string, unknown> & {
 
 export type TwitterFavorite = Record<string, unknown> & {
   id: string,
+  name?: string,
+  date?: string,
   text?: string,
 }
 

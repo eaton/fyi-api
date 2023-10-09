@@ -3,10 +3,12 @@ import is from '@sindresorhus/is';
 import { Html, changeDate } from '../../index.js';
 
 type TweetOEmbedResponse = {
-  url: string,
-  author_name: string,
-  html: string,
-  type: string,
+  url?: string,
+  author_name?: string,
+  author_url?: string,
+  html?: string,
+  type?: string,
+  error?: string,
 }
 
 type TweetOembedData = Record<string, unknown> & {
@@ -46,11 +48,10 @@ export async function scrapeTweetOembed(tweet: string) {
   const r = await ky.get(embedUrl, { throwHttpErrors: false });
   
   let result: TweetOembedData = { id: tweetId }
+  const json: TweetOEmbedResponse = await r.json();
 
   if (r.ok) {
-    const json: TweetOEmbedResponse = await r.json();
-  
-    const parsed = await Html.extractWithCheerio(json.html, {
+    const parsed = await Html.extractWithCheerio(json.html ?? '', {
       text: 'blockquote.twitter-tweet > p | text',
       date: 'blockquote.twitter-tweet > a | text',
       urls: [{
@@ -67,10 +68,13 @@ export async function scrapeTweetOembed(tweet: string) {
     result = {
       ...result,
       url: json.url,
-      name: json.url.split('/')[3],
+      name: json.url?.split('/')[3],
       fullname: json.author_name,
       ...parsed
     };
+  } else {
+    result.status = r.status;
+    result.error = json.error;
   }
 
   return Promise.resolve(result);

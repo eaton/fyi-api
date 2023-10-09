@@ -1,5 +1,5 @@
 import { BaseImport, TweetCaptureResult, TwitterBrowser } from '../index.js';
-import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite } from "./types.js";
+import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite, TwitterLookupLevel } from "./types.js";
 
 import { PartialFavorite, PartialTweet, TwitterArchive } from "twitter-archive-reader";
 import { parseString } from '@fast-csv/parse';
@@ -124,8 +124,8 @@ export class Twitter extends BaseImport {
    * retweets/[yyyy]/retweet-[retweeted-tweet-id].json
    * replies/reply-[tweet-id].json
    * threads/thread-[tweet-id].json
-   * favorites/favorite-[tweet-id].json
-   * bookmarks/bookmark-[tweet-id].json
+   * favorites/[yyyyMMdddd]-[name]-[tweet-id].json
+   * [custom]/[yyyyMMdddd]-[name]-[tweet-id].json
    * media/[yyyy]/media-[media-id].json
    * files/[yyyy]/[media-id].[extension]
    */
@@ -166,10 +166,6 @@ export class Twitter extends BaseImport {
 
     if (this.options.favorites) {
       // Do favorite processing
-    }
-
-    if (this.options.bookmarks) {
-      await this.loadBookmarks();
     }
   }
 
@@ -290,6 +286,24 @@ export class Twitter extends BaseImport {
           this.files.writeCache(`bookmarks/error-${id}.json`, json);
         }
       }
+    }
+  }
+
+
+  async lookupTweet(id: string, level: TwitterLookupLevel = 'metadata') {
+    // This wraps the different approaches we take to grabbing tweet data:
+    // hitting the oEmbed endpoing? Firing up headless chrome and scraping?
+    // Taking a screenshot? etc.
+
+    switch (level) {
+      case 'metadata':
+        break;
+      case 'scrape':
+        break;
+      case 'unshorten':
+        break;
+      case 'receipts':
+        break;
     }
   }
 }
