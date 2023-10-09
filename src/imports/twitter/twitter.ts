@@ -1,12 +1,10 @@
-import { BaseImport } from '../index.js';
+import { BaseImport, TweetCaptureResult, TwitterBrowser } from '../index.js';
 import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite } from "./types.js";
 
 import { PartialFavorite, PartialTweet, TwitterArchive } from "twitter-archive-reader";
 import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
-
-import { captureTweets } from './scrape.js';
 
 export class Twitter extends BaseImport {
   declare options: TwitterImportOptions;
@@ -262,18 +260,34 @@ export class Twitter extends BaseImport {
 
   async cacheBookmarks() {
     const files = await this.files.findInput('*bookmarks.txt');
-    for (const file of files) {
-      const urlList = (await this.files.readInput(file)) as string;
-      const ids = urlList.split('\n').map(
-        s => s.match(/status\/(\d*)/)?.[1] ?? ''
-      ).filter(s => s.length);
+    const tb = new TwitterBrowser({ headless: false });
 
-      const capturedBookmarks = await captureTweets(ids, true);
-      for (const t of capturedBookmarks) {
-        if (t.success) {
-          const { screenshot, success, ...json } = t;
-          if (t.screenshot) await this.files.writeCache(`bookmarks/bookmark-${t.id}.${t.screenshotFormat}`, t.screenshot);
-          this.files.writeCache(`bookmarks/screenshots/${json.id}.json`, json);
+    for (const file of files) {
+      const urls = await this.files.readInput(file)
+        .then(data => data.toString().split('\n') as string[]);
+
+      for (const line of urls) {
+        const [ url, id ] = line.match(/^.*\:\/\/twitter.com\/.+\/status\/(\d+)/) ?? [];
+
+        if (url === undefined) continue;
+        if (this.files.existsCache(`bookmarks/${id}.json`)) continue;
+        if (this.files.existsCache(`bookmarks/error-${id}.json`)) continue;
+  
+        const { success, screenshot, screenshotFormat, ...json } = await tb.capture(url, true)
+          .catch((err: unknown ) => {
+            return {
+              id: url.split('/').pop(),
+              success: false,
+              json: { html: err }
+            } as TweetCaptureResult;
+          });
+        if (success) {
+          if (screenshot) {
+            await this.files.writeCache(`bookmarks/screenshots/screenshot-${json.id}.${screenshotFormat}`, screenshot);
+            this.files.writeCache(`bookmarks/${id}.json`, json);
+          }
+        } else {
+          this.files.writeCache(`bookmarks/error-${id}.json`, json);
         }
       }
     }
