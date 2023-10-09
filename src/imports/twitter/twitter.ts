@@ -1,10 +1,11 @@
-import { BaseImport, TweetCaptureResult, TwitterBrowser } from '../index.js';
+import { BaseImport, TweetCaptureResult, TwitterBrowser, scrapeTweetOembed } from '../index.js';
 import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite, TwitterLookupLevel } from "./types.js";
 
 import { PartialFavorite, PartialTweet, TwitterArchive } from "twitter-archive-reader";
 import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
+import { UrlResolver } from '../../index.js';
 
 export class Twitter extends BaseImport {
   declare options: TwitterImportOptions;
@@ -15,8 +16,13 @@ export class Twitter extends BaseImport {
     twitter_media: {}
   }
 
+  browser: TwitterBrowser;
+  resolver: UrlResolver;
+
   constructor(options: TwitterImportOptions = {}) {
     super(options);
+    this.browser = new TwitterBrowser();
+    this.resolver = new UrlResolver();
   }
 
   async doImport(): Promise<void> {
@@ -289,21 +295,33 @@ export class Twitter extends BaseImport {
     }
   }
 
-
   async lookupTweet(id: string, level: TwitterLookupLevel = 'metadata') {
     // This wraps the different approaches we take to grabbing tweet data:
-    // hitting the oEmbed endpoing? Firing up headless chrome and scraping?
+    // hitting the oEmbed endpoint? Firing up headless chrome and scraping?
     // Taking a screenshot? etc.
-
-    switch (level) {
-      case 'metadata':
-        break;
-      case 'scrape':
-        break;
-      case 'unshorten':
-        break;
-      case 'receipts':
-        break;
+    
+    if (level === 'scrape') {
+      // This returns a TweetCaptureResult record
+      return await this.browser.capture(id, false);
+    } else if (level === 'archive') {
+      // This returns a TweetCaptureResult with the `screenshot` property populated
+      return this.browser.capture(id, true);
+    } else {
+      // This returns a TweetOembedData record
+      return scrapeTweetOembed(id).then(
+        data => {
+          return {
+            id,
+            url: data.url,
+            name: data.name,
+            fullname: data.fullname,
+            date: data.date,
+            text: data.text,
+            links: data.links,
+            errors: data.errors ? [data.errors] : undefined
+          } as TweetCaptureResult;
+        }
+      )
     }
   }
 }

@@ -17,3 +17,6 @@
 //
 // The shortener should be usable in 'quickly correct internal links' mode as well as
 // 'hunt down that link no matter what' mode.
+
+
+export * from './resolver.js'

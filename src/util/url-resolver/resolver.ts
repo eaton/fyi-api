@@ -17,10 +17,10 @@ type StoredResult = {
  * Wrapper class that can build a library of shortened or moved URLs and their
  * 'proper' destinations.
  */
-export class Resolver {
+export class UrlResolver {
   known: Map<string, StoredResult>;
 
-  constructor(options: ResolverOptions) {
+  constructor(options: ResolverOptions = {}) {
     if (options.normalizer === undefined) {
       // do nothing here; we just use the fallback
     } else if (options.normalizer === false) {

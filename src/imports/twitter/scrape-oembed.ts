@@ -18,8 +18,8 @@ type TweetOembedData = Record<string, unknown> & {
   fullname?: string,
   text?: string,
   date?: string,
-  urls?: { text?: string, url: string }[],
-  error?: string,
+  links?: { text?: string, url: string }[],
+  errors?: string[],
 }
 
 /**
@@ -54,7 +54,7 @@ export async function scrapeTweetOembed(tweet: string) {
     const parsed = await Html.extractWithCheerio(json.html ?? '', {
       text: 'blockquote.twitter-tweet > p | text',
       date: 'blockquote.twitter-tweet > a | text',
-      urls: [{
+      links: [{
         '$': 'blockquote.twitter-tweet > p',
         text: '> a | text',
         url: '> a | attr:href'
@@ -74,7 +74,7 @@ export async function scrapeTweetOembed(tweet: string) {
     };
   } else {
     result.status = r.status;
-    result.error = json.error;
+    result.errors = json.error ? [json.error] : undefined;
   }
 
   return Promise.resolve(result);

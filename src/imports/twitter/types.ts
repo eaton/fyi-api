@@ -18,13 +18,10 @@ import { BaseImportOptions } from "../index.js";
  * - scrape: Use a headless browser to load the tweet data. This gets the same
  *   stuff that 'metadata' does, but can also capture alt text on images, like and
  *   favorite counts, etc.
- * - unshorten: If any links are found in the tweet, attempt to unshorten them —
- *   looking up the actual destination of t.co links and so on.
- * - receipts: Get all of the previous data, and take a screenshot of the tweet
+ * - archive: Get all of the previous data, and take a screenshot of the tweet
  *   for archival purposes.
  */
-export type TwitterLookupLevel = 'metadata' | 'scrape' | 'unshorten' | 'receipts';
-
+export type TwitterLookupLevel = 'metadata' | 'scrape' | 'archive';
 
 /**
  * A text or CSV file containing a return-delimited list of tweet URLs or IDs
