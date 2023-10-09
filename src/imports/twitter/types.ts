@@ -60,7 +60,7 @@ export interface TwitterImportOptions extends BaseImportOptions {
    *
    * @defaultValue `true`
    */
-  bookmarks?: false,
+  bookmarks?: boolean,
 
   /**
    * Use the Twitter API to retrieve alt text for media items in processed
@@ -75,7 +75,7 @@ export interface TwitterImportOptions extends BaseImportOptions {
    *
    * @defaultValue `true`
    */
-  populateFavorites?: false,
+  populateFavorites?: boolean,
 
   /**
    * Twitter's API is strictly rate-limited, and paid access is pricey a f.

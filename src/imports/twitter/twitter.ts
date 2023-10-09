@@ -6,7 +6,7 @@ import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
 
-import { getOAuth2Client } from './auth.js';
+import { captureTweets } from './scrape.js';
 
 export class Twitter extends BaseImport {
   declare options: TwitterImportOptions;
@@ -15,6 +15,10 @@ export class Twitter extends BaseImport {
     twitter_post: {},
     twitter_favorite: {},
     twitter_media: {}
+  }
+
+  constructor(options: TwitterImportOptions = {}) {
+    super(options);
   }
 
   async doImport(): Promise<void> {
@@ -167,7 +171,7 @@ export class Twitter extends BaseImport {
     }
 
     if (this.options.bookmarks) {
-      // Do favorite processing
+      await this.loadBookmarks();
     }
   }
 
@@ -252,37 +256,25 @@ export class Twitter extends BaseImport {
     return Promise.resolve();
   }
 
-  /**
-   * Authenticated client calls go here; the class was getting ungainly, but
-   * it really needs the import internal state.
-   */
-
   async loadBookmarks() {
-    // Lord, what a shitshow Twitter is.
-    await this.cacheApiBookmarks();
+    await this.cacheBookmarks();
   }
 
+  async cacheBookmarks() {
+    const files = await this.files.findInput('*bookmarks.txt');
+    for (const file of files) {
+      const urlList = (await this.files.readInput(file)) as string;
+      const ids = urlList.split('\n').map(
+        s => s.match(/status\/(\d*)/)?.[1] ?? ''
+      ).filter(s => s.length);
 
-  /**
-   * Attempts to download the full list of a user's saved bookmarks
-   * via the API. Note that this endpoint is only available to paid
-   * developer accounts, and even then it seems to break constantly.
-   */
-  async cacheApiBookmarks() {
-    if (this.options.auth) {
-      const { clientId, clientSecret } = this.options.auth;
-      const client = await getOAuth2Client(clientId!, clientSecret!, this.files);
-
-      // We're casting a wide net, mostly in hopes of getting as much
-      // as we can with a small number of requests.
-      const bookmarks = await client.v2.bookmarks({
-        'expansions': ['author_id', 'attachments.media_keys', 'referenced_tweets.id', 'referenced_tweets.id.author_id'],
-        'tweet.fields': ['id', 'author_id', 'conversation_id', 'created_at', 'text', 'attachments', 'source', 'context_annotations'],
-        'user.fields': ['id', 'username', 'name', 'description', 'location', 'profile_image_url', 'created_at', 'verified', 'verified_type']
-      });
-
-      for (const bookmark of bookmarks) {
-        await this.files.writeCache(`bookmarks/bookmark-${bookmark.id}.json`, bookmark);
+      const capturedBookmarks = await captureTweets(ids, true);
+      for (const t of capturedBookmarks) {
+        if (t.success) {
+          const { screenshot, success, ...json } = t;
+          if (t.screenshot) await this.files.writeCache(`bookmarks/bookmark-${t.id}.${t.screenshotFormat}`, t.screenshot);
+          this.files.writeCache(`bookmarks/screenshots/${json.id}.json`, json);
+        }
       }
     }
   }
