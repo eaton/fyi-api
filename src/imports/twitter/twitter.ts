@@ -59,9 +59,9 @@ export class Twitter extends BaseImport {
     let archives = (await this.files.findInput('**/twitter-*.zip')).sort();
 
     if (this.options.archive === 'newest') {
-      archives = archives.slice(0,1);
-    } else if (this.options.archive === 'oldest') {
       archives = archives.slice(-1,1);
+    } else if (this.options.archive === 'oldest') {
+      archives = archives.slice(0,1);
     }
 
     for (const archive of archives) {
