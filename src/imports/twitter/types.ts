@@ -59,7 +59,7 @@ export interface TwitterImportOptions extends BaseImportOptions {
    *
    * @defaultValue `true`
    */
-  archives?: boolean | 'newest' | 'oldest',
+  archive?: boolean | 'newest' | 'merge' | 'oldest',
 
   /**
    * Process retweets from saved Twitter Archives. Because Retweets generally
@@ -122,6 +122,27 @@ export type TwitterUser = Record<string, unknown> & {
   name: string,
   fullName?: string
 }
+
+export type TweetParsedData = {
+  [index: string]: unknown | undefined,
+  id: string,
+  url?: string,
+  success?: boolean,
+  name?: string,
+  fullname?: string,
+  date?: string,
+  text?: string,
+  media?: unknown[],
+  links?: unknown[],
+  favorites?: string,
+  retweets?: string,
+  quotes?: string,
+  screenshot?: Buffer
+  screenshotFormat?: 'jpeg' | 'png',
+  html?: string,
+  errors?: string[],
+}
+
 
 export type TwitterPost = Record<string, unknown> & {
   id: string

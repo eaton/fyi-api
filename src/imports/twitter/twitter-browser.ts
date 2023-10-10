@@ -1,28 +1,8 @@
-import is from '@sindresorhus/is';
 import { Browser, BrowserContext, Page } from 'playwright';
-import { extractWithCheerio, CheerioExtractTemplate } from '../../index.js';
+import { extractWithCheerio, CheerioExtractTemplate, TweetParsedData, TweetUrl } from '../../index.js';
 
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-
-export type TweetCaptureResult = {
-  id: string,
-  url?: string,
-  success?: boolean,
-  name?: string,
-  fullname?: string,
-  date?: string,
-  text?: string,
-  media?: unknown[],
-  links?: unknown[],
-  favorites?: string,
-  retweets?: string,
-  quotes?: string,
-  screenshot?: Buffer
-  screenshotFormat?: 'jpeg' | 'png',
-  html?: string,
-  errors?: string[],
-}
 
 /**
  * Description placeholder
@@ -139,38 +119,23 @@ export class TwitterBrowser {
     return Promise.resolve(this._page);
   }
 
-  async capture(idOrUrl: string, screenshot?: boolean): Promise<TweetCaptureResult> {
+  async capture(idOrUrl: string, screenshot?: boolean): Promise<TweetParsedData> {
     const page = await this.setup();
-
-    let tweetId: string = '';
-    let tweetUser: string = 'twitter';
+    const tweet = new TweetUrl(idOrUrl);
   
-    if (is.numericString(idOrUrl)) {
-      tweetId = idOrUrl;
-      tweetId = 'twitter';
-    } else {
-      const parsedUrl = new URL(idOrUrl);
-      tweetId = parsedUrl.pathname.split('/')[3];
-      tweetUser = parsedUrl.pathname.split('/')[1];
-    }
-    const url = `https://twitter.com/${tweetUser}/status/${tweetId}`;
-    await page.goto(url);
+    await page.goto(tweet.href);
 
-    let results: TweetCaptureResult = {
-      id: tweetId,
+    let results: TweetParsedData = {
+      id: tweet.href,
       url: page.url(),
     }
 
     await page.locator('main').waitFor({ state: 'visible' });
-    console.log(`Got main for ${url}`)
-
     const html = await page.content();
-    
     const errors = await page.locator('#react-root div[data-testid="error-detail"] span').allInnerTexts();
 
     // Check for error strings on the page; tweets may be deleted or protected.
     if (errors.length) {
-      console.log(`Error text for ${url}`)
       return Promise.resolve({
         success: false,
         ...results,
@@ -179,25 +144,23 @@ export class TwitterBrowser {
       });
     } else {
       const locator = page.locator('#react-root article');
-      const extracted = await locator.innerHTML()
-        .then(html => extractWithCheerio(html, this._options.template!) as Partial<TweetCaptureResult>);
-      
-        console.log(`extracted ${url}`)
+      let extracted = await locator.innerHTML().then(html => extractWithCheerio(html, this._options.template!));
 
-        if (screenshot) {
+      if (Array.isArray(extracted)) {
+        // We shouldn't get here — our template was not, in fact, designed to return multiple results.
+        return Promise.reject();
+      }
+
+      if (screenshot) {
         await page.evaluate(() => {
           // The top bar, which can cut off the top of long tweets
           document.querySelector('#react-root div[aria-label="Home timeline"] > div:first-child')?.remove();
-
           // The Follow button, which is enormous and blue
           document.querySelector('#react-root article div[role="button"]')?.remove();
-
           // The like/retweet/bookmark buttons, which are pointless in a screenshot
           document.querySelectorAll("#react-root div[role=group]")[1]?.remove();
-
           // The "Don't miss what's happening" banner, which covers up the end of long tweets
           document.querySelector('#react-root #layers')?.remove();
-
           // The big ol popup dialog
           document.querySelectorAll('#react-root div[role=dialog]')?.forEach(n => n.remove());
         });
@@ -215,6 +178,7 @@ export class TwitterBrowser {
           screenshotFormat: this._options.screenshot?.format
         };
       }
+
       return Promise.resolve({
         success: true,
         ...results,

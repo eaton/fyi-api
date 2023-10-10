@@ -14,7 +14,7 @@ const pipeFns: PipeFnMap = {
       return value.toString().split(joiner).map(value => value.trim());
     }
     return void 0;
-  }
+  },
 }
 
 type MappedReturn<T extends string | unknown[] | Record<string, unknown>> = 

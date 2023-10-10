@@ -1,5 +1,5 @@
-import { BaseImport, TweetCaptureResult, TwitterBrowser, scrapeTweetOembed } from '../index.js';
-import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterFavorite, TwitterLookupLevel } from "./types.js";
+import { BaseImport, TweetParsedData, TwitterBrowser, scrapeTweetOembed } from '../index.js';
+import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterLookupLevel } from "./types.js";
 
 import { PartialFavorite, PartialTweet, TwitterArchive } from "twitter-archive-reader";
 import { parseString } from '@fast-csv/parse';
@@ -31,7 +31,9 @@ export class Twitter extends BaseImport {
   }
 
   async fillCache(): Promise<void> {
-    await this.cacheAnalytics();
+    if (this.options.metrics) {
+      await this.fillAnalyticsCache();
+    }
     await this.fillTweetCache()
     return Promise.resolve();
   }
@@ -56,9 +58,9 @@ export class Twitter extends BaseImport {
     // Ensure everything is in chronological order
     let archives = (await this.files.findInput('**/twitter-*.zip')).sort();
 
-    if (this.options.archives === 'newest') {
+    if (this.options.archive === 'newest') {
       archives = archives.slice(0,1);
-    } else if (this.options.archives === 'oldest') {
+    } else if (this.options.archive === 'oldest') {
       archives = archives.slice(-1,1);
     }
 
@@ -69,10 +71,10 @@ export class Twitter extends BaseImport {
   
   async loadAnalytics() {
     // Is there analytics stuff? Maybe? Whatevs.
-    return this.cacheAnalytics();
+    return this.fillAnalyticsCache();
   }
 
-  async cacheAnalytics() {
+  async fillAnalyticsCache() {
     const analytics = await this.files.findInput('**/daily_tweet_activity_metrics_*.csv');
     const allData: Record<string, TwitterAnalyticsSet> = {};
 
@@ -113,27 +115,31 @@ export class Twitter extends BaseImport {
     }
 
     for (const [user, data] of Object.entries(allData)) {
-      await this.files.writeCache(`analytics.json`, analytics);
+      await this.files.writeCache(`analytics-${user}.json`, data);
       this.log(`Cached ${user} analytics (covering ${data.rows.length} days)`);
     }
     return Promise.resolve();
   }
 
-
-
   /**
    * Our target cache structure looks something like this:
    * 
    * archive-[yyyy-MM-dd].json
-   * user-[@handle].json
-   * singles/[yyyy]/tweet-[tweet-id].json
+   * user-[name].json
+   * 
+   * singles/[yyyy]/tweet-[tweet-id].json (original non-thread, non-reply tweets)
    * retweets/[yyyy]/retweet-[retweeted-tweet-id].json
-   * replies/reply-[tweet-id].json
-   * threads/thread-[tweet-id].json
-   * favorites/[yyyyMMdddd]-[name]-[tweet-id].json
-   * [custom]/[yyyyMMdddd]-[name]-[tweet-id].json
-   * media/[yyyy]/media-[media-id].json
-   * files/[yyyy]/[media-id].[extension]
+   * replies/[yyyy]/reply-[tweet-id].json
+   * threads/[yyyy]/thread-[tweet-id].json
+   * 
+   * media/media-[media-id].json
+   * media/files/[media-id].[extension]
+   *
+   * favorites/[tweet-id].json
+   * [save-list]/[tweet-id].json
+   * screenshots/[tweet-id].json
+   * 
+   * It's not exceptionally efficient, but it works.
    */
   async cacheArchives(path: string): Promise<void> {
     const buffer = this.files.readInput(path, { parse: false });
@@ -145,9 +151,8 @@ export class Twitter extends BaseImport {
       archive.releaseZip();
     });
     
-
     await this.files.writeCache(
-      `archive-${archive.generation_date.toISOString()}.json`,
+      `archive-${formatDate(archive.generation_date, 'yyyy-MM-dd')}.json`,
       archive.synthetic_info
     );
     await this.cacheUser(archive);
@@ -171,7 +176,7 @@ export class Twitter extends BaseImport {
     }
 
     if (this.options.favorites) {
-      // Do favorite processing
+      await this.cacheFavorites(archive);
     }
   }
 
@@ -236,14 +241,38 @@ export class Twitter extends BaseImport {
   }
 
   async cacheFavorites(archive: TwitterArchive) {
-    for (const raw of archive.favorites.all) {
-      const fav: TwitterFavorite = {
-        id: raw.tweetId,
-        text: raw.fullText,
-        url: raw.expandedUrl,
-        favorited: raw.date?.toISOString()
-      };
-      await this.db.push(fav, `twitter_favorite/${fav.id}`);
+    for (const fav of archive.favorites.all) {
+      const favPath = `favorites/favorite-${fav.tweetId}.json`;
+
+      if (this.files.existsCache(favPath)) {
+        // Be conservative and bail out
+        continue;
+      }
+
+      let favorite: TweetParsedData = {
+        id: fav.tweetId,
+        url: fav.expandedUrl,
+        text: fav.fullText,
+      }
+
+      // A plain boolean 'true' just means to save them; anything else, and
+      // we've got a lookup level
+      if (this.options.favorites !== true) {
+        favorite = {
+          ...favorite,
+          ...(await this.lookupTweet(fav.tweetId))
+        };
+
+        if (favorite.screenshot) {
+          // Save the screenshot
+          favorite.screenshot = undefined;
+          favorite.screenshotFormat = undefined;
+        }
+
+        // This is where we would expand/resolve URLs, if that option is turned on
+      }
+
+      await this.files.writeCache(favPath, favorite);
     }
     return Promise.resolve();
   }
@@ -281,11 +310,11 @@ export class Twitter extends BaseImport {
               id: url.split('/').pop(),
               success: false,
               json: { html: err }
-            } as TweetCaptureResult;
+            } as TweetParsedData;
           });
         if (success) {
           if (screenshot) {
-            await this.files.writeCache(`bookmarks/screenshots/screenshot-${json.id}.${screenshotFormat}`, screenshot);
+            await this.files.writeCache(`screenshots/${json.id}.${screenshotFormat}`, screenshot);
             this.files.writeCache(`bookmarks/${id}.json`, json);
           }
         } else {
@@ -308,20 +337,7 @@ export class Twitter extends BaseImport {
       return this.browser.capture(id, true);
     } else {
       // This returns a TweetOembedData record
-      return scrapeTweetOembed(id).then(
-        data => {
-          return {
-            id,
-            url: data.url,
-            name: data.name,
-            fullname: data.fullname,
-            date: data.date,
-            text: data.text,
-            links: data.links,
-            errors: data.errors ? [data.errors] : undefined
-          } as TweetCaptureResult;
-        }
-      )
+      return scrapeTweetOembed(id);
     }
   }
 }

@@ -1,6 +1,6 @@
-import ky from 'ky';
 import is from '@sindresorhus/is';
-import { Html, changeDate } from '../../index.js';
+import ky from 'ky';
+import { Html, TweetParsedData, changeDate, TweetUrl } from '../../index.js';
 
 type TweetOEmbedResponse = {
   url?: string,
@@ -11,17 +11,6 @@ type TweetOEmbedResponse = {
   error?: string,
 }
 
-type TweetOembedData = Record<string, unknown> & {
-  id: string,
-  url?: string,
-  name?: string,
-  fullname?: string,
-  text?: string,
-  date?: string,
-  links?: { text?: string, url: string }[],
-  errors?: string[],
-}
-
 /**
  * Description placeholder
  *
@@ -30,40 +19,31 @@ type TweetOembedData = Record<string, unknown> & {
  * be { status, statusText }. If the request was successful, the returned data will
  * be { status, statusText, url, name, fullname, text, date, urls }.
  */
-export async function scrapeTweetOembed(tweet: string) {
-  let tweetId: string = '';
-  let tweetUser: string = 'twitter';
+export async function scrapeTweetOembed(idOrUrl: string) {
+  const tweet = new TweetUrl(idOrUrl);
+  const r = await ky.get(tweet.oembed, { throwHttpErrors: false });
 
-  if (is.numericString(tweet)) {
-    tweetId = tweet;
-    tweetId = 'twitter';
-  } else {
-    const parsedUrl = new URL(tweet);
-    tweetId = parsedUrl.pathname.split('/')[2];
-    tweetUser = parsedUrl.pathname.split('/')[0];
-  }
-
-  const embedUrl = new URL('https://publish.twitter.com/oembed');
-  embedUrl.searchParams.set('url', `https://twitter.com/${tweetUser}/status/${tweetId}`);
-  const r = await ky.get(embedUrl, { throwHttpErrors: false });
-  
-  let result: TweetOembedData = { id: tweetId }
-  const json: TweetOEmbedResponse = await r.json();
+  let result: TweetParsedData = { id: tweet.id }
 
   if (r.ok) {
+    const json: TweetOEmbedResponse = await r.json();
     const parsed = await Html.extractWithCheerio(json.html ?? '', {
-      text: 'blockquote.twitter-tweet > p | text',
+      text: 'blockquote.twitter-tweet > p | html',
       date: 'blockquote.twitter-tweet > a | text',
       links: [{
-        '$': 'blockquote.twitter-tweet > p',
-        text: '> a | text',
-        url: '> a | attr:href'
+        $: 'blockquote.twitter-tweet > p a',
+        text: '$ | text',
+        url: '$ | attr:href'
       }],
     });
 
     if (typeof(parsed.date) == 'string') {
       parsed.date = changeDate(parsed.date, 'LLLL d, yyyy', 'yyyy-MM-dd');
     };
+
+    if (typeof(parsed.html) === 'string') parsed.html = toPlainText(parsed.html);
+
+    if (is.emptyArray(parsed.links)) parsed.links = undefined;
 
     result = {
       ...result,
@@ -73,9 +53,30 @@ export async function scrapeTweetOembed(tweet: string) {
       ...parsed
     };
   } else {
+    if (result.status === 429) {
+      console.log(`Throttled on ${tweet.id}; waiting 1s`);
+      await sleep(1000); 
+    }
     result.status = r.status;
-    result.errors = json.error ? [json.error] : undefined;
+    result.message = r.statusText;
   }
 
   return Promise.resolve(result);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function toPlainText(html: string) {
+  const options: Html.HtmlToTextOptions = {
+    decodeEntities: true,
+    wordwrap: false,
+    selectors: [
+      { selector: 'a', options: { ignoreHref: true } },
+    ],
+  };
+  return Html.toText(html, options);
 }
