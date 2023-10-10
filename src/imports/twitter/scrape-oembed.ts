@@ -41,7 +41,7 @@ export async function scrapeTweetOembed(idOrUrl: string) {
       parsed.date = changeDate(parsed.date, 'LLLL d, yyyy', 'yyyy-MM-dd');
     };
 
-    if (typeof(parsed.html) === 'string') parsed.html = toPlainText(parsed.html);
+    if (typeof(parsed.text) === 'string') parsed.text = toPlainText(parsed.text);
 
     if (is.emptyArray(parsed.links)) parsed.links = undefined;
 
