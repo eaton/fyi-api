@@ -1,5 +1,6 @@
 import { NormalizedUrl, UrlMutators } from "@autogram/url-tools";
-import ky from 'ky';
+import got from "got";
+// import ky from 'ky';
 
 export interface ResolverOptions {
   normalizer?: false | UrlMutators.UrlMutator,
@@ -9,8 +10,9 @@ export interface ResolverOptions {
 type StoredResult = {
   normalized: string,
   resolved?: string | false,
-  status: number,
+  status?: number,
   message?: string,
+  redirects?: string[]
 };
 
 /**
@@ -46,39 +48,62 @@ export class UrlResolver {
   // This WON'T detect anything other than 301 and 302 redirects,
   // unfortunately. META and JS redirects will take additional work.
 
+  /** 
+   * TODO: When redirection services resolve a URL but the destination URL lives
+   * at a domain that no longer resolves, we error out and miss the intermediary
+   * redirect destination. What we really need to do is follow each one until we
+   * hit an error, preserving the final url.
+   */
   async resolve(url: string, base?: URL) {
     const normalized = new NormalizedUrl(url, base).href;
     let output = this.lookup(normalized);
-
     if (output) {
       return Promise.resolve(output);
     }
 
-    return ky.head(normalized, { throwHttpErrors: false })
+    output = {
+      normalized, 
+      resolved: undefined,
+      status: undefined,
+      message: undefined,
+      redirects: [],
+    }    
+
+    return got.head(normalized, {
+      throwHttpErrors: false,
+      followRedirect: true,
+      hooks: {
+        beforeRedirect: [
+          (options) => {
+            // This allows us to queue up all of the redirects we encounter, even if
+            // a domain fails to resolve.
+            if ('url' in options && options.url instanceof URL) {
+              output?.redirects?.push(options.url.toString());
+            }
+          }
+        ]
+      }
+    })
       .then(res => {
-        output = {
-          normalized, 
-          resolved: res.url,
-          status: res.status,
-          message: res.statusText
-        }
+        output!.resolved = output?.redirects?.pop() ?? res.url;
+        output!.status = res.statusCode;
+        output!.message = res.statusMessage;
+        if (output?.redirects?.length === 0) output!.redirects = undefined;
         return output;
       })
       .catch((err: unknown) => {
         if (err instanceof Error) {
-          output = {
-            normalized, 
-            status: -1,
-            message: err.message
-          }
+          output!.resolved = output?.redirects?.pop();
+          output!.status = -1;
+          output!.message = err.message;
+          if (output?.redirects?.length === 0) output!.redirects = undefined;
         } else {
-          output = { normalized, status: -2 }
+          output!.status = -2;
         }
         return output;
       })
       .finally(() => {
-        output ??= { normalized, status: -3 };
-        this.known.set(normalized, output);
+        this.known.set(normalized, output!);
       });
   }
 

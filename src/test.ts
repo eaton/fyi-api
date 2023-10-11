@@ -8,7 +8,7 @@ const t = new Twitter({
   retweets: false,
   threads: false,
   replies: false,
-  favorites: 'metadata',
+  favorites: false,
   files: { input: process.env.TWITTER_INPUT }
 });
 
