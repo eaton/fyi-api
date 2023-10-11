@@ -1,15 +1,16 @@
 import { BaseImport, TweetParsedData, TwitterBrowser, scrapeTweetOembed } from '../index.js';
-import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterLookupLevel } from "./types.js";
+import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterLookupLevel, TwitterImportCache } from "./types.js";
+import pThrottle from 'p-throttle';
 
-import { PartialFavorite, PartialTweet, TwitterArchive } from "twitter-archive-reader";
+import { PartialTweet, TwitterArchive } from "twitter-archive-reader";
 import { parseString } from '@fast-csv/parse';
 import { camelCase } from "../../index.js";
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
 import { UrlResolver } from '../../index.js';
 
-export class Twitter extends BaseImport {
+export class Twitter extends BaseImport<TwitterImportCache> {
   declare options: TwitterImportOptions;
-
+  
   collections = {
     twitter_post: {},
     twitter_favorite: {},
@@ -18,15 +19,56 @@ export class Twitter extends BaseImport {
 
   browser: TwitterBrowser;
   resolver: UrlResolver;
+  cacheData: TwitterImportCache;
 
   constructor(options: TwitterImportOptions = {}) {
     super(options);
     this.browser = new TwitterBrowser();
     this.resolver = new UrlResolver();
+    this.cacheData = {
+      user: undefined,
+      archives: {},
+      tweets: new Map<string, Record<string, unknown>>(),
+      threads: new Map<string, Record<string, unknown>>(),
+      media: new Map<string, Record<string, unknown>>(),
+      favorites: new Set<string>(),
+      bookmarks: new Set<string>(),
+      metrics: [],    
+    };
   }
 
   async doImport(): Promise<void> {
     await this.loadCache();
+    return Promise.resolve();
+  }
+
+  /**
+   * Our cache is just a giant pool of JSON files. Inefficient but functional.
+   * 
+   * archive-[yyyy-MM-dd].json
+   * user-[name].json
+   * 
+   * tweets/[yyyy]/tweet-[tweet-id].json 
+   * threads/[yyyy]/thread-[tweet-id].json
+   * 
+   * media/media-[media-id].json
+   * media/files/[media-id].[extension]
+   *
+   * favorites/[tweet-id].json
+   * bookmarks/[tweet-id].json
+   * screenshots/[tweet-id].json
+   * 
+   * It's not exceptionally efficient, but it works.
+   */
+  async loadCache(): Promise<void> {
+    // Load archive metadata
+    // Load user metadata
+    // load tweets
+    // load favorites
+    // load threads
+     // load bookmarks 
+    // load media records
+    await this.fillCache();
     return Promise.resolve();
   }
 
@@ -65,7 +107,7 @@ export class Twitter extends BaseImport {
     }
 
     for (const archive of archives) {
-      await this.cacheArchives(archive);
+      await this.cacheArchive(archive);
     }
   }
   
@@ -141,7 +183,7 @@ export class Twitter extends BaseImport {
    * 
    * It's not exceptionally efficient, but it works.
    */
-  async cacheArchives(path: string): Promise<void> {
+  async cacheArchive(path: string): Promise<void> {
     const buffer = this.files.readInput(path, { parse: false });
     const archive = new TwitterArchive(
       buffer, { ignore: ['ad', 'block', 'dm', 'moment', 'mute'] }
@@ -159,16 +201,18 @@ export class Twitter extends BaseImport {
 
     if (this.options.singles || this.options.replies || this.options.retweets || this.options.threads) {
       for (const t of archive.tweets.sortedIterator('asc')) {
-        if (this.options.singles) {
-
-        }
-
         if (this.isRetweet(t) && this.options.retweets) {
-          // Process a retweet
-        }
-
-        if (this.isReply(t) && this.options.replies) {
-
+          // Process a retweet; this is unique, because what we really care 
+          // about is the stuff that's in t.retweeted_status; that's a full
+          // tweet record by someone other than the current user.
+        } else if (this.options.replies && this.isReply(t) && !this.isSelfReply(t)) {
+          // Replies to others might also be threads; think about that
+          // for a bit, einstein.
+        } else if (this.options.singles && this.isStandalone(t)) {
+          // The simplest of simple scenarios; it's not a retweet, it's not a reply, 
+          
+        } else {
+          // Uhhhhh…
         }
       }
     } else {
@@ -180,6 +224,10 @@ export class Twitter extends BaseImport {
     }
   }
 
+  isOwn(tweet: PartialTweet, archive: TwitterArchive): boolean {
+    return (tweet.user.id_str === archive.user.id);
+  }
+
   isStandalone(t: PartialTweet): boolean {
     return (t.in_reply_to_status_id_str === undefined && t.retweeted_status === undefined);
   }
@@ -189,24 +237,30 @@ export class Twitter extends BaseImport {
   }
 
   isReply(t: PartialTweet): boolean {
-    return (!!t.in_reply_to_status_id_str && t.in_reply_to_user_id_str !== t.user.id_str);
-  }
-  
-  isThreadChild(t: PartialTweet, a: TwitterArchive): boolean  {
-    return (!!t.in_reply_to_status_id_str && t.in_reply_to_user_id_str === t.user.id_str);
+    return (!!t.in_reply_to_status_id_str);
   }
 
-  isThreadParent(t: PartialTweet, a: TwitterArchive): boolean  {
-    // This will be expensive.
-    return false;
+  isSelfReply(t: PartialTweet): boolean {
+    return (t.in_reply_to_user_id_str === t.user.id_str);
+  }
+
+  findParent(tweet: PartialTweet, archive: TwitterArchive): PartialTweet | undefined {
+    if (this.isReply(tweet) && this.isSelfReply(tweet)) {
+      return archive.tweets.single(tweet.id_str) ?? undefined;
+    }
+    return undefined;
+  }
+
+  findAncestor(tweet: PartialTweet, archive: TwitterArchive): PartialTweet | undefined {
+    let parent, ancestor: PartialTweet | undefined = undefined;
+    while(parent = this.findParent(parent ?? tweet, archive)) {
+      ancestor = parent;
+    }
+    return ancestor;
   }
 
   protected async cacheUser(a: TwitterArchive): Promise<void> {
     await this.files.writeCache(`user-${a.user.screen_name}.json`, a.user);
-    return Promise.resolve();
-  }
-
-  protected async prepTweet(t: PartialTweet, a: TwitterArchive): Promise<void> {
     return Promise.resolve();
   }
 
@@ -224,23 +278,14 @@ export class Twitter extends BaseImport {
     return Promise.resolve();
   }
 
-  protected async prepFavorite(f: PartialFavorite, a: TwitterArchive): Promise<void> {
-    return Promise.resolve();
-  }
-
   protected pathToTweet(t: PartialTweet): string {
-    return `${t.user.name}/${t.created_at_d?.getFullYear ?? '0000'}/tweet/${t.id_str}.json`;
+    return `${t.created_at_d?.getFullYear ?? '0000'}/${t.id_str}.json`;
   }
 
+  async cacheFavorites(archive: TwitterArchive) {   
+    const throttle = pThrottle({ limit: 10, interval: 1000 });
+    const lookup = throttle(this.lookupTweet);
 
-  async saveTweets(archive: TwitterArchive) {
-    for (const pt of archive.tweets.sortedIterator('asc')) {
-      await this.db.push(pt, `twitter_post/${pt.id_str}`);
-    }
-    return Promise.resolve();
-  }
-
-  async cacheFavorites(archive: TwitterArchive) {
     for (const fav of archive.favorites.all) {
       const favPath = `favorites/favorite-${fav.tweetId}.json`;
 
@@ -260,7 +305,7 @@ export class Twitter extends BaseImport {
       if (this.options.favorites !== true) {
         favorite = {
           ...favorite,
-          ...(await this.lookupTweet(fav.tweetId))
+          ...(await lookup(fav.tweetId))
         };
 
         if (favorite.screenshot) {
@@ -277,14 +322,6 @@ export class Twitter extends BaseImport {
     return Promise.resolve();
   }
   
-  async saveBookmarks(archive: TwitterArchive) {
-    return Promise.resolve();
-  }
-
-  async saveMedia(archive: TwitterArchive) {
-    return Promise.resolve();
-  }
-
   async loadBookmarks() {
     await this.cacheBookmarks();
   }

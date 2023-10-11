@@ -24,9 +24,9 @@ export async function scrapeTweetOembed(idOrUrl: string) {
   const r = await ky.get(tweet.oembed, { throwHttpErrors: false });
 
   let result: TweetParsedData = { id: tweet.id }
+  const json = await r.json<TweetOEmbedResponse>().catch(() => { return {} as TweetOEmbedResponse });
 
   if (r.ok) {
-    const json: TweetOEmbedResponse = await r.json();
     const parsed = await Html.extractWithCheerio(json.html ?? '', {
       text: 'blockquote.twitter-tweet > p | html',
       date: 'blockquote.twitter-tweet > a | text',
@@ -41,7 +41,11 @@ export async function scrapeTweetOembed(idOrUrl: string) {
       parsed.date = changeDate(parsed.date, 'LLLL d, yyyy', 'yyyy-MM-dd');
     };
 
-    if (typeof(parsed.text) === 'string') parsed.text = toPlainText(parsed.text);
+    if (typeof(parsed.text) === 'string' && parsed.text.length > 0) {
+      parsed.text = toPlainText(parsed.text);
+    } else {
+      parsed.text = undefined;
+    }
 
     if (is.emptyArray(parsed.links)) parsed.links = undefined;
 
@@ -49,25 +53,15 @@ export async function scrapeTweetOembed(idOrUrl: string) {
       ...result,
       url: json.url,
       name: json.url?.split('/')[3],
-      fullname: json.author_name,
+      fullname: json.author_name?.toString() ?? undefined,
       ...parsed
     };
   } else {
-    if (result.status === 429) {
-      console.log(`Throttled on ${tweet.id}; waiting 1s`);
-      await sleep(1000); 
-    }
     result.status = r.status;
     result.message = r.statusText;
   }
 
   return Promise.resolve(result);
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }
 
 function toPlainText(html: string) {

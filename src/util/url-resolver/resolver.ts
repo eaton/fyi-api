@@ -62,6 +62,7 @@ export class UrlResolver {
           status: res.status,
           message: res.statusText
         }
+        return output;
       })
       .catch((err: unknown) => {
         if (err instanceof Error) {
@@ -73,11 +74,11 @@ export class UrlResolver {
         } else {
           output = { normalized, status: -2 }
         }
+        return output;
       })
       .finally(() => {
         output ??= { normalized, status: -3 };
         this.known.set(normalized, output);
-        return output;
       });
   }
 

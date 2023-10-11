@@ -6,6 +6,55 @@ import { BaseImportOptions } from "../index.js";
 // groups. That will also make it possible to archive arbitrary lists of tweets
 // complete with screenshots, which is probably interesting on its own.
 
+export type TwitterImportCache = {
+  [index: string]: unknown,
+
+  /**
+   * The Twitter user being imported; basic lookup and caching functions
+   * still work if no user (and no archives) are present, but manually-
+   * constructed lists of tweet IDs or URLs will be the only way to populate
+   * the import data.
+   */
+  user?: TwitterUser,
+
+  /**
+   * Archives processed during the import, keyed by date.
+   */
+  archives: Record<string, unknown>,
+
+  /**
+   * All known tweets, regardless of user.
+   */
+  tweets: Map<string, Record<string, unknown>>,
+
+  /**
+   * An index of children for every tweet that is a thread.
+   */
+  threads: Map<string, Record<string, unknown>>,
+
+  /**
+   * Individual media entities processed during the import.
+   * These may be imported from a Twitter Archive, or synthesized
+   * when scraping public tweets.
+   */
+  media: Map<string, Record<string, unknown>>,
+
+  /**
+   * An index of Tweet IDs saved as favorites.
+   */
+  favorites: Set<string>,
+
+  /**
+   * An index of Tweet IDs saved as bookmarks, or manually-curated lists.
+   */
+  bookmarks: Set<string>,
+
+  /**
+   * A list day-by-day analytics numbers for the specified Twitter user.
+   */
+  metrics: TwitterAnalyticsRow[],
+}
+
 /**
  * Favorites, quote tweets, media alt text, and a number of other important parts
  * of a user's twitter archive are sparsely or inconsistntly populated in the
@@ -52,6 +101,11 @@ export type TwitterCustomImport = {
 }
 
 export interface TwitterImportOptions extends BaseImportOptions {
+
+  lookupAltText?: boolean;
+
+  unshortenUrls?: boolean;
+
   /**
    * Look for zipped Twitter archive files in the `input` directory, and use
    * them as a migration source. If this property is set to 'newest' or 'oldest'

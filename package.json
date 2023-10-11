@@ -83,6 +83,7 @@
     "node-pinboard": "^2.0.1",
     "object-hash": "^3.0.0",
     "open": "^9.1.0",
+    "p-throttle": "^5.1.0",
     "playwright": "^1.38.1",
     "playwright-extra": "^4.3.6",
     "prettier": "^2.8.8",
