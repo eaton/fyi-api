@@ -13,7 +13,7 @@ type PinboardBookmark = {
 }
 
 export class Pinboard extends BaseImport {
-  collections = { pinboard_bookmark: {} };
+  collections =  ['pinboard_bookmark'];
 
   async doImport(): Promise<void> {
     await this.ensureSchema();

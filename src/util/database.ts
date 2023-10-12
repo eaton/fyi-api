@@ -1,7 +1,5 @@
 import { Database as ArangoDB } from 'arangojs';
 import { Config } from 'arangojs/connection';
-import { CreateCollectionOptions } from 'arangojs/collection';
-export { CreateCollectionOptions } from 'arangojs/collection';
 
 export class Database extends ArangoDB {
   constructor(config?: Config) {
@@ -64,11 +62,11 @@ export class Database extends ArangoDB {
    * Returns a Promise that resolves to TRUE if the collection was created,
    * FALSE if it already existed.
    */
-  async ensureCollection(name: string, options: CreateCollectionOptions = {}): Promise<boolean> {
+  async ensureCollection(name: string): Promise<boolean> {
     return this.collection(name).exists()
       .then(exists => {
         if (exists) return false;
-        return this.createCollection(name, options).then(() => true);
+        return this.createCollection(name).then(() => true);
       })
   }
 
@@ -78,11 +76,11 @@ export class Database extends ArangoDB {
    * Returns a Promise that resolves to TRUE if the collection was created,
    * FALSE if it already existed.
    */
-  async ensureEdgeCollection(name: string, options: CreateCollectionOptions = {}) {
+  async ensureEdgeCollection(name: string) {
     return this.collection(name).exists()
       .then(exists => {
         if (exists) return this.collection(name);
-        return this.createEdgeCollection(name, options);
+        return this.createEdgeCollection(name);
       })
   }
 

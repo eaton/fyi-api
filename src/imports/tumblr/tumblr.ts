@@ -14,11 +14,11 @@ export interface TumblrImportOptions extends BaseImportOptions {
 export class Tumblr extends BaseImport {
   declare options: TumblrImportOptions;
 
-  collections = { 
-    tumblr_user: {},
-    tumblr_blog: {},
-    tumblr_post: {},
-  }
+  collections = [
+    'tumblr_user',
+    'tumblr_blog',
+    'tumblr_post',
+  ];
 
   async fillCache(): Promise<void> {
     if (this.options.auth) {

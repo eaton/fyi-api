@@ -45,7 +45,7 @@ export interface JekyllImportOptions extends BaseImportOptions {
 }
 
 export class Jekyll extends BaseImport {
-  collections = { jekyll_post: {} };
+  collections = ['jekyll_post'];
   folders: string[];
   fileTypes: string[];
   parser?: (post: JekyllPost) => JekyllPost;

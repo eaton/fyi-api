@@ -27,10 +27,7 @@ type LivejournalComment = {
 }
 
 export class Livejournal extends BaseImport {
-  collections = {
-    lj_entry: {},
-    ly_comment: {},
-  };
+  collections = ['lj_entry', 'lj_comment'];
 
   async doImport(): Promise<void> {
     await this.ensureSchema();

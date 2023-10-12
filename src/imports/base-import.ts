@@ -1,4 +1,4 @@
-import { Filestore, Database, CreateCollectionOptions, FilestoreOptions } from "../index.js"
+import { Filestore, Database, FilestoreOptions } from "../index.js"
 import chalk from 'chalk';
 
 export interface BaseImportOptions extends Record<string, unknown> {
@@ -13,8 +13,8 @@ export interface BaseImportOptions extends Record<string, unknown> {
  * boilerplate code when doing cycles of testing.
  */
 export abstract class BaseImport<CacheType = void> {
-  collections?: Record<string, CreateCollectionOptions> = undefined;
-  relationships?: Record<string, CreateCollectionOptions> = undefined;
+  collections?: string[] = undefined;
+  relationships?: string[] = undefined;
 
   constructor(protected options: BaseImportOptions = {}) {};
 
@@ -108,14 +108,14 @@ export abstract class BaseImport<CacheType = void> {
    */
   async ensureSchema(): Promise<void> {
     if (this.collections || this.relationships) {
-      for (const [name, options] of Object.entries(this.collections ?? {})) {
+      for (const name of this.collections ?? []) {
         this.log(
-          await this.db.ensureCollection(name, options).then(() => `${name} was ensured`)
+          await this.db.ensureCollection(name).then(() => `${name} was ensured`)
         );
       }
-      for (const [name, options] of Object.entries(this.relationships ?? {})) {
+      for (const name of this.relationships ?? []) {
         this.log(
-          await this.db.ensureEdgeCollection(name, options).then(() => `${name} was ensured`)
+          await this.db.ensureEdgeCollection(name).then(() => `${name} was ensured`)
         );
       }
     }
@@ -136,7 +136,7 @@ export abstract class BaseImport<CacheType = void> {
    */
   async destroySchema(): Promise<void> {
     if (this.collections || this.relationships) {
-      for (const [name] of Object.entries(this.collections ?? {})) {
+      for (const name of this.collections ?? []) {
         this.log(await this.db.collection(name).exists()
           .then(exists => {
             if (exists) return this.db.collection(name).drop().then(() => `${name} destroyed`);
@@ -144,7 +144,7 @@ export abstract class BaseImport<CacheType = void> {
           }));
       }
 
-      for (const [name] of Object.entries(this.relationships ?? {})) {
+      for (const name of this.relationships ?? []) {
         this.log(await this.db.collection(name).exists()
           .then(exists => {
             if (exists) return this.db.collection(name).drop().then(() => `${name} destroyed`);

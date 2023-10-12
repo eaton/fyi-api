@@ -4,10 +4,7 @@ import { MediumUserInfo, MediumArticle } from './types.js';
 import { Html } from '../../index.js';
 
 export class Medium extends BaseImport {
-  collections = {
-    medium_post: {},
-    medium_user: {}
-  };
+  collections = ['medium_post', 'medium_user'];
 
   async doImport(): Promise<void> {
     await this.ensureSchema();

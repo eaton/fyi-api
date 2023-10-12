@@ -113,3 +113,6 @@ storage/
 input/
 cache/
 output/
+
+# tap test output
+.tap

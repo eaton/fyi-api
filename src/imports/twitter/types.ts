@@ -1,3 +1,4 @@
+import { ArchiveSyntheticInfo } from "twitter-archive-reader";
 import { BaseImportOptions } from "../index.js";
 
 // TODO: We can't really retrieve bookmarks proper from Twitter without
@@ -20,7 +21,7 @@ export type TwitterImportCache = {
   /**
    * Archives processed during the import, keyed by date.
    */
-  archives: Record<string, unknown>,
+  archives: ArchiveSyntheticInfo[],
 
   /**
    * All known tweets, regardless of user.
@@ -161,6 +162,12 @@ export interface TwitterImportOptions extends BaseImportOptions {
    */
   favorites?: boolean | TwitterLookupLevel,
 
+
+  /**
+   * Process media details.
+   */
+  media?: boolean,
+
   /**
    * One or more list of tweets to retrieve and process, in addition to the
    * tweets in the archive.
@@ -197,35 +204,33 @@ export type TweetParsedData = {
   errors?: string[],
 }
 
-
 export type TwitterPost = Record<string, unknown> & {
   id: string
-  userId: string,
-  name: string,
+  url?: string,
+  status?: number,
+  userId?: string,
+  name?: string,
   threadId?: string,
   repliesToTweetId?: string,
   repliesToUserId?: string,
-  retweetOf?: string | Partial<TwitterPost>,
-  date: string,
-  text: string,
-  media: string[],
-  urls: string[],
-  mentions: string[],
-  favorites: number,
-  replies: number,
+  retweetOf?: string,
+  date?: string,
+  text?: string,
+  media?: string[],
+  urls?: string[],
+  mentions?: string[],
+  favorites?: number,
+  replies?: number,
   presentInArchive?: [],
 }
 
 export type TwitterMedia = Record<string, unknown> & {
   id: string,
   tweetId: string,
-}
-
-export type TwitterFavorite = Record<string, unknown> & {
-  id: string,
-  name?: string,
-  date?: string,
-  text?: string,
+  url?: string,
+  mediaUrl?: string,
+  alt?: string
+  filetype?: string,
 }
 
 export type TwitterAnalyticsSet = {

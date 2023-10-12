@@ -63,11 +63,7 @@ export interface MetafilterImportOptions extends BaseImportOptions {
 }
 
 export class Metafilter extends BaseImport {
-  collections = {
-    metafilter_user: {},
-    metafilter_post: {},
-    metafilter_comment: {}
-  };
+  collections = ['metafilter_user', 'metafilter_post', 'metafilter_comment'];
   
   forceUser = false;
   forcePosts = false;
