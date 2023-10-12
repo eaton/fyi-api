@@ -4,10 +4,10 @@ import got from "got";
 
 export interface ResolverOptions {
   normalizer?: false | UrlMutators.UrlMutator,
-  known?: StoredResult[],
+  known?: ResolvedUrl[],
 }
 
-type StoredResult = {
+export type ResolvedUrl = {
   normalized: string,
   resolved?: string | false,
   status?: number,
@@ -20,7 +20,7 @@ type StoredResult = {
  * 'proper' destinations.
  */
 export class UrlResolver {
-  known: Map<string, StoredResult>;
+  known: Map<string, ResolvedUrl>;
 
   constructor(options: ResolverOptions = {}) {
     if (options.normalizer === undefined) {
@@ -34,9 +34,9 @@ export class UrlResolver {
     // This is likely to be pretty inefficient. Down the line we'll want to create a
     // database-backed setup or something like that.
     if (options.known) {
-      this.known = new Map<string, StoredResult>(options.known.map(sr => [sr.normalized, sr]));
+      this.known = new Map<string, ResolvedUrl>(options.known.map(sr => [sr.normalized, sr]));
     } else {
-      this.known = new Map<string, StoredResult>();
+      this.known = new Map<string, ResolvedUrl>();
     }
   }
 
@@ -48,12 +48,6 @@ export class UrlResolver {
   // This WON'T detect anything other than 301 and 302 redirects,
   // unfortunately. META and JS redirects will take additional work.
 
-  /** 
-   * TODO: When redirection services resolve a URL but the destination URL lives
-   * at a domain that no longer resolves, we error out and miss the intermediary
-   * redirect destination. What we really need to do is follow each one until we
-   * hit an error, preserving the final url.
-   */
   async resolve(url: string, base?: URL) {
     const normalized = new NormalizedUrl(url, base).href;
     let output = this.lookup(normalized);
@@ -93,7 +87,7 @@ export class UrlResolver {
       })
       .catch((err: unknown) => {
         if (err instanceof Error) {
-          output!.resolved = output?.redirects?.pop();
+          output!.resolved = output?.redirects?.pop() ?? output?.normalized;
           output!.status = -1;
           output!.message = err.message;
           if (output?.redirects?.length === 0) output!.redirects = undefined;
