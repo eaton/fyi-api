@@ -116,6 +116,13 @@ export interface TwitterImportOptions extends BaseImportOptions {
    */
   archive?: boolean | 'newest' | 'merge' | 'oldest',
 
+
+  /**
+   * In addition to tweets, media, etc, process and export metadata about
+   * the files and archives used during the import.)
+   */
+  metadata?: boolean,
+
   /**
    * Process retweets from saved Twitter Archives. Because Retweets generally
    * come with full data for the underlying tweet, we don't bother with the
