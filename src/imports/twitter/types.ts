@@ -11,14 +11,6 @@ export type TwitterImportCache = {
   [index: string]: unknown,
 
   /**
-   * The Twitter user being imported; basic lookup and caching functions
-   * still work if no user (and no archives) are present, but manually-
-   * constructed lists of tweet IDs or URLs will be the only way to populate
-   * the import data.
-   */
-  user?: TwitterUser,
-
-  /**
    * Archives processed during the import, keyed by date.
    */
   archives: ArchiveSyntheticInfo[],
@@ -26,34 +18,29 @@ export type TwitterImportCache = {
   /**
    * All known tweets, regardless of user.
    */
-  tweets: Map<string, Record<string, unknown>>,
+  tweets: Map<string, TwitterPost>,
 
   /**
    * An index of children for every tweet that is a thread.
    */
-  threads: Map<string, Record<string, unknown>>,
+  threads: Map<string, Set<string>>,
 
   /**
    * Individual media entities processed during the import.
    * These may be imported from a Twitter Archive, or synthesized
    * when scraping public tweets.
    */
-  media: Map<string, Record<string, unknown>>,
+  media: Map<string, TwitterMedia>,
 
   /**
    * An index of Tweet IDs saved as favorites.
    */
-  favorites: Set<string>,
-
-  /**
-   * An index of Tweet IDs saved as bookmarks, or manually-curated lists.
-   */
-  bookmarks: Set<string>,
+  favorites: Map<string, Set<string>>,
 
   /**
    * A list day-by-day analytics numbers for the specified Twitter user.
    */
-  metrics: TwitterAnalyticsRow[],
+  metrics: Map<string, TwitterAnalyticsRow[]>,
 }
 
 /**

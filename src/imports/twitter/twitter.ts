@@ -1,6 +1,6 @@
 import { BaseImport, TweetParsedData, TweetUrl, TwitterBrowser, scrapeTweetOembed } from '../index.js';
 import { camelCase, UrlResolver } from '../../index.js';
-import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterImportCache, TwitterPost } from "./types.js";
+import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterImportCache, TwitterPost, TwitterMedia } from "./types.js";
 
 import is from '@sindresorhus/is';
 import pThrottle from 'p-throttle';
@@ -8,20 +8,6 @@ import { PartialFavorite, PartialTweet, PartialTweetMediaEntity, TwitterArchive,
 import { parseString } from '@fast-csv/parse';
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
 
-
-/**
- * This migration doesn't just cache *a particular user's tweets*; it's designed
- * to cache favorites, retweets, quote tweets, and so on from many different
- * accounts as an undifferentiated pool of tweet.
- * 
- * This makes it much simpler to manage caching, use of scraping to populate missing
- * information, and so on regardless of what form a tweet came in. It also makes
- * it possible to download multiple Twitter Archives and treat them as a combined
- * pool of content.
- * 
- * Finally, it also means that an arbitrary list of tweet IDs and URLs can be fed in
- * and used as a hit list for archiving (scraping, screenshotting, etc).
- */
 export class Twitter extends BaseImport<TwitterImportCache> {
   declare options: TwitterImportOptions;
   
@@ -37,14 +23,12 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     this.browser = new TwitterBrowser();
     this.resolver = new UrlResolver();
     this.cacheData = {
-      user: undefined,
       archives: [],
-      tweets: new Map<string, Record<string, unknown>>(),
-      threads: new Map<string, Record<string, unknown>>(),
-      media: new Map<string, Record<string, unknown>>(),
-      favorites: new Set<string>(),
-      bookmarks: new Set<string>(),
-      metrics: [],    
+      tweets: new Map<string, TwitterPost>(),
+      threads: new Map<string, Set<string>>(),
+      media: new Map<string, TwitterMedia>(),
+      favorites: new Map<string, Set<string>>(),
+      metrics: new Map<string, TwitterAnalyticsRow[]>(),    
     };
 
     const throttle = pThrottle({ limit: 10, interval: 1000 });
@@ -56,24 +40,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return Promise.resolve();
   }
 
-  /**
-   * Note that this caches all tweets encountered during the migration process,
-   * not just tweets by the active user. separating replies from retweets from embeds
-   * etc. is a job for the output pipeline.
-   * 
-   * [name]-details.json
-   * [name]-archive-[yyyy-MM-dd].json
-   * [name]-favorites.json
-   *
-   * tweets/[yyyy]/[MM]/tweet-[tweet-id].json 
-   * screenshots/[yyyy]/[MM]/[tweet-id].json
-   * threads/[yyyy]/thread-[tweet-id].json
-   * 
-   * media/media-[media-id].json
-   * media-files/[media-id].[extension]
-   *
-   * It's not exceptionally efficient, but it works.
-   */
   async loadCache(): Promise<void> {
     this.resolver = new UrlResolver({ known: await this.files.readCache('known-urls.json') });
 
