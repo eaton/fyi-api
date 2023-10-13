@@ -18,3 +18,14 @@ test('redirects', async t => {
   const result = await r.resolve('https://nghttp2.org/httpbin/absolute-redirect/5');
   t.is(result?.redirects?.length, 4, 'all redirects accounted for');
 })
+
+test('hung url', async t => {
+  const result = await r.resolve('http://t.co/VMBMbcT');
+  t.not(result, undefined);
+})
+
+test('values exportable', async t => {
+  await r.resolve('https://domain-that-does-not-exist.zzz');
+  const fresh = new UrlResolver({ known: [...r.values()] })
+  t.deepEqual([...r.values()], [...fresh.values()]);
+})

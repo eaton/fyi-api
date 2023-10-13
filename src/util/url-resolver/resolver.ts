@@ -5,6 +5,7 @@ import got from "got";
 export interface ResolverOptions {
   normalizer?: false | UrlMutators.UrlMutator,
   known?: ResolvedUrl[],
+  timeout?: number
 }
 
 export type ResolvedUrl = {
@@ -21,6 +22,7 @@ export type ResolvedUrl = {
  */
 export class UrlResolver {
   known: Map<string, ResolvedUrl>;
+  timeout: number;
 
   constructor(options: ResolverOptions = {}) {
     if (options.normalizer === undefined) {
@@ -30,6 +32,8 @@ export class UrlResolver {
     } else {
       NormalizedUrl.normalizer = options.normalizer;;
     }
+
+    this.timeout = options.timeout ?? 5000;
 
     // This is likely to be pretty inefficient. Down the line we'll want to create a
     // database-backed setup or something like that.
@@ -66,6 +70,7 @@ export class UrlResolver {
     return got.head(normalized, {
       throwHttpErrors: false,
       followRedirect: true,
+      timeout: { request: this.timeout },
       hooks: {
         beforeRedirect: [
           (options) => {
@@ -78,27 +83,26 @@ export class UrlResolver {
         ]
       }
     })
-      .then(res => {
-        output!.resolved = output?.redirects?.pop() ?? res.url;
-        output!.status = res.statusCode;
-        output!.message = res.statusMessage;
+    .then(res => {
+      output!.resolved = output?.redirects?.pop() ?? res.url;
+      output!.status = res.statusCode;
+      output!.message = res.statusMessage;
+      if (output?.redirects?.length === 0) output!.redirects = undefined;
+      this.known.set(normalized, output!);
+      return output;
+    })
+    .catch((err: unknown) => {
+      if (err instanceof Error) {
+        output!.resolved = output?.redirects?.pop() ?? output?.normalized;
+        output!.status = -1;
+        output!.message = err.message;
         if (output?.redirects?.length === 0) output!.redirects = undefined;
-        return output;
-      })
-      .catch((err: unknown) => {
-        if (err instanceof Error) {
-          output!.resolved = output?.redirects?.pop() ?? output?.normalized;
-          output!.status = -1;
-          output!.message = err.message;
-          if (output?.redirects?.length === 0) output!.redirects = undefined;
-        } else {
-          output!.status = -2;
-        }
-        return output;
-      })
-      .finally(() => {
-        this.known.set(normalized, output!);
-      });
+      } else {
+        output!.status = -2;
+      }
+      this.known.set(normalized, output!);
+      return output;
+    });
   }
 
   values() {
