@@ -10,6 +10,7 @@ const opt: TwitterImportOptions = {
   },
   resolveUrls: true,
   headless: false,
+  metrics: false,
 }
 
 const twitter = new Twitter(opt);

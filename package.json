@@ -37,7 +37,7 @@
     "nodeArguments": [
       "--loader=ts-node/esm"
     ]
-  },  
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/https://github.com/eaton/fyi-api.git"
@@ -83,6 +83,7 @@
     "fast-csv": "^4.3.6",
     "fast-glob": "^3.3.1",
     "fs-extra": "^11.1.1",
+    "get-urls": "^12.1.0",
     "got": "^13.0.0",
     "gray-matter": "^4.0.3",
     "html-to-text": "^9.0.5",
@@ -98,6 +99,7 @@
     "playwright": "^1.38.1",
     "playwright-extra": "^4.3.6",
     "prettier": "^2.8.8",
+    "protocolify": "^4.0.0",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "ts-node": "^10.9.1",
     "tumblr.js": "^4.0.1",

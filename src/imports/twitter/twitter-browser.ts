@@ -137,14 +137,17 @@ export class TwitterBrowser {
       });  
     }
 
-    if (this._page === undefined) {
+    if (this._page === undefined || this._page.isClosed()) {
       this._page = await this._context.newPage();
     }
     return Promise.resolve(this._page);
   }
 
   async capture(idOrUrl: string, screenshot?: boolean): Promise<ScrapedTweet> {
-    const page = await this.setup();
+    let page = await this.setup();
+    await page.close();
+    page = await this.setup();
+
     const tweet = new TweetUrl(idOrUrl);
   
     await page.goto(tweet.href);
@@ -158,6 +161,12 @@ export class TwitterBrowser {
     const html = await page.content();
     const errors = await page.locator('#react-root div[data-testid="error-detail"] span').allInnerTexts();
 
+    const locator = page.locator('#react-root article');
+    const tweetHtml = await locator.innerHTML({ timeout: 2000 }).catch((err: unknown) => {
+      if (err instanceof Error) errors.push(err.message);
+      return '';
+    });
+
     // Check for error strings on the page; tweets may be deleted or protected.
     if (errors.length) {
       return Promise.resolve({
@@ -167,9 +176,7 @@ export class TwitterBrowser {
         errors,
       });
     } else {
-      const locator = page.locator('#react-root article');
-      let extracted = await locator.innerHTML()
-        .then(html => extractWithCheerio(html, this._options.template!));
+      const extracted = await extractWithCheerio(tweetHtml, this._options.template!);
 
       if (Array.isArray(extracted)) {
         // We shouldn't get here — our template was not, in fact, designed to return multiple results.

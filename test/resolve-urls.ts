@@ -29,3 +29,9 @@ test('values exportable', async t => {
   const fresh = new UrlResolver({ known: [...r.values()] })
   t.deepEqual([...r.values()], [...fresh.values()]);
 })
+
+test('evernote dead-end', async t=> {
+  // What we WANT is the https://img.skitch.com/20110116-dg9rerws6jgj5r3kqwkwqmc2gc.png URL
+  const output = r.resolve('http://t.co/ogVSakd');
+  console.log(output);
+});
