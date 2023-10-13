@@ -11,6 +11,7 @@
   "scripts": {
     "demo": "ts-node-esm src/index.ts ",
     "build": "npm run clean; npm run compile",
+    "test": "ava",
     "clean": "rm -rf ./dist;rm *.tsbuildinfo",
     "compile": "tsc -p ./tsconfig.build.json",
     "lint": "eslint . --ext .ts",
@@ -29,6 +30,14 @@
     "indent_size": 2,
     "bracketSpacing": true
   },
+  "ava": {
+    "extensions": {
+      "ts": "module"
+    },
+    "nodeArguments": [
+      "--loader=ts-node/esm"
+    ]
+  },  
   "repository": {
     "type": "git",
     "url": "git+https://github.com/https://github.com/eaton/fyi-api.git"
@@ -46,6 +55,7 @@
   "homepage": "https://github.com/eaton/fyi-api",
   "dependencies": {
     "@autogram/url-tools": "^2.5.4",
+    "@ava/typescript": "^4.1.0",
     "@salesforce/ts-types": "^2.0.7",
     "@sindresorhus/is": "^6.0.0",
     "@sindresorhus/slugify": "^2.2.1",
@@ -61,6 +71,7 @@
     "@typescript-eslint/eslint-plugin": "^5.59.9",
     "@typescript-eslint/parser": "^5.59.9",
     "arangojs": "^8.4.1",
+    "ava": "^5.3.1",
     "chalk": "^5.3.0",
     "cheerio": "^1.0.0-rc.12",
     "cheerio-json-mapper": "^1.0.3",
@@ -98,7 +109,6 @@
     "uuid": "^9.0.1",
     "xmldom-ts": "^0.3.1",
     "xpath-ts2": "^1.4.2",
-    "yaml": "^2.3.2",
-    "tap": "^18.5.0"
+    "yaml": "^2.3.2"
   }
 }

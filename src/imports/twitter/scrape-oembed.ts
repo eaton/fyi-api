@@ -1,6 +1,6 @@
 import is from '@sindresorhus/is';
 import ky from 'ky';
-import { Html, TweetParsedData, changeDate, TweetUrl } from '../../index.js';
+import { Html, ScrapedTweet, changeDate, TweetUrl } from '../../index.js';
 
 type TweetOEmbedResponse = {
   url?: string,
@@ -23,7 +23,7 @@ export async function scrapeTweetOembed(idOrUrl: string) {
   const tweet = new TweetUrl(idOrUrl);
   const r = await ky.get(tweet.oembed, { throwHttpErrors: false });
 
-  let result: TweetParsedData = { id: tweet.id }
+  let result: ScrapedTweet = { id: tweet.id }
   const json = await r.json<TweetOEmbedResponse>().catch(() => { return {} as TweetOEmbedResponse });
 
   if (r.ok) {

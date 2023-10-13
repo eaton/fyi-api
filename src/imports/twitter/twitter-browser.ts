@@ -1,5 +1,5 @@
 import { Browser, BrowserContext, Page } from 'playwright';
-import { extractWithCheerio, CheerioExtractTemplate, TweetParsedData, TweetUrl } from '../../index.js';
+import { extractWithCheerio, CheerioExtractTemplate, ScrapedTweet, TweetUrl } from '../../index.js';
 
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -143,14 +143,14 @@ export class TwitterBrowser {
     return Promise.resolve(this._page);
   }
 
-  async capture(idOrUrl: string, screenshot?: boolean): Promise<TweetParsedData> {
+  async capture(idOrUrl: string, screenshot?: boolean): Promise<ScrapedTweet> {
     const page = await this.setup();
     const tweet = new TweetUrl(idOrUrl);
   
     await page.goto(tweet.href);
 
-    let results: TweetParsedData = {
-      id: tweet.href,
+    let results: ScrapedTweet = {
+      id: tweet.id,
       url: page.url(),
     }
 
@@ -168,7 +168,8 @@ export class TwitterBrowser {
       });
     } else {
       const locator = page.locator('#react-root article');
-      let extracted = await locator.innerHTML().then(html => extractWithCheerio(html, this._options.template!));
+      let extracted = await locator.innerHTML()
+        .then(html => extractWithCheerio(html, this._options.template!));
 
       if (Array.isArray(extracted)) {
         // We shouldn't get here — our template was not, in fact, designed to return multiple results.

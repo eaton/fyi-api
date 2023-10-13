@@ -50,7 +50,7 @@ export type TwitterImportCache = {
  * entity on and off for the import, AND allows you to specify how much work it
  * should to do look up the missing bits.
  * 
- * - metadata: Use Twitter's OEmbed endpoint to get username, post date, and raw text.
+ * - basic: Use Twitter's OEmbed endpoint to get username, post date, and raw text.
  *   mostly useful for favorites, which come in with almost no data at all.
  * - scrape: Use a headless browser to load the tweet data. This gets the same
  *   stuff that 'metadata' does, but can also capture alt text on images, like and
@@ -58,45 +58,19 @@ export type TwitterImportCache = {
  * - archive: Get all of the previous data, and take a screenshot of the tweet
  *   for archival purposes.
  */
-export type TwitterLookupLevel = 'metadata' | 'scrape' | 'archive';
+export type TwitterLookupLevel = false | 'basic' | 'scrape' | 'screenshot';
 
-/**
- * A text or CSV file containing a return-delimited list of tweet URLs or IDs
- * to be archived.
- */
-export type TwitterCustomImport = {
-
-  /**
-   * An optional name for the set of imported tweets.
-   */
-  name?: string,
-
-  /**
-   * The filename to be imported and processed; relative paths will be treated
-   * as relative to the filestore's `import` directory.
-   * 
-   * If the filename contains glob wildcards, and multiple files are matched,
-   * their contents will be deduplicated and combined for processing as a single
-   * list.
-   */
-  filename: string,
-
-  /**
-   * The level of rigor to use when looking up the tweets; if no level is
-   * specified, 'metadata' will be used for the sake of speed.
-   */
-  level?: TwitterLookupLevel
-}
+export type TwitterLookupLevelFunction = ((tweet: TwitterPost) => TwitterLookupLevel);
 
 export interface TwitterImportOptions extends BaseImportOptions {
 
-  scrapeLimit?: number,
+  scrape?: TwitterLookupLevel | TwitterLookupLevelFunction,
 
-  scrapeWindow?: number,
+  scrapingLimit?: number,
 
-  lookupAltText?: boolean;
+  scrapingInterval?: number,
 
-  unshortenUrls?: boolean;
+  resolveUrls?: boolean,
 
   /**
    * Look for zipped Twitter archive files in the `input` directory, and use
@@ -105,14 +79,7 @@ export interface TwitterImportOptions extends BaseImportOptions {
    *
    * @defaultValue `true`
    */
-  archive?: boolean | 'newest' | 'merge' | 'oldest',
-
-
-  /**
-   * In addition to tweets, media, etc, process and export metadata about
-   * the files and archives used during the import.)
-   */
-  metadata?: boolean,
+  archive?: boolean | 'newest' | 'oldest',
 
   /**
    * Process retweets from saved Twitter Archives. Because Retweets generally
@@ -160,7 +127,6 @@ export interface TwitterImportOptions extends BaseImportOptions {
    */
   favorites?: boolean | TwitterLookupLevel,
 
-
   /**
    * Process media details.
    */
@@ -170,10 +136,14 @@ export interface TwitterImportOptions extends BaseImportOptions {
    * One or more list of tweets to retrieve and process, in addition to the
    * tweets in the archive.
    * 
-   * This can be a simple array of Tweet URLs, Tweet IDs, or an array of
-   * pointers to txt and csv file full of tweets.
+   * This can be an array of tweet URLS, a filename containing a list of tweet
+   * URLs, or a glob string matching multiple files full of tweet URLs. By default,
+   * or when set to `true`, it will treat any .txt files in the input directory as
+   * custom tweet lists.
+   * 
+   * @defaultValue: `*.txt`
    */
-  custom?: TwitterCustomImport[] | string[];
+  custom?: boolean | string | string[];
 }
 
 export type TwitterUser = Record<string, unknown> & {
@@ -182,44 +152,34 @@ export type TwitterUser = Record<string, unknown> & {
   fullName?: string
 }
 
-export type TweetParsedData = {
-  [index: string]: unknown | undefined,
-  id: string,
-  url?: string,
-  success?: boolean,
-  name?: string,
-  fullname?: string,
-  date?: string,
-  text?: string,
-  media?: unknown[],
-  links?: unknown[],
-  favorites?: string,
-  retweets?: string,
-  quotes?: string,
-  screenshot?: Buffer
-  screenshotFormat?: 'jpeg' | 'png',
-  html?: string,
-  errors?: string[],
-}
-
 export type TwitterPost = Record<string, unknown> & {
   id: string
   url?: string,
   status?: number,
   userId?: string,
   name?: string,
+  fullName?: string,
   threadId?: string,
   repliesToTweetId?: string,
   repliesToUserId?: string,
-  retweetOf?: string,
   date?: string,
   text?: string,
-  media?: string[],
-  urls?: string[],
+  media?: Record<string, string>[],
+  urls?: Record<string, string>[],
   mentions?: string[],
   favorites?: number,
+  retweets?: number,
   replies?: number,
-  presentInArchive?: [],
+  quotes?: number,
+  bookmarks?: number,
+}
+
+export type ScrapedTweet = TwitterPost & {
+  success?: boolean,
+  errors?: string[],
+  html?: string,
+  screenshot?: Buffer
+  screenshotFormat?: 'jpeg' | 'png',
 }
 
 export type TwitterMedia = Record<string, unknown> & {

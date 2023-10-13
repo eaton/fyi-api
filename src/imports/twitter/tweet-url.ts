@@ -7,12 +7,15 @@ export class TweetUrl extends URL {
   constructor(idOrUrl: string, name?: string) {
     let id = idOrUrl;
     if (is.numericString(idOrUrl)) {
-      name = 'twitter';
+      // We handle defaulting the name to 'twitter' later
     } else if (idOrUrl.includes('/i/web/status/')) {
-      name = 'twitter';
       id = idOrUrl.match(/^https?\:\/\/twitter.com\/i\/web\/status\/(\d+)/)?.[1] ?? '';  
     } else if (idOrUrl.includes('/status/')) {
-      [name, id] = idOrUrl.match(/^https?\:\/\/twitter.com\/([a-zA-Z0-9_-]+)\/status\/(\d+)/)?.slice(1,3) ?? [];  
+      const match = idOrUrl.match(/^https?\:\/\/twitter.com\/([a-zA-Z0-9_-]+)\/status\/(\d+)/);
+      if (match) {
+        name ??= match[1];
+        id = match[2];
+      }
     } else {
       throw new TypeError('Not a valid tweet URL');
     }

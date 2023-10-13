@@ -33,7 +33,7 @@ export class UrlResolver {
 
     // This is likely to be pretty inefficient. Down the line we'll want to create a
     // database-backed setup or something like that.
-    if (options.known) {
+    if (Array.isArray(options.known)) {
       this.known = new Map<string, ResolvedUrl>(options.known.map(sr => [sr.normalized, sr]));
     } else {
       this.known = new Map<string, ResolvedUrl>();
