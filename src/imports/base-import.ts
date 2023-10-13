@@ -54,7 +54,12 @@ export abstract class BaseImport<CacheType = void> {
     if (this.options.logger) {
       this.options.logger(data)
     } else {
-      console.log(`${chalk.bold(this.name)}:`, ...data);
+      if (typeof(data[0]) === 'string') {
+        data[0] = `${chalk.bold(this.name)}: ` + data[0];
+        console.log(...data);
+      } else {
+        console.log(`${chalk.bold(this.name)}:`, ...data);
+      }
     }
   }
 
