@@ -90,6 +90,10 @@ export type TwitterCustomImport = {
 
 export interface TwitterImportOptions extends BaseImportOptions {
 
+  scrapeLimit?: number,
+
+  scrapeWindow?: number,
+
   lookupAltText?: boolean;
 
   unshortenUrls?: boolean;

@@ -31,6 +31,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       metrics: new Map<string, TwitterAnalyticsRow[]>(),    
     };
 
+    // Wrap our protected internal lookup function in a throttling mechanism
     const throttle = pThrottle({ limit: 10, interval: 1000 });
     this.lookupTweet = throttle(this._lookupTweet);
   }
