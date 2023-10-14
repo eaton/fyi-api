@@ -4,10 +4,7 @@ import 'dotenv/config';
 import { Twitter, TwitterImportOptions } from './index.js';
 
 const opt: TwitterImportOptions = {
-  files: {
-    input: process.env.TWITTER_INPUT,
-    cache: 'test/cache'
-  },
+  files: { input: process.env.TWITTER_INPUT },
   resolveUrls: true,
   headless: false,
   metrics: false,

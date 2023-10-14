@@ -20,46 +20,44 @@ type TweetOEmbedResponse = {
  * be { status, statusText, url, name, fullname, text, date, urls }.
  */
 export async function scrapeTweetOembed(idOrUrl: string) {
-  const tweet = new TweetUrl(idOrUrl);
-  const r = await ky.get(tweet.oembed, { throwHttpErrors: false });
-
+  let tweet = new TweetUrl(idOrUrl);
   let result: ScrapedTweet = { id: tweet.id }
-  const json = await r.json<TweetOEmbedResponse>().catch(() => { return {} as TweetOEmbedResponse });
 
-  if (r.ok) {
-    const parsed = await Html.extractWithCheerio(json.html ?? '', {
-      text: 'blockquote.twitter-tweet > p | html',
-      date: 'blockquote.twitter-tweet > a | text',
-      links: [{
-        $: 'blockquote.twitter-tweet > p a',
-        text: '$ | text',
-        url: '$ | attr:href'
-      }],
+  const json = await ky.get(tweet.oembed, { throwHttpErrors: false })
+    .then(r => r.json<TweetOEmbedResponse>().catch(() => { return {} as TweetOEmbedResponse }))
+    .catch((err: unknown) => {
+      return { status: -1, message: err instanceof Error ? err.message : '', html: '' } as TweetOEmbedResponse;
     });
+    
+  const parsed = await Html.extractWithCheerio(json.html ?? '', {
+    text: 'blockquote.twitter-tweet > p | html',
+    date: 'blockquote.twitter-tweet > a | text',
+    links: [{
+      $: 'blockquote.twitter-tweet > p a',
+      text: '$ | text',
+      url: '$ | attr:href'
+    }],
+  });
 
-    if (typeof(parsed.date) == 'string') {
-      parsed.date = changeDate(parsed.date, 'LLLL d, yyyy', 'yyyy-MM-dd');
-    };
+  if (typeof(parsed.date) == 'string') {
+    parsed.date = changeDate(parsed.date, 'LLLL d, yyyy', 'yyyy-MM-dd');
+  };
 
-    if (typeof(parsed.text) === 'string' && parsed.text.length > 0) {
-      parsed.text = toPlainText(parsed.text);
-    } else {
-      parsed.text = undefined;
-    }
-
-    if (is.emptyArray(parsed.links)) parsed.links = undefined;
-
-    result = {
-      ...result,
-      url: json.url,
-      name: json.url?.split('/')[3],
-      fullname: json.author_name?.toString() ?? undefined,
-      ...parsed
-    };
+  if (typeof(parsed.text) === 'string' && parsed.text.length > 0) {
+    parsed.text = toPlainText(parsed.text);
   } else {
-    result.status = r.status;
-    result.message = r.statusText;
+    parsed.text = undefined;
   }
+
+  if (is.emptyArray(parsed.links)) parsed.links = undefined;
+
+  result = {
+    ...result,
+    url: json.url ?? tweet.href,
+    name: json.author_url?.split('/').pop(),
+    fullName: json.author_name,
+    ...parsed
+  };
 
   return Promise.resolve(result);
 }

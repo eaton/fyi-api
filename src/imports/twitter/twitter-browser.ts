@@ -98,9 +98,6 @@ export class TwitterBrowser {
   protected _page?: Page;
   protected _options: TwitterBrowserOptions;
 
-  static defaultExtractionTemplate: CheerioExtractTemplate = {
-  };
-
   constructor(options: TwitterBrowserOptions = {}) {
     this._options = {
       ...browserDefaults,

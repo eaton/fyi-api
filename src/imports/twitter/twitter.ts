@@ -40,8 +40,8 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
     // Wrap our protected internal lookup function in a throttling mechanism
     const throttle = pThrottle({
-      limit: options.scrapingLimit ?? 5,
-      interval: options.scrapingInterval ?? 1000
+      limit: options.scrapingLimit ?? 7,
+      interval: options.scrapingInterval ?? 5000
     });
     this.lookupTweet = throttle(this._lookupTweet);
   }
@@ -270,11 +270,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return this.files.findCache(`media-files/**/media-${id}.*`).then(results => results.length > 0);
   }
   
-
-  async cacheTweet(
-    input: string | URL | PartialTweet | PartialFavorite | TwitterPost, 
-    options: Record<string, unknown> = {}
-  ): Promise<TwitterPost> {
+  toTwitterPost(input: string | URL | PartialTweet | PartialFavorite | TwitterPost) {
     let tweet: TwitterPost | undefined = undefined; 
 
     if (is.string(input) || is.urlInstance(input)) {
@@ -304,7 +300,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       };
 
       if (input.retweeted_status) {
-        await this.cacheTweet(input.retweeted_status);
         tweet.retweetOf = input.retweeted_status.id_str;
         tweet.url = new TweetUrl(input.retweeted_status.id_str, input.retweeted_status.user.screen_name).href;
       }
@@ -320,10 +315,16 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     } else {
       tweet = input;
     }
+    return tweet;
+  }
 
-    if (tweet === undefined) {
-      return Promise.reject(new TypeError('Tweet could not be populated', { cause: input }));
-    }
+  async cacheTweet(
+    input: string | URL | PartialTweet | PartialFavorite | TwitterPost, 
+    options: Record<string, unknown> = {}
+  ): Promise<TwitterPost> {
+    let tweet = this.toTwitterPost(input);
+
+    // TODO: handle retweet scenario
 
     // Don't overwrite already-cached tweets
     if ((await this.tweetIsCached(tweet.id))) {
