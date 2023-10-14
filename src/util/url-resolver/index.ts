@@ -19,4 +19,4 @@
 // 'hunt down that link no matter what' mode.
 
 
-export * from './resolver.js'
+export * from './url-resolver.js'
