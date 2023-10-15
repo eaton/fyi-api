@@ -54,8 +54,8 @@ export async function scrapeTweetOembed(idOrUrl: string) {
   result = {
     ...result,
     url: json.url ?? tweet.href,
-    name: json.author_url?.split('/').pop(),
-    fullName: json.author_name,
+    handle: json.author_url?.split('/').pop(),
+    displayName: json.author_name,
     ...parsed
   };
 

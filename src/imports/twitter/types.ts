@@ -1,5 +1,6 @@
 import { ArchiveSyntheticInfo } from "twitter-archive-reader";
-import { BaseImportOptions } from "../index.js";
+import { BaseImportOptions, TwitterUserIndex } from "../index.js";
+import { TweetIndex } from "./tweet-index.js";
 
 // TODO: We can't really retrieve bookmarks proper from Twitter without
 // paying stupid money for the privelege. Instead, we'll accept named text
@@ -33,9 +34,14 @@ export type TwitterImportCache = {
   media: Map<string, TwitterMedia>,
 
   /**
-   * An index of Tweet IDs saved as favorites.
+   * An index of Tweet IDs to record interactions like retweeting, favoriting, bookmarking, etc.
    */
-  favorites: Map<string, Set<string>>,
+  tweetIndex: TweetIndex,
+
+  /**
+   * An index of user ID/handle/Display Name combinations seen during the import.
+   */
+  userIndex: TwitterUserIndex,
 
   /**
    * A list day-by-day analytics numbers for the specified Twitter user.
@@ -146,22 +152,20 @@ export interface TwitterImportOptions extends BaseImportOptions {
   custom?: boolean | string | string[];
 }
 
-export type TwitterUser = Record<string, unknown> & {
-  id: string,
-  name: string,
-  fullName?: string
+export type TwitterUser = {
+  userId?: string,
+  handle?: string,
+  displayName?: string
 }
 
-export type TwitterPost = Record<string, unknown> & {
+export type TwitterPost = TwitterUser & {
   id: string
   url?: string,
   status?: number,
-  userId?: string,
-  name?: string,
-  fullName?: string,
-  threadId?: string,
-  repliesToTweet?: string,
-  repliesToUser?: string,
+  isInThreadId?: string,
+  isReplyToTweet?: string,
+  isReplyToUser?: string,
+  isRetweetOf?: string,
   date?: string,
   text?: string,
   media?: Record<string, unknown>[],
@@ -192,7 +196,7 @@ export type TwitterMedia = Record<string, unknown> & {
 }
 
 export type TwitterAnalyticsSet = {
-  username?: string,
+  handle?: string,
   start?: string,
   end?: string,
   locale?: string,

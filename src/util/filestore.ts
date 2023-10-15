@@ -5,7 +5,7 @@ const { async: glob } = gpkg;
 type GlobOptions = Parameters<typeof glob>[1];
 
 import fpkg, { PathLike } from 'fs-extra';
-const { readFile, readJson, writeFile, writeJson, statSync, existsSync, ensureDirSync } = fpkg;
+const { readFile, readJson, writeFile, writeJson, statSync, existsSync, ensureDirSync, remove } = fpkg;
 import { parse as parseYaml, stringify as serializeYaml } from 'yaml';
 
 import is from "@sindresorhus/is";
@@ -324,6 +324,25 @@ export class Filestore {
     const path = this.prefix(file, this.output);
     return this.write(path, data, options)
       .then(() => path);
+  }
+
+  async delete(fileOrDirectory: string | string[]) {
+    const files = Array.isArray(fileOrDirectory) ? fileOrDirectory : [fileOrDirectory];
+    return Promise.allSettled(files.map(f => remove(f)));
+  }
+
+  async deleteCache(fileOrDirectory: string | string[]) {
+    const files = Array.isArray(fileOrDirectory) ? fileOrDirectory : [fileOrDirectory];
+    return this.delete(
+      files.map(f => this.prefix(f, 'cache'))
+    );
+  }
+
+  async deleteOutput(fileOrDirectory: string) {
+    const files = Array.isArray(fileOrDirectory) ? fileOrDirectory : [fileOrDirectory];
+    return this.delete(
+      files.map(f => this.prefix(f, 'output'))
+    );
   }
 
   /**

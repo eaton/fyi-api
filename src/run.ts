@@ -5,9 +5,12 @@ import { Twitter, TwitterImportOptions } from './index.js';
 
 const opt: TwitterImportOptions = {
   files: { input: process.env.TWITTER_INPUT },
-  resolveUrls: true,
+  archive: 'newest',
+  media: true,
+  favorites: true,
+  resolveUrls: false,
+  scrape: false,
   headless: false,
-  metrics: false,
 }
 
 const twitter = new Twitter(opt);

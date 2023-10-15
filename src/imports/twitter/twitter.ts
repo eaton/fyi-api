@@ -1,4 +1,4 @@
-import { BaseImport, ScrapedTweet, TweetUrl, TwitterBrowser, scrapeTweetOembed } from '../index.js';
+import { BaseImport, ScrapedTweet, TweetUrl, TwitterBrowser, TwitterUserIndex, scrapeTweetOembed } from '../index.js';
 import { camelCase, changeDate, UrlResolver } from '../../index.js';
 import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterImportCache, TwitterPost, TwitterMedia, TwitterLookupLevel } from "./types.js";
 
@@ -8,15 +8,16 @@ import { PartialFavorite, PartialTweet, PartialTweetMediaEntity, TwitterArchive 
 import { parseString } from '@fast-csv/parse';
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
 import path from 'path';
+import * as fileType from 'file-type';
+import { TweetIndex } from './tweet-index.js';
 
 export class Twitter extends BaseImport<TwitterImportCache> {
   declare options: TwitterImportOptions;
   
-  collections = ['twitter_post', 'twitter_favorite', 'twitter_media'];
-
   browser: TwitterBrowser;
   resolver: UrlResolver;
   cacheData: TwitterImportCache;
+  parentIndex: Map<string, string>;
   lookupTweet: (id: string, level: TwitterLookupLevel) => Promise<ScrapedTweet>;
 
   constructor(options: TwitterImportOptions = {}) {
@@ -28,13 +29,14 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       tweets: new Map<string, TwitterPost>(),
       threads: new Map<string, Set<string>>(),
       media: new Map<string, TwitterMedia>(),
-      favorites: new Map<string, Set<string>>(),
+      tweetIndex: new TweetIndex(),
+      userIndex: new TwitterUserIndex(),
       metrics: new Map<string, TwitterAnalyticsRow[]>(),
     };
 
     this.options.scrape ??= t => {
       if (t.media) return 'scrape';              // Media tweets don't have alt text
-      if (t.name === undefined || t.date === undefined) return 'basic';   // Favorites dont have name populated
+      if (t.handle === undefined || t.date === undefined) return 'basic';   // Favorites dont have name populated
       return false; 
     }
 
@@ -44,6 +46,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       interval: options.scrapingInterval ?? 5000
     });
     this.lookupTweet = throttle(this._lookupTweet);
+    this.parentIndex = new Map<string, string>();
   }
 
   async doImport(): Promise<void> {
@@ -126,57 +129,74 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       archives = archives.slice(0,1);
     }
 
-    // A flat list of favorites for each user account encountered while processing archives
-    const favIndex: Map<string, Set<string>> = new Map<string, Set<string>>();
-
     for (const a of archives) {
       const buffer = this.files.readInput(a, { parse: false });
       const archive = new TwitterArchive(buffer, { ignore: ['ad', 'block', 'dm', 'moment', 'mute'] });
-      await archive.ready().then(() => archive.releaseZip());
+      await archive.ready();
 
-      this.log(
-        'Processing %s archive for %s (%d tweets)',
-        formatDate(archive.generation_date, 'yyyy-MM-dd'),
-        archive.user.screen_name,
-        archive.tweets.length
-      );
+      const archiveInfoPath = `${archive.user.screen_name}-${formatDate(archive.generation_date, 'yyyy-MM-dd')}-archive.json`;
+      if (this.files.existsCache(archiveInfoPath)) {
+        this.log(
+          'Skipping %s archive for %s (already cached)',
+          formatDate(archive.generation_date, 'yyyy-MM-dd'),
+          archive.user.screen_name
+        );
+        continue;
+      } else {
+        this.log(
+          'Processing %s archive for %s (%d tweets, %d favorites)',
+          formatDate(archive.generation_date, 'yyyy-MM-dd'),
+          archive.user.screen_name,
+          archive.tweets.length,
+          archive.favorites.length,
+        );
+      }
 
       // We might want to use archive.user instead of archive.synthetic_info
       await this.files.writeCache(
-        `${archive.user.screen_name}-${formatDate(archive.generation_date, 'yyyy-MM-dd')}.json`,
+        archiveInfoPath,
         {
-          ...archive.synthetic_info,
-          follower_count: archive.followers.size,
-          following_count: archive.followings.size,
-          followers: [...archive.followers],
-          following: [...archive.followings]
+          hash: archive.synthetic_info.hash,
+          ...archive.synthetic_info.info.user,
+          tweets: archive.synthetic_info.tweet_count ?? 0,  
+          favorites: archive.favorites.length ?? 0,
+          followers: archive.followers.size ?? 0,
+          following: archive.followings.size,
+          follower_list: [...archive.followers],
+          following_list: [...archive.followings]
         }
       );
   
       for (const t of archive.tweets.sortedIterator('asc')) {
-        // Retweets fuck us up, here -- we need to maintain a list of RTs and their
-        // dates separate from the raw cached tweet data
         await this.cacheTweet(t);
+        if (this.options.media) {
+          await this.cacheTweetMedia(t, archive);
+        }
       }
   
       if (this.options.favorites) {
         for (const f of archive.favorites.all) {
           await this.cacheTweet(f);
-          if (!favIndex.has(archive.user.screen_name)) {
-            favIndex.set(archive.user.screen_name, new Set<string>());
-          }
-          favIndex.get(archive.user.screen_name)?.add(f.tweetId);
+          this.cacheData.tweetIndex.add({ id: f.tweetId, handle: archive.user.screen_name, list: 'favorites', date: f.date?.toISOString() });
         }
       }
 
-      if (this.options.media) {
-        // TBD
+      await this.cacheIndexes();
+
+      archive.releaseZip();
+    }
+  }
+
+  async cacheIndexes() {
+    // write the current Tweet index to disk
+    for (const [handle, lists] of Object.entries(this.cacheData.tweetIndex.batchedvalues())) {
+      for (const [list, tweets] of Object.entries(lists)) {
+        this.files.writeCache(`${handle}-${list}.json`, tweets);
       }
     }
 
-    for (const favUser of favIndex.keys()) {
-      this.files.writeCache(`${favUser}-favorites.json`, [...favIndex.get(favUser)?.values() ?? []]);
-    }
+    // write the current User index to disk
+    // write the current KnownUrls index to disk
   }
 
   async processAnalytics() {
@@ -200,8 +220,8 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
     const metricsRegex = /daily_tweet_activity_metrics_(.+)_\d{8}_\d{8}_(\w+).csv/;
     for (const file of analytics) {
-      const [username, locale] = file.match(metricsRegex)?.slice(1) ?? [];
-      allData[username] ??= { username, start: undefined, end: undefined, locale, rows: [] };
+      const [handle, locale] = file.match(metricsRegex)?.slice(1) ?? [];
+      allData[handle] ??= { handle, start: undefined, end: undefined, locale, rows: [] };
       
       // ridic. inefficient, but it works for now. We should cache in headers/rows
       // nested array format rather than full named object mode.
@@ -212,9 +232,9 @@ export class Twitter extends BaseImport<TwitterImportCache> {
               const mappedRow = Object.fromEntries(
               Object.entries(row).map(([k, v]) => [camelCase(k), (v === '-') ? undefined : v])
             ) as TwitterAnalyticsRow;
-            allData[username].start = getStart(allData[username].start, mappedRow.date);
-            allData[username].end = getEnd(allData[username].end, mappedRow.date);
-            allData[username].rows.push(mappedRow);
+            allData[handle].start = getStart(allData[handle].start, mappedRow.date);
+            allData[handle].end = getEnd(allData[handle].end, mappedRow.date);
+            allData[handle].rows.push(mappedRow);
           })
         );
     }
@@ -226,24 +246,29 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return Promise.resolve();
   }
 
-  protected async prepMedia(t: PartialTweet, a: TwitterArchive): Promise<void> {
-    for (const m of t.extended_entities?.media ?? []) {
-      m.display_url;
-      m.expanded_url;
-      m.id_str;
-      m.media_alt;
-      m.media_url_https;
-      m.source_status_id;
-      m.type;
-      m.video_info;
+  async cacheTweetMedia(tweet: PartialTweet, archive: TwitterArchive) {
+    for (const m of tweet.extended_entities?.media ?? []) {
+      const mediaMetaFile = `media/media-${tweet.id_str}-${m.id_str}.json`;
+      this.files.writeCache(mediaMetaFile, { tweet_id: tweet.id_str, ...m });
+
+      try {
+        const buffer = Buffer.from(await archive.medias.fromTweetMediaEntity(m, true) as ArrayBuffer);
+        const mimetype = await fileType.fileTypeFromBuffer(buffer);
+
+        const mediaFile = mimetype ? `media-files/${m.id_str}.${mimetype.ext}` : `media-files/${m.id_str}.bin`;
+        this.files.writeCache(mediaFile, buffer);
+      } catch(err: unknown) {
+        if (err instanceof Error) {
+          this.log(tweet);
+        }
+      }
     }
-    return Promise.resolve();
   }
 
   protected pathToTweet(t: TwitterPost): string {
-    const d = new Date(t.date ?? '1970-01-01');
-    const datePath = d ? formatDate(d, 'yyyy/MM/') : '';
-    return `tweets/${datePath}tweet-${t.id}.json`;
+    return t.date ?
+      `tweets/${formatDate(new Date(t.date), 'yyyy/MM/')}tweet-${t.id}.json`:
+      `tweets/unknown/tweet-${t.id}.json`;
   }
 
   async getTweet(id: string | number): Promise<TwitterPost | undefined> {
@@ -263,14 +288,14 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   protected async mediaIsCached(id: string) {
-    return this.files.findCache(`media/**/media-${id}.json`).then(results => results.length > 0);
+    return this.files.findCache(`media/**/media-*-${id}.json`).then(results => results.length > 0);
   }
 
   protected async mediaFileIsCached(id: string) {
-    return this.files.findCache(`media-files/**/media-${id}.*`).then(results => results.length > 0);
+    return this.files.findCache(`media-files/**/media-*-${id}.*`).then(results => results.length > 0);
   }
   
-  toTwitterPost(input: string | URL | PartialTweet | PartialFavorite | TwitterPost) {
+  toTwitterPost(input: string | URL | PartialTweet | PartialFavorite | TwitterPost): TwitterPost {
     let tweet: TwitterPost | undefined = undefined; 
 
     if (is.string(input) || is.urlInstance(input)) {
@@ -284,13 +309,13 @@ export class Twitter extends BaseImport<TwitterImportCache> {
         url: url.href,
         date: input.created_at_d ? input.created_at_d.toISOString() : undefined,
         userId: input.user.id_str,
-        name: input.user.screen_name,
-        fullName: input.user.name,
+        handle: input.user.name,
+        displayName: input.user.screen_name,
         text: input.full_text ?? input.text,
         retweets: input.retweet_count,
         favorites: input.favorite_count,
-        repliesToTweet: input.in_reply_to_status_id_str,
-        repliesToUser: input.in_reply_to_screen_name,
+        isReplyToTweet: input.in_reply_to_status_id_str,
+        isReplyToUser: input.in_reply_to_screen_name,
         urls: input.entities.urls.map(u => {
           return { text: u.url, title: u.display_url, url: u.expanded_url }
         }),
@@ -300,8 +325,10 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       };
 
       if (input.retweeted_status) {
-        tweet.retweetOf = input.retweeted_status.id_str;
-        tweet.url = new TweetUrl(input.retweeted_status.id_str, input.retweeted_status.user.screen_name).href;
+        // We record the fact that this user retweeted it, but return the underlying
+        // retweeted status for caching purposes.
+        this.cacheData.tweetIndex.add({ id: tweet.id, handle: tweet.handle, list: 'retweets', date: tweet.date });
+        tweet = this.toTwitterPost(input.retweeted_status);
       }
 
     } else if (isPartialFavorite(input)) {
@@ -371,8 +398,8 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   protected mergedScrapedData(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {
-    tweet.name ??= scraped.name;
-    tweet.fullName ??= scraped.fullName;
+    tweet.handle ??= scraped.handle;
+    tweet.displayName ??= scraped.displayName;
     tweet.favorites ??= scraped.favorites;
     tweet.replies ??= scraped.replies;
     tweet.retweets ??= scraped.retweets;
@@ -380,10 +407,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     tweet.bookmarks ??= scraped.bookmarks;
 
     return tweet;
-  }
-
-  async cacheTweetMedia(tweet: TwitterPost, archive?: TwitterArchive) {
-    // We want to take in a Tweet and cache its media elements.
   }
 
   protected async _lookupTweet(id: string, level: TwitterLookupLevel = 'basic') {
