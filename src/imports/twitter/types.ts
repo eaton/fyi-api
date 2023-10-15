@@ -189,10 +189,12 @@ export type ScrapedTweet = TwitterPost & {
 export type TwitterMedia = Record<string, unknown> & {
   id: string,
   tweetId: string,
+  text?: string,
   url?: string,
+  thumbUrl?: string,
   mediaUrl?: string,
+  file?: string,
   alt?: string
-  filetype?: string,
 }
 
 export type TwitterAnalyticsSet = {

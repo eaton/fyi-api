@@ -248,20 +248,33 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
   async cacheTweetMedia(tweet: PartialTweet, archive: TwitterArchive) {
     for (const m of tweet.extended_entities?.media ?? []) {
-      const mediaMetaFile = `media/media-${tweet.id_str}-${m.id_str}.json`;
-      this.files.writeCache(mediaMetaFile, { tweet_id: tweet.id_str, ...m });
+      const baseName = path.parse(m.media_url_https).base;
+
+      const media: TwitterMedia = {
+        id: m.id_str,
+        tweetId: m.source_status_id ?? tweet.id_str,
+        text: m.display_url,
+        url: m.expanded_url,
+        thumbUrl: m.media_url_https,
+        mediaUrl: m.video_info?.variants?.[0]?.url ?? m.media_url_https,
+        alt: m.media_alt
+      }
 
       try {
         const buffer = Buffer.from(await archive.medias.fromTweetMediaEntity(m, true) as ArrayBuffer);
         const mimetype = await fileType.fileTypeFromBuffer(buffer);
-
-        const mediaFile = mimetype ? `media-files/${m.id_str}.${mimetype.ext}` : `media-files/${m.id_str}.bin`;
+        const mediaFile = mimetype ? `media-files/${baseName}.${mimetype.ext}` : `media-files/${baseName}.bin`;
+        media.file = mediaFile;
         this.files.writeCache(mediaFile, buffer);
       } catch(err: unknown) {
         if (err instanceof Error) {
-          this.log(tweet);
+          media.error = err.message;
         }
       }
+
+      const mediaMetaFile = `media/media-${media.tweetId}-${media.id}.json`;
+      this.files.writeCache(mediaMetaFile, media);
+
     }
   }
 
