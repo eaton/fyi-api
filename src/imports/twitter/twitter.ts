@@ -56,6 +56,12 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   async loadCache(): Promise<void> {
     this.resolver = new UrlResolver({ known: await this.files.readCache('known-urls.json') });
     await this.fillCache();
+    if (this.options.cleanupUrls) {
+      await this.cleanupUrls();
+    }
+    if (this.options.populateFavorites) {
+      await this.populateFavorites();
+    }
     this.files.writeCache('known-urls.json', this.resolver.values());
     return Promise.resolve();    
   }
@@ -256,7 +262,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return Promise.resolve();
   }
 
-
   protected pathToTweet(t: TwitterPost, includeDate = false): string {
     if (includeDate) {
       return t.date ?
@@ -384,46 +389,33 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       return Promise.resolve(tweet);
     }
 
-    if (this.options.resolveUrls) {
-      for (const url of tweet.urls ?? []) {
-        const checked = await this.resolver.resolve(url.url as string);
-        if (checked?.resolved) {
-          url.url = checked.resolved;
-          url.interim = checked.redirects;
-          url.status = checked.status;
-        }
-      }
-    }
-
     await this.files.writeCache(this.pathToTweet(tweet), tweet);
     return Promise.resolve(tweet);
   }
 
-  async fillIncompleteTweets() {
+  async cleanupUrls() {
     for (const file of await this.files.findCache('tweets/tweet-*.json')) {
       let tweet = await this.files.readCache(file) as TwitterPost;
-      if (tweet.incomplete) {
-        if (tweet.fromFav && !tweet.errors) {
-          tweet = await this.scrapeTweet(tweet, 'basic');
-          if (!tweet.errors) {
-            tweet.incomplete = undefined;
-          }
-          if (tweet.urls) {
-            tweet.urls = await this.expandUrls(tweet.urls);
-          }
-          this.cacheTweet(tweet, { force: true });
-        } else if (tweet.incomplete && tweet.hasMedia && this.options.media) {
-          tweet = await this.scrapeTweet(tweet, 'scrape');
-          if (tweet.errors) {
-            this.log(tweet);
-            return Promise.resolve();
-          }
-          this.log(`Populated ${tweet.url} with headless browser`);  
-        } else { 
-          this.log(`Skipped ${tweet.url}`);  
-        }
+
+      if (tweet.urls) {
+        tweet.urls = await this.expandUrls(tweet.urls);
+      }
+      this.cacheTweet(tweet, { force: true });
+    }
+  }
+
+  async populateFavorites() {
+    let favs = 0;
+    for (const file of await this.files.findCache('tweets/tweet-*.json')) {
+      let tweet = await this.files.readCache(file) as TwitterPost;
+      if (tweet.incomplete && tweet.fromFav && !tweet.errors) {
+        tweet = await this.scrapeTweet(tweet, 'basic');
+        if (!tweet.errors) tweet.incomplete = undefined;
+        this.cacheTweet(tweet, { force: true });
+        favs++;
       }
     }
+    this.log(`Processed ${favs} favorites`);
     return Promise.resolve();
   }
 
@@ -495,6 +487,8 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     tweet.retweets ??= scraped.retweets;
     tweet.quotes ??= scraped.quotes;
     tweet.bookmarks ??= scraped.bookmarks;
+    tweet.deleted = scraped.deleted;
+    tweet.protected = scraped.protected;
 
     if (scraped.date) tweet.date = scraped.date;
     if (scraped.url) tweet.url = scraped.url

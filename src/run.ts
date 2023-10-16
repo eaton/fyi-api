@@ -4,14 +4,13 @@ import { Twitter, TwitterImportOptions } from './index.js';
 
 const opt: TwitterImportOptions = {
   files: { input: process.env.TWITTER_INPUT },
-  media: false,
+  media: true,
   favorites: true,
-  resolveUrls: false,
-  scrape: false,
-  headless: false,
-  metrics: false,
+  metrics: true,
+  cleanupUrls: true,
+  populateFavorites: true,
+  populateAltText: true,
 }
 
 const twitter = new Twitter(opt);
-// await twitter.loadCache();
-await twitter.fillIncompleteTweets();
+await twitter.loadCache();
