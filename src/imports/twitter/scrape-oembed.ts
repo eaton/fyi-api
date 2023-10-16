@@ -28,11 +28,11 @@ export async function scrapeTweetOembed(idOrUrl: string) {
     .catch((err: unknown) => {
       return { status: -1, message: err instanceof Error ? err.message : '', html: '' } as TweetOEmbedResponse;
     });
-    
+  
   const parsed = await Html.extractWithCheerio(json.html ?? '', {
     text: 'blockquote.twitter-tweet > p | html',
     date: 'blockquote.twitter-tweet > a | text',
-    links: [{
+    urls: [{
       $: 'blockquote.twitter-tweet > p a',
       text: '$ | text',
       url: '$ | attr:href'
@@ -49,7 +49,7 @@ export async function scrapeTweetOembed(idOrUrl: string) {
     parsed.text = undefined;
   }
 
-  if (is.emptyArray(parsed.links)) parsed.links = undefined;
+  if (is.emptyArray(parsed.urls)) parsed.urls = undefined;
 
   result = {
     ...result,

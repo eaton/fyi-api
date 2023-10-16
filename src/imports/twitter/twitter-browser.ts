@@ -64,16 +64,16 @@ const browserDefaults: TwitterBrowserOptions = {
     fullname: 'div[data-testid="User-Name"] a | text | split:@ | shift',
     posted: 'a time | attr:datetime',
     text: 'div[data-testid="tweetText"] span | text',
-    links: [{
+    urls: [{
       $: 'a[href*="t.co"]',
-      href: '$ | attr:href',
-      title: '$ | attr:aria-label',
+      url: '$ | attr:href',
+      label: '$ | attr:aria-label',
       text: '$ | text',
     }],
     media: [{
       $: 'a[href*="/photo/"]',
-      href: '$ | attr:href',
-      src: 'img | attr:src',
+      url: '$ | attr:href',
+      imageUrl: 'img | attr:src',
       alt: 'img | attr:alt'
     }],
     favorites: 'a[href$="/likes"] > div > span',

@@ -31,8 +31,7 @@ directory structures:
 - `tweets/[yyyy]/[MM]/tweet-[tweet-id].json` (individually cached tweets)
 - `screenshots/[yyyy]/[MM]/[tweet-id].[jpeg or png]` (screenshots of tweets)
 - `threads/[yyyy]/thread-[tweet-id].json`) (indexes of thread parents and children)
-- `media/media-[tweet-id]-[media-id].json` (individually cached media entities)
-- `media-files/[media-id].[extension]` (backed-up media files)
+- `media/[media-id].[extension]` (backed-up media files)
 - `url-history.csv` (master list of unshortened and resolved URLs)
 
 The end result of that caching phase is a cluster of metadata, and a huge

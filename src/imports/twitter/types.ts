@@ -68,6 +68,16 @@ export type TwitterLookupLevel = false | 'basic' | 'scrape' | 'screenshot';
 
 export type TwitterLookupLevelFunction = ((tweet: TwitterPost) => TwitterLookupLevel);
 
+export type FoundUrl = Record<string, unknown> & {
+  label?: string,
+  text?: string,
+  url?: string,
+  normalized?: string,
+  redirects?: string[],
+  resolved?: string,
+  status?: number,
+}
+
 export interface TwitterImportOptions extends BaseImportOptions {
 
   scrape?: TwitterLookupLevel | TwitterLookupLevelFunction,
@@ -153,6 +163,7 @@ export interface TwitterImportOptions extends BaseImportOptions {
 }
 
 export type TwitterUser = {
+  [index: string]: unknown,
   userId?: string,
   handle?: string,
   displayName?: string
@@ -168,33 +179,34 @@ export type TwitterPost = TwitterUser & {
   isRetweetOf?: string,
   date?: string,
   text?: string,
-  media?: Record<string, unknown>[],
-  urls?: Record<string, unknown>[],
+  media?: TwitterMedia[],
+  urls?: FoundUrl[],
   mentions?: string[],
   favorites?: number,
   retweets?: number,
   replies?: number,
   quotes?: number,
   bookmarks?: number,
+  incomplete?: boolean,
+}
+
+export type TwitterMedia = Record<string, unknown> & {
+  id: string,
+  tweetId?: string,
+  text?: string,
+  url?: string,
+  imageUrl?: string,
+  videoUrl?: string,
+  alt?: string,
+  incomplete?: boolean,
 }
 
 export type ScrapedTweet = TwitterPost & {
   success?: boolean,
   errors?: string[],
-  html?: string,
+  html?: string,  
   screenshot?: Buffer
   screenshotFormat?: 'jpeg' | 'png',
-}
-
-export type TwitterMedia = Record<string, unknown> & {
-  id: string,
-  tweetId: string,
-  text?: string,
-  url?: string,
-  thumbUrl?: string,
-  mediaUrl?: string,
-  file?: string,
-  alt?: string
 }
 
 export type TwitterAnalyticsSet = {
@@ -205,25 +217,25 @@ export type TwitterAnalyticsSet = {
   rows: TwitterAnalyticsRow[],
 }
 
-export type TwitterAnalyticsRow = Record<string, string> & {
+export type TwitterAnalyticsRow = Record<string, unknown> & {
   date: string,
-  tweetsPublished?: string,
-  impressions?: string,
-  engagements?: string,
-  engagementRate?: string,
-  retweets?: string,
-  replies?: string,
-  likes?: string,
-  profileClicks?: string,
-  urlClicks?: string,
-  hashtagClick?: string,
-  detailExpands?: string,
-  permalinkClicks?: string,
-  appOpens?: string,
-  appInstalls?: string,
-  follows?: string,
-  emailTweet?: string,
-  dialPhone?: string,
-  mediaViews?: string,
-  mediaEngagements?: string,
+  tweetsPublished?: number,
+  impressions?: number,
+  engagements?: number,
+  engagementRate?: number,
+  retweets?: number,
+  replies?: number,
+  likes?: number,
+  profileClicks?: number,
+  urlClicks?: number,
+  hashtagClick?: number,
+  detailExpands?: number,
+  permalinkClicks?: number,
+  appOpens?: number,
+  appInstalls?: number,
+  follows?: number,
+  emailTweet?: number,
+  dialPhone?: number,
+  mediaViews?: number,
+  mediaEngagements?: number,
 };

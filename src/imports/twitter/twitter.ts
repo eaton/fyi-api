@@ -1,14 +1,13 @@
 import { BaseImport, ScrapedTweet, TweetUrl, TwitterBrowser, TwitterUserIndex, scrapeTweetOembed } from '../index.js';
-import { camelCase, changeDate, UrlResolver } from '../../index.js';
-import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterImportCache, TwitterPost, TwitterMedia, TwitterLookupLevel } from "./types.js";
+import { camelCase, UrlResolver } from '../../index.js';
+import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterImportCache, TwitterPost, TwitterMedia, TwitterLookupLevel, FoundUrl } from "./types.js";
 
 import is from '@sindresorhus/is';
 import pThrottle from 'p-throttle';
-import { PartialFavorite, PartialTweet, PartialTweetMediaEntity, TwitterArchive } from "twitter-archive-reader";
+import { MediaGDPREntity, PartialFavorite, PartialTweet, PartialTweetMediaEntity, TwitterArchive } from "twitter-archive-reader";
 import { parseString } from '@fast-csv/parse';
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
 import path from 'path';
-import * as fileType from 'file-type';
 import { TweetIndex } from './tweet-index.js';
 
 export class Twitter extends BaseImport<TwitterImportCache> {
@@ -152,7 +151,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
         );
       }
 
-      // We might want to use archive.user instead of archive.synthetic_info
       await this.files.writeCache(
         archiveInfoPath,
         {
@@ -170,7 +168,20 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       for (const t of archive.tweets.sortedIterator('asc')) {
         await this.cacheTweet(t);
         if (this.options.media) {
-          await this.cacheTweetMedia(t, archive);
+          for (const me of t.extended_entities?.media ?? []) {
+            const variant = me.video_info?.variants?.filter(v => v.content_type === 'video/mp4').pop();
+            const filename = path.parse(variant?.url ?? me.media_url_https).base.split('?')[0];
+
+            if (!this.files.existsCache(filename)) {
+              try {
+                const ab = await archive.medias.fromTweetMediaEntity(me, true);
+                const buffer = Buffer.from(ab as ArrayBuffer);
+                await this.files.writeCache(`media/${filename}`, buffer);
+              } catch(err: unknown) {
+                // Swallow this
+              }
+            }
+          }
         }
       }
   
@@ -182,7 +193,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       }
 
       await this.cacheIndexes();
-
       archive.releaseZip();
     }
   }
@@ -246,84 +256,58 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return Promise.resolve();
   }
 
-  async cacheTweetMedia(tweet: PartialTweet, archive: TwitterArchive) {
-    for (const m of tweet.extended_entities?.media ?? []) {
-      const baseName = path.parse(m.media_url_https).base;
 
-      const media: TwitterMedia = {
-        id: m.id_str,
-        tweetId: m.source_status_id ?? tweet.id_str,
-        text: m.display_url,
-        url: m.expanded_url,
-        thumbUrl: m.media_url_https,
-        mediaUrl: m.video_info?.variants?.[0]?.url ?? m.media_url_https,
-        alt: m.media_alt
-      }
-
-      try {
-        const buffer = Buffer.from(await archive.medias.fromTweetMediaEntity(m, true) as ArrayBuffer);
-        const mimetype = await fileType.fileTypeFromBuffer(buffer);
-        const mediaFile = mimetype ? `media-files/${baseName}.${mimetype.ext}` : `media-files/${baseName}.bin`;
-        media.file = mediaFile;
-        this.files.writeCache(mediaFile, buffer);
-      } catch(err: unknown) {
-        if (err instanceof Error) {
-          media.error = err.message;
-        }
-      }
-
-      const mediaMetaFile = `media/media-${media.tweetId}-${media.id}.json`;
-      this.files.writeCache(mediaMetaFile, media);
-
-    }
-  }
-
-  protected pathToTweet(t: TwitterPost): string {
-    return t.date ?
+  protected pathToTweet(t: TwitterPost, includeDate = false): string {
+    if (includeDate) {
+      return t.date ?
       `tweets/${formatDate(new Date(t.date), 'yyyy/MM/')}tweet-${t.id}.json`:
       `tweets/unknown/tweet-${t.id}.json`;
+    } else {
+      return `tweets/tweet-${t.id}.json`
+    }
   }
 
   async getTweet(id: string | number): Promise<TwitterPost | undefined> {
-    const fileMatches = await this.files.findCache(`tweets/**/tweed-${id}.json`);
-    if (fileMatches.length) {
-      return this.files.readCache(fileMatches[0]);
-    }
-    return Promise.resolve(undefined);
+    return this.files.readCache(`tweet/tweed-${id}.json`);
   }
 
-  protected async tweetIsCached(id: string) {
-    return this.files.findCache(`tweets/**/tweet-${id}.json`).then(results => results.length > 0);
+  protected tweetIsCached(id: string) {
+    return this.files.existsCache(`tweets/tweet-${id}.json`);
   }
 
-  protected async tweetHasScreenshot(id: string) {
-    return this.files.findCache(`screenshots/**/tweet-${id}.(jpeg,png)`).then(results => results.length > 0);
+  protected tweetHasScreenshot(id: string) {
+    return (
+      this.files.existsCache(`screenshots/tweet-${id}.jpeg`) ||
+      this.files.existsCache(`screenshots/tweet-${id}.png`)
+    );
   }
 
-  protected async mediaIsCached(id: string) {
-    return this.files.findCache(`media/**/media-*-${id}.json`).then(results => results.length > 0);
-  }
-
-  protected async mediaFileIsCached(id: string) {
-    return this.files.findCache(`media-files/**/media-*-${id}.*`).then(results => results.length > 0);
-  }
-  
   toTwitterPost(input: string | URL | PartialTweet | PartialFavorite | TwitterPost): TwitterPost {
     let tweet: TwitterPost | undefined = undefined; 
 
     if (is.string(input) || is.urlInstance(input)) {
+      // Rare but possible scenario where all we have to go on is a Tweet ID
+      // or URL; we log it and move on.
       const url = new TweetUrl(input.toString());
-      tweet = { id: url.id, url: url.href };
+      tweet = {
+        id: url.id,
+        url: url.href,
+        incomplete: true,
+        fromBareId: true,
+      };
 
     } else if (isPartialTweet(input)) {
+      // Tweets and retweets from a downloaded Twitter Archive; this is
+      // fairly complete but some information (alt text on media, etc)
+      // can only be retrieved by scraping after the fact.
       const url = new TweetUrl(input.id_str, input.user.screen_name);
       tweet = {
         id: url.id,
         url: url.href,
         date: input.created_at_d ? input.created_at_d.toISOString() : undefined,
         userId: input.user.id_str,
-        handle: input.user.name,
-        displayName: input.user.screen_name,
+        handle: input.user.screen_name,
+        displayName: input.user.name,
         text: input.full_text ?? input.text,
         retweets: input.retweet_count,
         favorites: input.favorite_count,
@@ -332,10 +316,13 @@ export class Twitter extends BaseImport<TwitterImportCache> {
         urls: input.entities.urls.map(u => {
           return { text: u.url, title: u.display_url, url: u.expanded_url }
         }),
-        media: input.extended_entities?.media?.map(m => {
-          return { text: m.url, alt: m.media_alt, url: m.media_url_https, id: m.id_str }
-        }),
+        media: this.toTwitterMedia(input.extended_entities?.media ?? input.entities?.media ?? []),
       };
+
+      if (input.extended_entities?.media) {
+        tweet.hasMedia = true;
+        tweet.incomplete = true; // We need to look up image alt tags
+      }
 
       if (input.retweeted_status) {
         // We record the fact that this user retweeted it, but return the underlying
@@ -345,17 +332,45 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       }
 
     } else if (isPartialFavorite(input)) {
-      const url = new TweetUrl(input.tweetId);
       tweet = {
-        id: url.id,
+        id: input.tweetId,
         url: input.expandedUrl,
         text: input.fullText,
         date: input.date?.toISOString(),
+        fromFav: true,
+        incomplete: true, // We need to look up user name, full text, etc.
       };
     } else {
       tweet = input;
     }
     return tweet;
+  }
+
+  toTwitterMedia(input: (PartialTweetMediaEntity | MediaGDPREntity)[]): TwitterMedia[] | undefined {
+    let media: TwitterMedia[] = [];
+    for (const m of input) {
+      if (isGPRDMedia(m)) {
+        media.push({
+          id: m.id_str,
+          text: m.display_url,
+          url: m.expanded_url,
+          imageUrl: m.media_url_https,
+          videoUrl: m?.video_info?.variants?.pop()?.url,
+          type: m.type,
+          alt: m.media_alt
+        });
+      } else if (isPartialMedia(input)) {
+        media.push({
+          id: m.id_str,
+          text: m.display_url,
+          url: m.expanded_url,
+          imageUrl: m.media_url_https,
+          alt: m.media_alt
+        });
+      }
+    }
+
+    return media.length ? media : undefined;
   }
 
   async cacheTweet(
@@ -364,25 +379,10 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   ): Promise<TwitterPost> {
     let tweet = this.toTwitterPost(input);
 
-    // TODO: handle retweet scenario
-
     // Don't overwrite already-cached tweets
-    if ((await this.tweetIsCached(tweet.id))) {
+    if (this.tweetIsCached(tweet.id) && !options.force) {
       return Promise.resolve(tweet);
     }
-
-    const scrape = this.shouldScrape(tweet);
-    if (scrape) {
-      const { screenshot, screenshotFormat, ...scraped } = await this.lookupTweet(tweet.id, scrape);
-      tweet = this.mergedScrapedData(tweet, scraped);
-      if (screenshot) {
-        const screenshotPath = `screenshots/${changeDate(tweet.date ?? '', 'yyyy-MM-dd', 'yyyy/MM/')}.${screenshotFormat}`
-        await this.files.writeCache(screenshotPath, screenshot);
-      }
-    }
-
-    // TODO: This is where we should also scan the text of the tweet to find URLs that
-    // weren't snagged by Twitter.
 
     if (this.options.resolveUrls) {
       for (const url of tweet.urls ?? []) {
@@ -399,6 +399,31 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return Promise.resolve(tweet);
   }
 
+  async fillIncompleteTweets() {
+    for (const file of await this.files.findCache('tweets/tweet-*.json')) {
+      let tweet = await this.files.readCache(file) as TwitterPost;
+      if (tweet.incomplete) {
+        if (tweet.fromFav && !tweet.errors) {
+          tweet = await this.scrapeTweet(tweet, 'basic');
+          if (!tweet.errors) {
+            tweet.incomplete = undefined;
+          }
+          this.cacheTweet(tweet, { force: true });
+        } else if (tweet.incomplete && tweet.hasMedia && this.options.media) {
+          tweet = await this.scrapeTweet(tweet, 'scrape');
+          if (tweet.errors) {
+            this.log(tweet);
+            return Promise.resolve();
+          }
+          this.log(`Populated ${tweet.url} with headless browser`);  
+        } else { 
+          this.log(`Skipped ${tweet.url}`);  
+        }
+      }
+    }
+    return Promise.resolve();
+  }
+
   protected shouldScrape(tweet: TwitterPost) {
     if (this.options.scrape) {
       if (is.string(this.options.scrape)) {
@@ -410,6 +435,55 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return false;
   }
 
+  async scrapeTweet(tweet: TwitterPost, level: TwitterLookupLevel = 'basic') {
+    const { screenshot, screenshotFormat, ...scraped } = await this.lookupTweet(tweet.id, level);
+    tweet = this.mergedScrapedData(tweet, scraped);
+    if (screenshot) {
+      const screenshotPath = `screenshots/${tweet.id}.${screenshotFormat}`;
+      await this.files.writeCache(screenshotPath, screenshot);
+      tweet.screenshot = screenshotPath;
+    }
+    return Promise.resolve(tweet);
+  }
+
+  async expandUrls(urls: FoundUrl[]): Promise<FoundUrl[]> {
+    // Filter out hashtags, stock symbols, and @mentions
+    urls = urls?.filter(u => {
+      return (!u.text?.startsWith('$') && !u.text?.startsWith('#') && !u.text?.startsWith('@'));
+    });
+
+    // Tidy up paths without a hostname
+    for (const su of urls ?? []) {
+      if (su.url) {
+        const pu = new URL(su.url, 'https://twitter.com');
+        su.url = pu.href;
+
+        const output = await this.resolver.resolve(pu.href);
+        if (output && output.resolved) {
+          if (output.redirects) {
+            // This is an extremely jank hack to avoid evernote redirecting
+            // skitch image URLs to the evernote signup page
+            const skitchUrl = output.redirects.find(u => u.includes('img.skitch.com'));
+            if (skitchUrl) {
+              su.resolved = skitchUrl;
+            } else {
+              su.resolved = output.resolved;
+            }
+          }
+
+          if (pu.hostname !== 't.co') {
+            su.normalized = output.normalized
+            su.redirects = output.redirects;
+            // Normally we'd also include the status here, but all Twitter t.co links respond
+            // with a 403 when you use a HEAD request, so eff 'em
+            su.status = output.status;
+          }
+        }
+      }
+    }
+    return Promise.resolve(urls);
+  }
+
   protected mergedScrapedData(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {
     tweet.handle ??= scraped.handle;
     tweet.displayName ??= scraped.displayName;
@@ -418,6 +492,28 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     tweet.retweets ??= scraped.retweets;
     tweet.quotes ??= scraped.quotes;
     tweet.bookmarks ??= scraped.bookmarks;
+
+    if (scraped.date) tweet.date = scraped.date;
+    if (scraped.url) tweet.url = scraped.url
+
+    for (const su of scraped.urls ?? []) {
+      const match = tweet.urls?.find(em => em.url === su.url);
+      if (!match) {
+        tweet.urls ??= [];
+        tweet.urls.push(su);
+      }
+    }
+
+    // We need to take a look at these and resolve them cleanly
+    for (const sm of scraped.media ?? []) {
+      const match = tweet.media?.find(em => em.imageUrl === sm.imageUrl);
+      if (match) {
+        match.alt ??= sm.alt;
+      } else {
+        tweet.media ??= [];
+        tweet.media.push(sm);
+      }
+    }
 
     return tweet;
   }
@@ -440,16 +536,28 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 }
 
+export function isTwitterPost(input: unknown): input is TwitterPost {
+  return is.object(input) && 'id' in input && !('tweetId' in input);
+}
+
+export function isTwitterMedia(input: unknown): input is TwitterMedia {
+  return is.object(input) && 'id' in input && 'tweetId' in input;
+}
+
 export function isPartialTweet(input: unknown): input is PartialTweet {
   return is.object(input) && 'id_str' in input && 'text' in input;
 }
 
 export function isPartialFavorite(input: unknown): input is PartialFavorite {
-  return is.object(input) && 'tweetId' in input && 'fullText' in input;
+  return is.object(input) && 'tweetId' in input && 'fullText' in input && !('id' in input);
 }
 
 export function isPartialMedia(input: unknown): input is PartialTweetMediaEntity {
   return is.object(input) && 'media_url_https' in input;
+}
+
+export function isGPRDMedia(input: unknown): input is MediaGDPREntity {
+  return isPartialMedia(input) && 'source_status_id' in input;
 }
 
 export function isRetweet(t: PartialTweet): boolean {
