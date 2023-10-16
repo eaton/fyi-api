@@ -1,6 +1,6 @@
 import { BaseImport, ScrapedTweet, TweetUrl, TwitterBrowser, TwitterUserIndex, scrapeTweetOembed } from '../index.js';
 import { camelCase, UrlResolver } from '../../index.js';
-import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterImportCache, TwitterPost, TwitterMedia, TwitterLookupLevel, FoundUrl } from "./types.js";
+import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterImportCache, TwitterPost, TwitterMedia, TwitterLookupLevel } from "./types.js";
 
 import is from '@sindresorhus/is';
 import pThrottle from 'p-throttle';
@@ -10,7 +10,16 @@ import { parseISO, max as maxDate, min as minDate, format as formatDate } from '
 import path from 'path';
 import { TweetIndex } from './tweet-index.js';
 
+
+const defaultOptions: TwitterImportOptions = {
+  archive: true,
+  favorites: true,
+  media: true,
+  metrics: true
+}
+
 export class Twitter extends BaseImport<TwitterImportCache> {
+  collections = ['twitter_post'];
   declare options: TwitterImportOptions;
   
   browser: TwitterBrowser;
@@ -20,6 +29,8 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   lookupTweet: (id: string, level: TwitterLookupLevel) => Promise<ScrapedTweet>;
 
   constructor(options: TwitterImportOptions = {}) {
+    options = { ...defaultOptions, ...options };
+
     super(options);
     this.browser = new TwitterBrowser({ headless: !!this.options.headless });
     this.resolver = new UrlResolver();
@@ -32,12 +43,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       userIndex: new TwitterUserIndex(),
       metrics: new Map<string, TwitterAnalyticsRow[]>(),
     };
-
-    this.options.scrape ??= t => {
-      if (t.media) return 'scrape';              // Media tweets don't have alt text
-      if (t.handle === undefined || t.date === undefined) return 'basic';   // Favorites dont have name populated
-      return false; 
-    }
 
     // Wrap our protected internal lookup function in a throttling mechanism
     const throttle = pThrottle({
@@ -56,12 +61,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   async loadCache(): Promise<void> {
     this.resolver = new UrlResolver({ known: await this.files.readCache('known-urls.json') });
     await this.fillCache();
-    if (this.options.cleanupUrls) {
-      await this.cleanupUrls();
-    }
-    if (this.options.populateFavorites) {
-      await this.populateFavorites();
-    }
     this.files.writeCache('known-urls.json', this.resolver.values());
     return Promise.resolve();    
   }
@@ -111,20 +110,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     }
   }
 
-  /**
-   * Because Twitter's API has gone from one of the marvels of the modern web
-   * to a cautionary tale that makes Oracle licensing look charitable, no actual
-   * API interaction happens here. Instead, we read in the raw zip archives that
-   * Twitter provides when you ask to "download all your data."
-   * 
-   * There's a lot of data in each archive, and this cache step does several things:
-   * 
-   * 1. Resolves thread relationships, as long as all tweets are by the archive user.
-   * 2. Splits original tweets, replies, retweets, media entities, media *files*,
-   *    mentioned users, and shortened URLs to facilitate selective post-processing.
-   * 3. Optionally ingests multiple archives in one go, in case tweets disappear
-   *    from a later archive but exist in an older one. It's rare, but does happen.
-   */
   async processArchives(): Promise<void> {
     // Look for all available archive files; batch em up an let em rip
     let archives = (await this.files.findInput('**/twitter-*.zip')).sort();
@@ -384,22 +369,18 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   ): Promise<TwitterPost> {
     let tweet = this.toTwitterPost(input);
 
-    // Don't overwrite already-cached tweets
-    if (this.tweetIsCached(tweet.id) && !options.force) {
-      return Promise.resolve(tweet);
+    // If the tweet isn't already cached, cache it
+    if (!this.tweetIsCached(tweet.id) || options.force) {
+      await this.files.writeCache(this.pathToTweet(tweet), tweet);
     }
 
-    await this.files.writeCache(this.pathToTweet(tweet), tweet);
     return Promise.resolve(tweet);
   }
 
   async cleanupUrls() {
     for (const file of await this.files.findCache('tweets/tweet-*.json')) {
       let tweet = await this.files.readCache(file) as TwitterPost;
-
-      if (tweet.urls) {
-        tweet.urls = await this.expandUrls(tweet.urls);
-      }
+      if (tweet.urls) tweet = await this.expandUrls(tweet);
       this.cacheTweet(tweet, { force: true });
     }
   }
@@ -441,14 +422,14 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return Promise.resolve(tweet);
   }
 
-  async expandUrls(urls: FoundUrl[]): Promise<FoundUrl[]> {
+  async expandUrls(tweet: TwitterPost): Promise<TwitterPost> {
     // Filter out hashtags, stock symbols, and @mentions
-    urls = urls?.filter(u => {
+    let urls = tweet.urls?.filter(u => {
       return (!u.text?.startsWith('$') && !u.text?.startsWith('#') && !u.text?.startsWith('@'));
-    });
+    }) ?? [];
 
     // Tidy up paths without a hostname
-    for (const su of urls ?? []) {
+    for (const su of urls) {
       if (su.url) {
         const pu = new URL(su.url, 'https://twitter.com');
         su.url = pu.href;
@@ -476,7 +457,9 @@ export class Twitter extends BaseImport<TwitterImportCache> {
         }
       }
     }
-    return Promise.resolve(urls);
+
+    tweet.urls = urls.length ? urls : undefined;
+    return Promise.resolve(tweet);
   }
 
   protected mergedScrapedData(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {

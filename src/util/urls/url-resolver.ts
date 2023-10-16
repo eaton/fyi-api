@@ -1,27 +1,20 @@
 import { NormalizedUrl, UrlMutators } from "@autogram/url-tools";
+import { FoundUrl } from "./index.js";
 import got from "got";
 // import ky from 'ky';
 
 export interface ResolverOptions {
   normalizer?: false | UrlMutators.UrlMutator,
-  known?: ResolvedUrl[],
-  timeout?: number
+  known?: FoundUrl[],
+  timeout?: number,
 }
-
-export type ResolvedUrl = {
-  normalized: string,
-  resolved?: string | false,
-  status?: number,
-  message?: string,
-  redirects?: string[]
-};
 
 /**
  * Wrapper class that can build a library of shortened or moved URLs and their
  * 'proper' destinations.
  */
 export class UrlResolver {
-  known: Map<string, ResolvedUrl>;
+  known: Map<string, FoundUrl>;
   timeout: number;
 
   constructor(options: ResolverOptions = {}) {
@@ -37,10 +30,11 @@ export class UrlResolver {
 
     // This is likely to be pretty inefficient. Down the line we'll want to create a
     // database-backed setup or something like that.
-    if (Array.isArray(options.known)) {
-      this.known = new Map<string, ResolvedUrl>(options.known.map(sr => [sr.normalized, sr]));
-    } else {
-      this.known = new Map<string, ResolvedUrl>();
+    this.known = new Map<string, FoundUrl>();
+    for (const fu of options.known ?? []) {
+      if (fu.normalized) {
+        this.known.set(fu.normalized, fu);
+      }
     }
   }
 
@@ -51,7 +45,6 @@ export class UrlResolver {
   
   // This WON'T detect anything other than 301 and 302 redirects,
   // unfortunately. META and JS redirects will take additional work.
-
   async resolve(url: string, base?: URL) {
     const normalized = new NormalizedUrl(url, base).href;
     let output = this.lookup(normalized);
@@ -77,7 +70,8 @@ export class UrlResolver {
             // This allows us to queue up all of the redirects we encounter, even if
             // a domain fails to resolve.
             if ('url' in options && options.url instanceof URL) {
-              output?.redirects?.push(options.url.toString());
+              const url = options.url.toString();
+              output?.redirects?.push(url);
             }
           }
         ]

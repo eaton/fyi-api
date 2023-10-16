@@ -1,5 +1,5 @@
 import { ArchiveSyntheticInfo } from "twitter-archive-reader";
-import { BaseImportOptions, TwitterUserIndex } from "../index.js";
+import { BaseImportOptions, TwitterUserIndex, FoundUrl } from "../../index.js";
 import { TweetIndex } from "./tweet-index.js";
 
 // TODO: We can't really retrieve bookmarks proper from Twitter without
@@ -67,16 +67,6 @@ export type TwitterImportCache = {
 export type TwitterLookupLevel = false | 'basic' | 'scrape' | 'screenshot';
 
 export type TwitterLookupLevelFunction = ((tweet: TwitterPost) => TwitterLookupLevel);
-
-export type FoundUrl = Record<string, unknown> & {
-  label?: string,
-  text?: string,
-  url?: string,
-  normalized?: string,
-  redirects?: string[],
-  resolved?: string,
-  status?: number,
-}
 
 export interface TwitterImportOptions extends BaseImportOptions {
 
