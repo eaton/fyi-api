@@ -408,6 +408,9 @@ export class Twitter extends BaseImport<TwitterImportCache> {
           if (!tweet.errors) {
             tweet.incomplete = undefined;
           }
+          if (tweet.urls) {
+            tweet.urls = await this.expandUrls(tweet.urls);
+          }
           this.cacheTweet(tweet, { force: true });
         } else if (tweet.incomplete && tweet.hasMedia && this.options.media) {
           tweet = await this.scrapeTweet(tweet, 'scrape');
