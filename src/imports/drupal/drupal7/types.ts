@@ -1,4 +1,4 @@
-export type D7Entity = D7User | D7Node | D7Comment | D7Term | D7File | D7Alias;
+export type D7Entity = D7User | D7Node | D7Comment | D7Term | D7Alias;
 
 export type D7NodeField = {
   nid: number,
@@ -39,19 +39,6 @@ export type D7Comment = {
   homepage?: string,
   body?: string,
   format?: string
-}
-
-export type D7File = {
-  [index: string]: unknown,
-  fid: number,
-  uid?: number,
-  nid?: number,
-  type: string,
-  alt?: string,
-  filename: string,
-  mime: string,
-  uri: string,
-  date: number | string
 }
 
 export type D7Term = {

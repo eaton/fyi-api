@@ -14,7 +14,6 @@ export interface DatabaseImportOptions {
     user?: string,
     pass?: string,
     dbName?: string,
-    tables?: Record<string, string>
   }
 }
 

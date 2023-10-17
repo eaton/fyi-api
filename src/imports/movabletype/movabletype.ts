@@ -1,4 +1,4 @@
-import { BaseImport, BaseImportOptions } from '../../index.js';
+import { BaseImport, BaseImportOptions, DatabaseImportOptions } from '../../index.js';
 import { Textile } from '../../index.js';
 import is from '@sindresorhus/is';
 import slugify from '@sindresorhus/slugify';
@@ -25,12 +25,8 @@ import {
   MTEntry
 } from './types.js';
 
-export interface MovableTypeOptions extends BaseImportOptions {
-  sqlHost?: string,
-  sqlUser?: string,
-  sqlPass?: string,
-  sqlDb?: string,
-  tables?: Record<string, string>,
+export interface MovableTypeOptions extends BaseImportOptions, DatabaseImportOptions {
+  extraTables?: Record<string, string>,
 }
 
 export class MovableType extends BaseImport<MTData> {
@@ -83,10 +79,10 @@ export class MovableType extends BaseImport<MTData> {
 
   async fillCache(): Promise<MTData> {  
     const conn = await mysql.createConnection({
-      host: this.options.sqlHost ?? process.env.MYSQL_HOST,
-      user: this.options.sqlUser ?? process.env.MYSQL_USER,
-      password: this.options.sqlPass ?? process.env.MYSQL_PASS,
-      database: this.options.sqlDb ?? process.env.MYSQL_DB
+      host: this.options.database?.host ?? '',
+      user: this.options.database?.user ?? '',
+      password: this.options.database?.pass ?? '',
+      database: this.options.database?.dbName ?? ''
     });
 
     // The core tables we handle manually
@@ -99,7 +95,7 @@ export class MovableType extends BaseImport<MTData> {
     }
 
     // Any additional tables the user wants to back up
-    for (const [name, table] of Object.entries(this.options?.tables ?? {})) {
+    for (const [name, table] of Object.entries(this.options?.extraTables ?? {})) {
       await conn.execute(`select * from ${table}`)
         .then(results => this.files.writeCache(`tables/${name}.json`, results[0]))
         .catch((err: unknown) => this.log(err));
