@@ -7,5 +7,6 @@ const mt = new MovableType({
   sqlHost: process.env.MYSQL_HOST,
   sqlUser: process.env.MYSQL_USER,
   sqlPass: process.env.MYSQL_PASS,
-})
-await mt.fillCache();
+});
+
+await mt.doImport();

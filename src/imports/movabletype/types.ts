@@ -1,5 +1,65 @@
 import is from '@sindresorhus/is';
 
+// Post-tidying
+
+export type MTData = {
+  blogs: Record<number, MTBlog>,
+  authors: Record<number, MTAuthor>,
+  categories: Record<number, MTCategory>,
+  entries: Record<number, MTEntry>,
+  comments: Record<number, MTComment>,
+}
+
+export type MTBlog = {
+  id: number,
+  name: string,
+  url: string,
+  message?: string,
+};
+
+export type MTCategory = {
+  id: number,
+  blog: number,
+  name: string,
+  description?: string,
+  parent?: number,
+};
+
+export type MTAuthor = {
+  id: number,
+  type: number,
+  name: string,
+  nickname?: string,
+  email: string,
+};
+
+export type MTEntry = {
+  id: number,
+  blog: number,
+  status: number,
+  date: string,
+  title: string,
+  author: number,
+  category?: number,
+  body: string,
+  extended?: string,
+  keywords?: Record<string, string>,
+};
+
+export type MTComment = {
+  id: number,
+  blog: number,
+  entry: number,
+  ip: string,
+  date: string,
+  name?: string,
+  email?: string,
+  url?: string,
+  body: string,
+};
+
+
+
 export type MovableTypeTables = {
   blogs: MovableTypeBlogRow[],
   authors: MovableTypeAuthorRow[],
@@ -107,7 +167,7 @@ export type MovableTypeEntryRow = {
   entry_allow_comments: number,
   entry_allow_pings: number,
   entry_convert_breaks: string,
-  entry_category_id: string,
+  entry_category_id: number,
   entry_title: string,
   entry_excerpt: string,
   entry_text: string,

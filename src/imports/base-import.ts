@@ -77,7 +77,7 @@ export abstract class BaseImport<CacheType = void> {
    * 
    * @returns A promise that resolves to a dictionary of all cached data.
    */
-  async loadCache(): Promise<Record<string, CacheType> | void> {
+  async loadCache(): Promise<CacheType | void> {
     this.log('No cache loader; filling the cache. ')
     await this.fillCache();
     return Promise.resolve();
@@ -90,7 +90,7 @@ export abstract class BaseImport<CacheType = void> {
    *
    * @returns A promise that resolves to a dictionary of all cached data.
    */
-  async fillCache(): Promise<Record<string, CacheType> | void> {
+  async fillCache(): Promise<CacheType| void> {
     this.log('No caching implementation.')
     return Promise.resolve();
   }
