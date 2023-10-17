@@ -1,16 +1,11 @@
 import 'dotenv/config';
 
-import { Twitter, TwitterImportOptions } from './index.js';
+import { MovableType } from './index.js';
 
-const opt: TwitterImportOptions = {
-  files: { input: process.env.TWITTER_INPUT },
-  media: true,
-  favorites: true,
-  metrics: true,
-  cleanupUrls: true,
-  populateFavorites: true,
-  populateAltText: true,
-}
-
-const twitter = new Twitter(opt);
-await twitter.loadCache();
+const mt = new MovableType({
+  sqlDb: process.env.MOVABLETYPE_DBNAME,
+  sqlHost: process.env.MYSQL_HOST,
+  sqlUser: process.env.MYSQL_USER,
+  sqlPass: process.env.MYSQL_PASS,
+})
+await mt.fillCache();

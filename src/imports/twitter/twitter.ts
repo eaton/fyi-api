@@ -10,7 +10,6 @@ import { parseISO, max as maxDate, min as minDate, format as formatDate } from '
 import path from 'path';
 import { TweetIndex } from './tweet-index.js';
 
-
 const defaultOptions: TwitterImportOptions = {
   archive: true,
   favorites: true,
@@ -55,7 +54,12 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
   async doImport(): Promise<void> {
     await this.loadCache();
+    await this.buildThreads();
     return Promise.resolve();
+  }
+
+  async buildThreads() {
+    
   }
 
   async loadCache(): Promise<void> {

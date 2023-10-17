@@ -1,7 +1,6 @@
 import { NormalizedUrl, UrlMutators } from "@autogram/url-tools";
 import { FoundUrl } from "./index.js";
 import got from "got";
-// import ky from 'ky';
 
 export interface ResolverOptions {
   normalizer?: false | UrlMutators.UrlMutator,

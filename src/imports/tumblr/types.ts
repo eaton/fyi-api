@@ -35,11 +35,11 @@ export type TumblrBlog = {
   queue: number,
   share_likes: boolean,
   submission_page_title: string,
-  submission_terms: {
-    accepted_types: string[],
-    tags: string[],
-    title: string,
-    guidelines: 'string',
+  submission_terms?: {
+    accepted_types?: string[],
+    tags?: string[],
+    title?: string,
+    guidelines?: 'string',
   },
   subscribed: boolean,
   theme: TumblrTheme,
@@ -80,8 +80,8 @@ export type TumblrPost = {
   followed: boolean,
   liked: boolean,
   note_count: number,
-  title: string,
-  body: string,
+  title?: string,
+  body?: string,
   can_like: boolean,
   interactability_reblog: string,
   interactability_blaze: string,
@@ -91,8 +91,56 @@ export type TumblrPost = {
   mute_end_timestamp: number,
   can_mute: boolean,
   can_reply: boolean,
-  display_avatar: boolean
+  display_avatar: boolean,
+
+  /**
+   * Populated on Image and Video posts
+   */
+  caption?: string,
+
+   
+  description?: string,
+
+  /**
+   * Used on some link posts
+   */
+  excerpt?: string,
+
+  /**
+   * Populated when videos or images are shared from a particular page
+   */
+  source_url?: string,
+  source_title?: string,
+
+  publisher?: string,
+
+  /**
+   * Populated for Link posts
+   */
+  url?: string,
+
+  /**
+   * Populated for for Video and Image posts
+   */
+  permalink_url?: string,
+  image_permalink?: string,
+  video_type?: string,
+  video?: {
+    [index: string]: {
+      video_id: string,
+      width: number,
+      height: number,
+    }
+  }
+
+  photos?: TumblrPhoto[],
 };
+
+type TumblrPhoto = {
+  caption?: string,
+  exif?: Record<string, string>,
+  original_size: Record<string, string | number>
+}
 
 export type TumblrTheme = {
   avatar_shape: string,

@@ -1,3 +1,5 @@
+import is from '@sindresorhus/is';
+
 export type MovableTypeTables = {
   blogs: MovableTypeBlogRow[],
   authors: MovableTypeAuthorRow[],
@@ -6,6 +8,8 @@ export type MovableTypeTables = {
   comments: MovableTypeCommentRow[],
   [index: string]: Record<string, unknown>[]
 }
+
+export type MovableTypeRow = MovableTypeBlogRow | MovableTypeAuthorRow | MovableTypeEntryRow | MovableTypeCategoryRow | MovableTypeCommentRow;
 
 export type MovableTypeAuthorRow = {
   author_id: number,
@@ -159,3 +163,23 @@ export type MovableTypeCommentRow = {
   entry?: MovableTypeEntryRow,
   blog?: MovableTypeBlogRow,
 };
+
+export function isBlog(input: unknown): input is MovableTypeBlogRow {
+  return (is.plainObject(input) && 'blog_id' in input);
+}
+
+export function isCategory(input: unknown): input is MovableTypeCategoryRow {
+  return (is.plainObject(input) && 'category_id' in input);
+}
+
+export function isAuthor(input: unknown): input is MovableTypeAuthorRow {
+  return (is.plainObject(input) && 'author_id' in input);
+}
+
+export function isEntry(input: unknown): input is MovableTypeEntryRow {
+  return (is.plainObject(input) && 'entry_id' in input);
+}
+
+export function isComment(input: unknown): input is MovableTypeCommentRow {
+  return (is.plainObject(input) && 'comment_id' in input);
+}

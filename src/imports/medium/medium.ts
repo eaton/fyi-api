@@ -10,7 +10,6 @@ export class Medium extends BaseImport {
     await this.ensureSchema();
 
     return Promise.resolve();
-
     /*
     const posts = await this.parseArchivePosts();
     for (const post of posts) {
@@ -24,17 +23,71 @@ export class Medium extends BaseImport {
   /**
    * Parses the raw HTML files from a downloaded Medium archive
    */
-  async parseArchive() {
+  async fillCache() {
     const user = await this.parseUserProfile();
-    await this.files.writeCache(`user-${user.name}.json`, user);
+    if (!this.files.existsCache(`user-${user.name}.json`)) {
+      await this.files.writeCache(`user-${user.name}.json`, user);
+    }
 
     let template: JsonTemplate = {};
-
     const files = {
       posts: await this.files.findInput('posts/*.html'),
       lists: await this.files.findInput('lists/*:*.html'),
       claps: await this.files.findInput('claps/claps-*.html'),
       bookmarks: await this.files.findInput('bookmarks/bookmarks-*.html'),
+    }
+
+    if (!this.files.existsCache(`claps.json`)) {
+      const claps: Record<string, unknown>[] = [];
+      template = [{
+        $: 'li.h-entry',
+        title: 'a | text',
+        url: 'a | attr:href',
+        clapped_at: 'time',
+        claps: '| split:— | shift | substr:1 | trim',
+      }];
+      for (const file of files.claps) {
+        const extracted = await this.files.readInput(file)
+          .then(data => Html.extractWithCheerio(data, template));
+        claps.push(...extracted as Record<string, unknown>[]);
+      }
+      await this.files.writeCache('claps.json', claps);
+    }
+
+    if (!this.files.existsCache(`lists.json`)) {
+      const lists: Record<string, unknown> = {};
+      template = {
+        title: 'h1.p-name',
+        url: 'footer a:nth(1) | attr:href',
+        published_at: 'footer time.dt-published | attr:datetime',
+        articles: [{
+          $: 'li',
+          title: 'a | text',
+          url: 'a | attr:href',
+        }]
+      };
+      for (const file of files.lists) {
+        const extracted = await this.files.readInput(file)
+          .then(data => Html.extractWithCheerio(data, template)) as Record<string, unknown>;
+        lists[extracted?.title?.toString() ?? ''] = extracted;
+      }
+      await this.files.writeCache('lists.json', lists);
+    }
+
+    if (!this.files.existsCache(`bookmarks.json`)) {
+      const bookmarks: Record<string, unknown>[] = [];
+      template = [{
+        $: 'li',
+        title: 'a',
+        url: 'a | attr:href',
+        bookmarked_at: 'time',
+      }];
+      for (const file of files.bookmarks) {
+        const extracted = await this.files.readInput(file)
+          .then(data => Html.extractWithCheerio(data, template));
+        bookmarks.push(...extracted as Record<string, unknown>[]);
+      }
+      await this.files.writeCache('bookmarks.json', bookmarks);
     }
 
     const posts: Record<string, Partial<MediumArticle>> = {};
@@ -43,56 +96,10 @@ export class Medium extends BaseImport {
       posts[post.id ?? 'ERR'] = post;
     }
 
-    const claps: Record<string, unknown>[] = [];
-    template = [{
-      $: 'li.h-entry',
-      title: 'a | text',
-      url: 'a | attr:href',
-      clapped_at: 'time',
-      claps: '| split:— | shift | substr:1 | trim',
-    }];
-    for (const file of files.claps) {
-      const extracted = await this.files.readInput(file)
-        .then(data => Html.extractWithCheerio(data, template));
-      claps.push(...extracted as Record<string, unknown>[]);
-    }
-    await this.files.writeCache('claps.json', claps);
-
-    const lists: Record<string, unknown> = {};
-    template = {
-      title: 'h1.p-name',
-      url: 'footer a:nth(1) | attr:href',
-      published_at: 'footer time.dt-published | attr:datetime',
-      articles: [{
-        $: 'li',
-        title: 'a | text',
-        url: 'a | attr:href',
-      }]
-    };
-    for (const file of files.lists) {
-      const extracted = await this.files.readInput(file)
-        .then(data => Html.extractWithCheerio(data, template)) as Record<string, unknown>;
-      lists[extracted?.title?.toString() ?? ''] = extracted;
-    }
-    await this.files.writeCache('lists.json', lists);
-
-    const bookmarks: Record<string, unknown>[] = [];
-    template = [{
-      $: 'li',
-      title: 'a',
-      url: 'a | attr:href',
-      bookmarked_at: 'time',
-    }];
-    for (const file of files.bookmarks) {
-      const extracted = await this.files.readInput(file)
-        .then(data => Html.extractWithCheerio(data, template));
-      bookmarks.push(...extracted as Record<string, unknown>[]);
-    }
-    await this.files.writeCache('bookmarks.json', bookmarks);
-
-    // console.log(posts);
     for (const post of Object.values(posts)) {
-      await this.files.writeCache(`posts/post-${post.id}.json`, post);
+      if (!this.files.existsCache(`posts/post-${post.id}.json`)) {
+        await this.files.writeCache(`posts/post-${post.id}.json`, post);
+      }
     }
 
     return Promise.resolve();

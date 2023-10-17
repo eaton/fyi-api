@@ -1,11 +1,13 @@
-import * as cheerio from 'cheerio';
-import { BaseImport } from '../../index.js';
+import { Html, BaseImport } from '../../index.js';
 import { decode } from 'entities';
+import path from 'path';
 
 type LivejournalEntry = {
   itemid: number,
   eventtime: string,
   subject?: string,
+  summary?: string,
+  cut_text?: string,
   event: string,
   current_music?: string,
   current_mood?: string,
@@ -31,27 +33,13 @@ export class Livejournal extends BaseImport {
 
   async doImport(): Promise<void> {
     await this.ensureSchema();
-
-    const results: string[] = [];
-    const stuff = await this.parseXmlFiles();
-
-    results.push(`${stuff.entries.length} entries were found in XML files.`);
-    for (const entry of stuff.entries) {
-      await this.db.push(entry, `lj_entry/${entry.itemid.toString()}`);
-    }
-  
-    results.push(`${stuff.comments.length} comments were found in XML files.`);
-    for (const comment of stuff.comments) {
-      await this.db.push(comment, `lj_comment/${comment.itemid.toString()}`);
-    }
-
-    const tmpEntries = await this.parseSemagicFiles();
-    for (const entry of tmpEntries) {
-      await this.db.push(entry, `lj_entry/${entry.itemid.toString()}`);
-    }
-    results.push(`${tmpEntries.length} entries were found in Semagic files.`);
-
+    await this.fillCache();
     return Promise.resolve();
+  }
+
+  async fillCache(): Promise<void> {
+    await this.parseXmlFiles();
+    await this.parseSemagicFiles();
   }
 
   /**
@@ -68,15 +56,13 @@ export class Livejournal extends BaseImport {
    * just a vestigial `<lj-poll>` element in the markup pointing to a long-dead ID. Alas.
    */
   async parseXmlFiles() {
-    const xmlFiles = await this.files.find('input/livejournal/*.xml');
-  
-    const entries: LivejournalEntry[] = [];
-    const comments: LivejournalComment[] = [];
-  
+    const xmlFiles = await this.files.findInput('*.xml');
+    
     for (const path of xmlFiles) {
-      const $ = await this.files.read(path)
-        .then(data => cheerio.load(data, { xmlMode: true }))
-
+      const $ = await this.files.readInput(path).then(data => Html.toCheerio(data, { xmlMode: true }))
+      const entries: LivejournalEntry[] = [];
+      const comments: LivejournalComment[] = [];
+        
       // Currently hard-coded for my own purposes. Blah.
       const firstPostDate = new Date('2001-06-04T21:45:00');
 
@@ -112,9 +98,18 @@ export class Livejournal extends BaseImport {
               comments.push(comment);
             });
         });
+
+      for (const entry of entries) {
+        this.files.writeCache(`entries/${entry.itemid}.json`, entry);
+      }
+      for (const comment of comments) {
+        this.files.writeCache(`comments/${comment.itemid}.json`, comment);
+      }
+
+      this.log(`${entries.length} entries with ${comments.length} comments found in ${path}.`);
     }
   
-    return Promise.resolve({ entries, comments });
+    return Promise.resolve();
   }
   
   /**
@@ -127,27 +122,33 @@ export class Livejournal extends BaseImport {
    * to generate the entry date; that information might be in the file format
    * somewhere, but I only have like 20 of these files so this is good enough.
    */
-  async parseSemagicFiles(offset = 0, limit?: number) {
-    let tempFiles = await this.files.find('input/livejournal/*.slj')
+  async parseSemagicFiles() {
+    let tempFiles = await this.files.findInput('*.slj')
     const entries: LivejournalEntry[] = [];
 
-    for (const path of tempFiles.slice(offset, limit ?? 1000)) {
-      const tempId = Number.parseInt(path.replace('input/livejournal/predicate.predicate.', '').replace('.slj', '-draft'));
-      const tempDate = this.files.stat(path).mtime.toISOString();
+    for (const file of tempFiles) {
+      const tempId = Number.parseInt(path.parse(file).name.replace('predicate.predicate.', ''));
+      const tempDate = this.files.inputStat(file).mtime.toISOString();
       
       entries.push(await this.populateFromSljBuffer({
         itemid: tempId,
         eventtime: tempDate
-      }, path));
+      }, file));
     }
 
-    return Promise.resolve(entries.filter(e => e.itemid > 0));
+    const toExport = entries.filter(e => e.itemid > 0);
+    for (const entry of toExport) {
+      this.files.writeCache(`entries/${entry.itemid}.json`, entry);
+    }
+    this.log(`${toExport.length} entries found in in .slj files.`);
+
+    return Promise.resolve();
   }
   
   async populateFromSljBuffer(entry: Partial<LivejournalEntry>, path: string): Promise<LivejournalEntry> {
-    const data = await this.files.read(path);
+    const data = await this.files.readInput(path, { parse: false });
     const text = data.toString('utf16le');
-    
+
     return Promise.resolve({
       ...entry,
       ...this.parseSemagicFile(text)

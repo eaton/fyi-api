@@ -47,6 +47,11 @@ export type MetafilterCommentData = {
 
 export interface MetafilterImportOptions extends BaseImportOptions {
   /**
+   * The ID of the MetaFilter user to grab
+   */
+  userId?: string,
+  
+  /**
    * Download and cache user metadata even if it already exists.
    */
   forceUser?: boolean,
@@ -63,23 +68,17 @@ export interface MetafilterImportOptions extends BaseImportOptions {
 }
 
 export class Metafilter extends BaseImport {
+  declare options: MetafilterImportOptions;
+
   collections = ['metafilter_user', 'metafilter_post', 'metafilter_comment'];
-  
-  forceUser = false;
-  forcePosts = false;
-  forceParse = false;
-  
+    
   constructor(options: MetafilterImportOptions = {}) {
     super(options);
-
-    if (options.forceUser) this.forceUser = true;
-    if (options.forcePosts) this.forcePosts = true;
-    if (options.forceParse) this.forceParse = true;
   }
 
   async doImport(): Promise<void> {
-    const cachedUser = (await this.files.find('input/metafilter/user-*.json')).pop();
-    const cachedPosts = await this.files.find('input/metafilter/**/post-*.json');
+    const cachedUser = (await this.files.findCache('user-*.json')).pop();
+    const cachedPosts = await this.files.findCache('**/post-*.json');
     
     await this.ensureSchema();
 
@@ -99,8 +98,8 @@ export class Metafilter extends BaseImport {
       return Promise.resolve();
     }
 
-    const user = await this.files.read(cachedUser) as MetafilterUserData;
-    if (this.forceParse) this.extractUserProperties(user);
+    const user = await this.files.readCache(cachedUser) as MetafilterUserData;
+    if (this.options.forceParse) this.extractUserProperties(user);
 
     user.raw = '';
     user.activity = undefined;
@@ -111,11 +110,11 @@ export class Metafilter extends BaseImport {
     }, { overwriteMode: 'update' }).then(() => saved.users++);
 
     for (const postFile of cachedPosts) {
-      const post = await this.files.read(postFile) as MetafilterPostData;
-      if (this.forceParse) this.extractPostProperties(post);
+      const post = await this.files.readCache(postFile) as MetafilterPostData;
+      if (this.options.forceParse) this.extractPostProperties(post);
 
       for (const comment of post.savedComments ?? []) {
-        if (this.forceParse) this.extractCommentProperties(comment);
+        if (this.options.forceParse) this.extractCommentProperties(comment);
 
         // Bulky and unecessary, we don't likes it
         comment.raw = '';
@@ -145,20 +144,20 @@ export class Metafilter extends BaseImport {
    * For the Metafilter import, preload selectively downloads and caches
    * raw user profile, post, and comment data from the site for processing.
    */
-  override async fillCache(options: MetafilterImportOptions = {}) {
+  override async fillCache() {
     const uid = Number.parseInt(process.env.METAFILTER_USER_ID ?? '');
 
     // If there's no cached user file, retrieve it and save it.
-    if (this.files.exists(this.userFileName(uid)) === false || options?.forceUser) {
+    if (!this.files.existsCache(this.userFileName(uid)) || this.options.forceUser) {
       await this.cacheUserData(uid);
     }
 
-    const user = (await this.files.read(this.userFileName(uid))) as MetafilterUserData;
-    if (this.forceParse) this.extractUserProperties(user);
+    const user = (await this.files.readCache(this.userFileName(uid))) as MetafilterUserData;
+    if (this.options.forceParse) this.extractUserProperties(user);
 
     const postsToCache: Record<string, string[]> = {};
     for (const [url, commentIds] of Object.entries(user.activity ?? [])) {
-      if (this.files.exists(this.postFileName(url)) === false || options?.forcePosts) {
+      if (this.files.exists(this.postFileName(url)) === false || this.options.forcePosts) {
         postsToCache[url] = commentIds;
       }
     }
@@ -168,12 +167,12 @@ export class Metafilter extends BaseImport {
   }
 
   protected userFileName(uid: string | number) {
-    return `raw/metafilter/user-${uid}.json`;
+    return `user-${uid}.json`;
   }
 
   protected postFileName(url: URL | string) {
     const parsed = new ParsedUrl(url.toString());
-    return `raw/metafilter/${parsed.subdomain}/post-${parsed.path.slice(-2,1)}.json`;
+    return `${parsed.subdomain}/post-${parsed.path.slice(-2,1)}.json`;
   }
 
   async cacheUserData(uid: number) {
@@ -231,8 +230,7 @@ export class Metafilter extends BaseImport {
         // Turn the set into a simple array for serialization
         user.activity = Object.fromEntries(Object.entries(activity).map(entry => [entry[0], [...entry[1]]]));
         
-        this.files.ensureCache('metafilter');
-        await this.files.write(this.userFileName(uid), user);
+        await this.files.writeCache(this.userFileName(uid), user);
         return Promise.resolve();
       }
     });
@@ -279,8 +277,7 @@ export class Metafilter extends BaseImport {
         }
         post.savedComments = savedComments;
 
-        this.files.ensure(`raw/metafilter/${post.site}`);
-        await this.files.write(this.postFileName(url), post);
+        await this.files.writeCache(this.postFileName(url), post);
         return Promise.resolve();
       }
     });
