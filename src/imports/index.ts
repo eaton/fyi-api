@@ -13,3 +13,4 @@ export * from './tumblr/index.js';
 export * from './medium/index.js';
 export * from './twitter/index.js';
 export * from './wordpress/index.js';
+export * from './drupal/index.js';

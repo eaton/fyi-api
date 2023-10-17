@@ -1,0 +1,189 @@
+import { BaseImport, BaseImportOptions, DatabaseImportOptions } from '../../../index.js';
+import mysql from 'mysql2/promise';
+import { D7Comment, D7Node, D7Alias, D7User, D7Term, D7File, D7Entity, D7NodeField } from './types.js';
+
+type Drupal7CacheData = {
+  users: Record<number, D7User>,
+  nodes: Record<number, D7Node>,
+  nodeFields: Record<string, D7NodeField[]>,
+  terms: Record<number, D7Term>,
+  comments: Record<number, D7Comment>,
+  files: Record<number, D7File>,
+  aliases: Record<string, string>,
+};
+
+interface Drupal7ImportOptions extends BaseImportOptions, DatabaseImportOptions {
+
+  /**
+   * The name of the Drupal 7 file field used to attach files.
+   * 
+   * This shouldn't include any `field_*` stype prefixes just the bare name that was
+   * used to create the field.
+   */
+  fileField?: string,
+
+  /**
+   * A list of FieldAPI fields and their columns that should be added to each node's data. 
+   * 
+   * The snippet below would check the table `field_data_field_slogan` for the columns
+   * `field_slogan_text` and `field_slogan_format`.
+   * 
+   * ```
+   * nodeFields: {
+   *    slogan: ['text', 'format']
+   * }
+   * ```
+   */
+  nodeFields?: Record<string, string[]>,
+}
+
+/**
+ * A basic Drupal 7 import that pulls nodes, comments, taxonomy terms, and path aliases.
+ * 
+ * Note that it does NOT yet deal with custom fields added by CCK.
+ */
+export class Drupal7Import extends BaseImport<Drupal7CacheData> {
+  declare options: Drupal7ImportOptions;
+
+  constructor(options?: Drupal7ImportOptions) {
+    super(options);
+  }
+
+  async fillCache(): Promise<Drupal7CacheData> {  
+    const data: Drupal7CacheData = {
+      users: {},
+      nodes: {},
+      nodeFields: {},
+      terms: {},
+      comments: {},
+      files: {},
+      aliases: {},
+    }
+
+    const tables = await this.loadTableData();
+
+    for (const v of tables.nodes) {
+      fixDate(v);
+      data.nodes[v.nid] = v;
+      await this.files.writeCache(`nodes/node-${v.nid}.json`, v);
+    }
+    for (const [fieldName, fieldValues] of Object.entries(tables.nodeFields)) {
+      data.nodeFields[fieldName] = fieldValues;
+      await this.files.writeCache(`nodeFields/field-${fieldName}.json`, fieldValues);
+    }
+    for (const v of tables.users) {
+      fixDate(v);
+      data.users[v.uid] = v;
+      await this.files.writeCache(`users/user-${v.uid}.json`, v);
+    }
+    for (const v of tables.terms) {
+      data.terms[v.tid] = v;
+      await this.files.writeCache(`terms/term-${v.tid}.json`, v);
+    }
+    for (const v of tables.comments) {
+      fixDate(v);
+      data.comments[v.cid] = v;
+      await this.files.writeCache(`comments/comment-${v.cid}.json`, v);
+    }
+    for (const v of tables.files) {
+      fixDate(v);
+      data.files[v.fid] = v;
+      await this.files.writeCache(`files/file-${v.fid}.json`, v);
+    }
+    for (const v of tables.aliases) {
+      data.aliases[v.alias] = v.source;
+    }
+    await this.files.writeCache(`aliases.json`, data.aliases);
+
+    return Promise.resolve(data);
+  }
+
+  protected async loadTableData() {
+    const conn = await mysql.createConnection({
+      host: this.options.database?.host ?? '',
+      user: this.options.database?.user ?? '',
+      password: this.options.database?.pass ?? '',
+      database: this.options.database?.dbName ?? ''
+    });
+
+    const users = (await conn.execute(`
+      SELECT u.uid AS uid, u.name AS name, u.mail AS mail, u.created AS date FROM \`users\` u;
+    `))[0] as D7User[];
+
+    const nodes = (await conn.execute(`
+      SELECT
+      n.nid AS nid, n.type AS type, n.title AS title, n.uid AS uid, n.status AS status, n.created AS date,
+      fdb.body_value AS body, fdb.body_format AS format
+      FROM \`node\` n LEFT JOIN \`field_data_body\` fdb ON n.vid = fdb.revision_id;
+    `))[0] as D7Node[];
+
+    const terms = (await conn.execute(`
+      SELECT
+      ttd.tid AS tid, ttd.name AS name, ttd.description AS description, ttd.format AS format, ttd.weight AS weight,
+      tv.machine_name as vocabulary
+      FROM \`taxonomy_term_data\` ttd
+      LEFT JOIN \`taxonomy_vocabulary\` tv ON tv.vid = ttd.vid;
+    `))[0] as D7Term[];
+
+    const comments = (await conn.execute(`
+      SELECT
+      c.cid AS cid, c.nid AS nid, c.pid AS pid, c.hostname AS hostname, c.created AS date, c.name AS name, c.mail AS mail, c.homepage AS homepage,
+      fcb.comment_body_value AS body, fcb.comment_body_format AS format
+      FROM \`comment\` c LEFT JOIN \`field_data_comment_body\` fcb ON c.cid = fcb.entity_id
+      WHERE c.status = 1;
+    `))[0] as D7Comment[];
+
+    let files: D7File[] = [];
+    if (this.options.fileField) {
+      const fieldName = 'field_' + this.options.fileField;
+      files = (await conn.execute(`
+        SELECT 
+        fm.uid AS uid, fm.filename AS filename, fm.filemime AS mime, fm.uri AS uri, fm.timestamp AS date,
+        fa.${fieldName}_fid AS fid, fa.entity_type AS type, fa.entity_id AS nid, fa.${fieldName}_description AS alt
+        FROM \`file_managed\` fm
+        LEFT JOIN \`field_data_${fieldName}\` fa ON fa.${fieldName}_fid = fm.fid
+      `))[0] as D7File[];
+    } else {
+      files = (await conn.execute(`
+        SELECT 
+        fm.fid AS fid, fm.uid AS uid, fm.filename AS filename, fm.filemime AS mime, fm.uri AS uri, fm.timestamp AS date
+        FROM \`file_managed\` fm;
+      `))[0] as D7File[];
+    }
+
+    const nodeFields: Record<string, D7NodeField[]> = {};
+    
+    if (this.options.nodeFields) {
+      // Do the queries for all the individual fields. It's hell.
+      for (const [field, columns] of Object.entries(this.options.nodeFields)) {
+        const tableName = `field_data_field_${field}`;
+
+        const columnList: string[] = ['entity_id AS nid', 'delta AS delta'];
+        for (const column of columns) {
+          const columnName = `field_${field}_${column}`;
+          columnList.push(`${columnName} AS ${column}`)
+        }
+
+        nodeFields[field] = (
+          await conn.execute(`SELECT ${columnList.join(', ')} FROM \`${tableName}\` WHERE entity_type = 'node';`)
+        )[0] as D7NodeField[];
+      }
+    }
+
+    const aliases = (await conn.execute(`
+      SELECT source, alias from \`url_alias\` where language = 'und';
+    `))[0] as D7Alias[];
+
+    await conn.end();
+
+    return Promise.resolve({
+      users, nodes, nodeFields, terms, comments, files, aliases
+    });
+  }
+}
+
+function fixDate(input: D7Entity) {
+  if ('date' in input && typeof input.date === 'number') {
+    input.date = new Date(input.date * 1000).toISOString();
+  }
+}

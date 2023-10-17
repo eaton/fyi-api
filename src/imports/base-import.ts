@@ -8,6 +8,16 @@ export interface BaseImportOptions extends Record<string, unknown> {
   logger?: (...data: unknown[]) => void;
 }
 
+export interface DatabaseImportOptions {
+  database?: {
+    host?: string,
+    user?: string,
+    pass?: string,
+    dbName?: string,
+    tables?: Record<string, string>
+  }
+}
+
 /**
  * Skeleton for raw migrations; it makes it easy-ish to avoid some of the frequent
  * boilerplate code when doing cycles of testing.
