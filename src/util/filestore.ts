@@ -346,6 +346,23 @@ export class Filestore {
     );
   }
 
+  getPath(fileOrDirectory: string, prefix?: string) {
+    return this.prefix(fileOrDirectory, prefix);
+  }
+
+  getInputPath(fileOrDirectory: string) {
+    return this.getPath(fileOrDirectory, 'input');
+  }
+
+  getCachePath(fileOrDirectory: string) {
+    return this.getPath(fileOrDirectory, 'cache');
+  }
+
+  getOutputPath(fileOrDirectory: string) {
+    return this.getPath(fileOrDirectory, 'output');
+  }
+
+  
   /**
    * Internal utility function for prefixing a path; attempts to be smart about a lot
    * of potential weird scenarios but can be faked out.
@@ -356,11 +373,10 @@ export class Filestore {
    * - If a class-wide alternate base directory has been created, all non-absolute
    *   paths will live under it.
    */
-  prefix(input: string, prefix: string) {
+  prefix(input: string, prefix?: string) {
     if (path.isAbsolute(input)) return input;
 
-    let fullPrefix = prefix;
-
+    let fullPrefix: string | undefined = undefined;
 
     switch (prefix) {
       case Filestore.input:
@@ -374,12 +390,18 @@ export class Filestore {
         break;
     }
     
-    if (Filestore.base && !fullPrefix.startsWith(Filestore.base)) {
-      fullPrefix = path.join(Filestore.base, fullPrefix);
+    if (Filestore.base) {
+      if (fullPrefix) {
+        if (!fullPrefix.startsWith(Filestore.base)) fullPrefix = path.join(Filestore.base, fullPrefix);
+      } else {
+        fullPrefix = Filestore.base;
+      }
     }
 
-    if (input.startsWith(fullPrefix)) return input;
-  
-    return path.join(fullPrefix, input);
+    if (fullPrefix && !input.startsWith(fullPrefix)) {
+      return path.join(fullPrefix, input);
+    } else {
+      return input;
+    }
   }
 }
