@@ -1,19 +1,19 @@
 import mysql from 'mysql2/promise';
 import slugify from '@sindresorhus/slugify';
 import { BaseImport, BaseImportOptions, DatabaseImportOptions } from '../../../index.js';
-import { D7Comment, D7Node, D7Alias, D7User, D7Term, D7Entity, D7NodeField } from './types.js';
+import { D6Comment, D6Node, D6Alias, D6User, D6Term, D6Entity, D6NodeField } from './types.js';
 
-type Drupal7CacheData = {
-  users: Record<number, D7User>,
-  nodes: Record<number, D7Node>,
-  nodeFields: Record<string, D7NodeField[]>,
-  terms: Record<number, D7Term>,
-  comments: Record<number, D7Comment>,
+type Drupal6CacheData = {
+  users: Record<number, D6User>,
+  nodes: Record<number, D6Node>,
+  nodeFields: Record<string, D6NodeField[]>,
+  terms: Record<number, D6Term>,
+  comments: Record<number, D6Comment>,
   aliases: Record<string, string>,
   extraTables: Record<string, unknown[]>
 };
 
-interface Drupal7ImportOptions extends BaseImportOptions, DatabaseImportOptions {
+interface Drupal6ImportOptions extends BaseImportOptions, DatabaseImportOptions {
 
   /**
    * A list of additional tables to pull in for post-processing.
@@ -21,19 +21,13 @@ interface Drupal7ImportOptions extends BaseImportOptions, DatabaseImportOptions 
   extraTables?: string[]
 
   /**
-   * A list of FieldAPI fields and their columns that should be added to each node's data. 
-   * 
-   * The snippet below would check the table `field_data_field_slogan` for the columns
-   * `field_slogan_text` and `field_slogan_format`.
-   * 
-   * ```
-   * nodeFields: {
-   *    slogan: ['text', 'format']
-   * }
-   * ```
+   * A list of node types with extra fields stored using the CCK module.
    */
-  nodeFields?: Record<string, string[]>,
+  nodeTypesWithFields?: string[],
 
+  /**
+   * A list of node types to be ignored when caching and exporting.
+   */
   ignoreNodeTypes?: string[],
 }
 
@@ -42,15 +36,15 @@ interface Drupal7ImportOptions extends BaseImportOptions, DatabaseImportOptions 
  * 
  * Note that it does NOT yet deal with custom fields added by CCK.
  */
-export class Drupal7Import extends BaseImport<Drupal7CacheData> {
-  declare options: Drupal7ImportOptions;
+export class Drupal6Import extends BaseImport<Drupal6CacheData> {
+  declare options: Drupal6ImportOptions;
 
-  constructor(options?: Drupal7ImportOptions) {
+  constructor(options?: Drupal6ImportOptions) {
     super(options);
   }
 
-  async fillCache(): Promise<Drupal7CacheData> {  
-    const data: Drupal7CacheData = {
+  async fillCache(): Promise<Drupal6CacheData> {  
+    const data: Drupal6CacheData = {
       users: {},
       nodes: {},
       nodeFields: {},
@@ -63,18 +57,22 @@ export class Drupal7Import extends BaseImport<Drupal7CacheData> {
     const tables = await this.loadTableData();
 
     for (const v of tables.nodes) {
+      // Bail if it's an ignore-able node type
       if ((this.options.ignoreNodeTypes ?? []).includes(v.type)) continue;
+
       
       // Stich field values into the nodes
-      for (const [fieldName, values] of Object.entries(tables.nodeFields)) {
-        for (const field of values) {
+      for (const [nodeType, fields] of Object.entries(tables.nodeFields)) {
+        if (v.type === nodeType)
+        for (const field of fields) {
           if (field.nid === v.nid) {
-            v.fields ??= {}
-            v.fields[fieldName.replace('field_', '')] ??= [];
-            v.fields[fieldName.replace('field_', '')].push(field);
+            const { nid, vid, ...columns } = field;
+            v.fields = Object.fromEntries(Object.entries(columns).map(e => [e[0].replace('field_', ''), e[1]]));
           }
         }
       }
+
+      if (v.body === v.teaser) v.teaser = undefined;
 
       fixDate(v);
       data.nodes[v.nid] = v;
@@ -119,48 +117,36 @@ export class Drupal7Import extends BaseImport<Drupal7CacheData> {
 
     const users = (await conn.execute(`
       SELECT u.uid AS uid, u.name AS name, u.mail AS mail, u.created AS date FROM \`users\` u;
-    `).catch(() => [[]]))[0] as D7User[];
+    `).catch(() => [[]]))[0] as D6User[];
 
     const nodes = (await conn.execute(`
       SELECT
       n.nid AS nid, n.type AS type, n.title AS title, n.uid AS uid, n.status AS status, n.created AS date,
-      fdb.body_value AS body, fdb.body_format AS format
-      FROM \`node\` n LEFT JOIN \`field_data_body\` fdb ON n.vid = fdb.revision_id;
-    `).catch(() => [[]]))[0] as D7Node[];
+      nr.body AS body, nr.teaser as teaser, nr.format AS format
+      FROM \`node\` n LEFT JOIN \`node_revisions\` nr ON n.vid = nr.vid;
+    `).catch(() => [[]]))[0] as D6Node[];
 
     const terms = (await conn.execute(`
       SELECT
-      ttd.tid AS tid, ttd.name AS name, ttd.description AS description, ttd.format AS format, ttd.weight AS weight,
-      tv.machine_name as vocabulary
-      FROM \`taxonomy_term_data\` ttd
-      LEFT JOIN \`taxonomy_vocabulary\` tv ON tv.vid = ttd.vid;
-    `).catch(() => [[]]))[0] as D7Term[];
+      td.tid AS tid, td.name AS name, td.description AS description, td.weight AS weight,
+      v.name as vocabulary
+      FROM \`term_data\` td
+      LEFT JOIN \`vocabulary\` v ON v.vid = td.vid;
+    `).catch(() => [[]]))[0] as D6Term[];
 
     const comments = (await conn.execute(`
       SELECT
-      c.cid AS cid, c.nid AS nid, c.pid AS pid, c.hostname AS hostname, c.created AS date, c.name AS name, c.mail AS mail, c.homepage AS homepage, c.subject AS title,
-      fcb.comment_body_value AS body, fcb.comment_body_format AS format
-      FROM \`comment\` c LEFT JOIN \`field_data_comment_body\` fcb ON c.cid = fcb.entity_id
-      WHERE c.status = 1;
-    `).catch(() => [[]]))[0] as D7Comment[];
+      c.cid AS cid, c.nid AS nid, c.pid AS pid, c.hostname AS hostname, c.timestamp AS date, c.name AS name, c.mail AS mail, c.homepage AS homepage, c.subject AS title, c.comment AS body
+      FROM \`comments\` c
+      WHERE c.status = 0;
+  `).catch(() => [[]]))[0] as D6Comment[];
 
-    const nodeFields: Record<string, D7NodeField[]> = {};
+    const nodeFields: Record<string, D6NodeField[]> = {};
     
-    if (this.options.nodeFields) {
-      // Do the queries for all the individual fields. It's hell.
-      for (const [field, columns] of Object.entries(this.options.nodeFields)) {
-        const tableName = `field_data_${field}`;
-
-        const columnList: string[] = ['entity_id AS nid', 'delta AS delta'];
-        for (const column of columns) {
-          const columnName = `${field}_${column}`;
-          columnList.push(`${columnName} AS ${column}`)
-        }
-        const query = `SELECT ${columnList.join(', ')} FROM \`${tableName}\` WHERE entity_type = 'node';`;
-
-        // Ultimately we should stitch this back into the nodes. 
-        nodeFields[field] = (await conn.execute(query))[0] as D7NodeField[];
-      }
+    // Do the queries for all the individual fields. It's hell.
+    for (const nodeType of this.options.nodeTypesWithFields ?? []) {
+      const query = `SELECT * FROM \`content_type_${nodeType}\``;
+      nodeFields[nodeType] = (await conn.execute(query))[0] as D6NodeField[];
     }
 
     const extraTables: Record<string, unknown[]> = {};
@@ -169,8 +155,8 @@ export class Drupal7Import extends BaseImport<Drupal7CacheData> {
     }
 
     const aliases = (await conn.execute(`
-      SELECT source, alias from \`url_alias\` where language = 'und';
-    `).catch(() => [[]]))[0] as D7Alias[];
+      SELECT dst AS source, src AS alias from \`url_alias\`;
+    `).catch(() => [[]]))[0] as D6Alias[];
 
     await conn.end();
 
@@ -180,7 +166,7 @@ export class Drupal7Import extends BaseImport<Drupal7CacheData> {
   }
 }
 
-function fixDate(input: D7Entity) {
+function fixDate(input: D6Entity) {
   if ('date' in input && typeof input.date === 'number') {
     input.date = new Date(input.date * 1000).toISOString();
   }

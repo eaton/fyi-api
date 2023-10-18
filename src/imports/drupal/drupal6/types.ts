@@ -1,12 +1,12 @@
-export type D7Entity = D7User | D7Node | D7Comment | D7Term | D7Alias;
+export type D6Entity = D6User | D6Node | D6Comment | D6Term | D6Alias;
 
-export type D7NodeField = {
+export type D6NodeField = {
   nid: number,
-  delta: number,
+  vid: number,
   [index: string]: unknown
 }
 
-export type D7User = {
+export type D6User = {
   [index: string]: unknown,
   uid: number,
   name: string,
@@ -14,7 +14,7 @@ export type D7User = {
   date: string
 }
 
-export type D7Node = {
+export type D6Node = {
   [index: string]: unknown,
   nid: number,
   type: string,
@@ -23,11 +23,12 @@ export type D7Node = {
   date: number | string,
   title: string,
   body: string,
+  teaser?: string,
   format: string,
-  fields?: Record<string, D7NodeField[]>
+  fields?: Record<string, unknown>
 }
 
-export type D7Comment = {
+export type D6Comment = {
   [index: string]: unknown,
   cid: number,
   nid: number,
@@ -43,17 +44,16 @@ export type D7Comment = {
   format?: string
 }
 
-export type D7Term = {
+export type D6Term = {
   [index: string]: unknown,
   tid: number,
   vocabulary: string,
   name: string,
   description?: string,
-  format: string,
   weight: number
 }
 
-export type D7Alias = {
+export type D6Alias = {
   source: string,
   alias: string
 }
