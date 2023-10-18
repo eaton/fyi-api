@@ -75,7 +75,7 @@ export class Drupal7Import extends BaseImport<Drupal7CacheData> {
             v.fields ??= {}
             v.fields[fieldName.replace('field_', '')] ??= [];
 
-            const { nid, delta, ...fieldValues } = field;
+            const { nid, vid, delta, ...fieldValues } = field;
             v.fields[fieldName.replace('field_', '')].push(fieldValues);
           }
         }

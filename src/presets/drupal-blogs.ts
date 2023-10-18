@@ -14,9 +14,22 @@ const alt = new Drupal7Import({
 });
 await alt.fillCache();
 
+const predicateOld = new Drupal6Import({
+  name: 'predicate-2010',
+  ignoreNodeTypes: ['lj', 'amazonnode', 'banner'],
+  extraTables: ['poll_choices', 'files', 'links', 'links_node'],
+  nodeTypesWithFields: ['game', 'turn', 'quotes', 'recipe'],
+  nodeFields: {
+    ingredients: ['value'],
+    related_links: ['url', 'title']
+  },
+  database: { dbName: 'predicate-2010', ...auth },
+});
+await predicateOld.fillCache();
+
 const predicate = new Drupal7Import({
   name: 'predicate-2013',
-  extraTables: ['poll_choice', 'bestreply', 'files', 'file_managed'],
+  extraTables: ['poll_choice', 'bestreply', 'files', 'file_managed', 'weblinks', 'weblinks_node'],
   nodeFields: {
     field_image: ['fid'],
     upload: ['fid', 'description'],
@@ -36,7 +49,7 @@ const goddy = new Drupal7Import({
     field_link: ['url', 'title'],
   },
   extraTables: ['files', 'file_managed', 'amazon_item', 'amazon_book'],
-  ignoreUids: [0,1,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+  ignoreUids: [0,1,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
 });
 await goddy.fillCache();
 

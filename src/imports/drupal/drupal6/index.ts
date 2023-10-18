@@ -25,6 +25,9 @@ interface Drupal6ImportOptions extends BaseImportOptions, DatabaseImportOptions 
    */
   nodeTypesWithFields?: string[],
 
+  // Multivalue CCK fields, a special hell
+  nodeFields?: Record<string, string[]>,
+
   /**
    * A list of node types to be ignored when caching and exporting.
    */
@@ -70,6 +73,32 @@ export class Drupal6Import extends BaseImport<Drupal6CacheData> {
           if (field.nid === v.nid) {
             const { nid, vid, ...columns } = field;
             v.fields = Object.fromEntries(Object.entries(columns).map(e => [e[0].replace('field_', ''), e[1]]));
+          }
+        }
+      }
+
+      // Stich field values into the nodes
+      for (const [nodeType, fields] of Object.entries(tables.nodeFields)) {
+        if (v.type === nodeType)
+        for (const field of fields) {
+          if (field.nid === v.nid) {
+            const { nid, vid, ...columns } = field;
+            v.fields = Object.fromEntries(Object.entries(columns).map(e => [e[0].replace('field_', ''), e[1]]));
+          }
+        }
+      }
+      
+      // Stich field values into the nodes
+      for (const [fieldName, values] of Object.entries(tables.nodeMultiValueFields)) {
+        for (const field of values) {
+          if (field.nid === v.nid) {
+            v.fields ??= {}
+            v.fields[fieldName] ??= [];
+            const { nid, delta, ...fieldValues } = field;
+            const f = v.fields[fieldName];
+            if (Array.isArray(f)) {
+              f.push(fieldValues);
+            }
           }
         }
       }
@@ -145,12 +174,30 @@ export class Drupal6Import extends BaseImport<Drupal6CacheData> {
       WHERE c.status = 0;
   `).catch(() => [[]]))[0] as D6Comment[];
 
-    const nodeFields: Record<string, D6NodeField[]> = {};
+  const nodeFields: Record<string, D6NodeField[]> = {};
+  const nodeMultiValueFields: Record<string, D6NodeField[]> = {};
     
     // Do the queries for all the individual fields. It's hell.
     for (const nodeType of this.options.nodeTypesWithFields ?? []) {
       const query = `SELECT * FROM \`content_type_${nodeType}\``;
-      nodeFields[nodeType] = (await conn.execute(query))[0] as D6NodeField[];
+      nodeMultiValueFields[nodeType] = (await conn.execute(query))[0] as D6NodeField[];
+    }
+    
+    if (this.options.nodeMultiValueFields) {
+      // Do the queries for all the individual fields. It's hell.
+      for (const [field, columns] of Object.entries(this.options.nodeMultiValueFields)) {
+        const tableName = `content_field_${field}`;
+
+        const columnList: string[] = ['nid', 'vid', 'delta'];
+        for (const column of columns) {
+          const columnName = `field_${field}_${column}`;
+          columnList.push(`${columnName} AS ${column}`)
+        }
+        const query = `SELECT ${columnList.join(', ')} FROM \`${tableName}\` WHERE entity_type = 'node';`;
+
+        // Ultimately we should stitch this back into the nodes. 
+        nodeMultiValueFields[field] = (await conn.execute(query))[0] as D6NodeField[];
+      }
     }
 
     const extraTables: Record<string, unknown[]> = {};
@@ -165,7 +212,7 @@ export class Drupal6Import extends BaseImport<Drupal6CacheData> {
     await conn.end();
 
     return Promise.resolve({
-      users, nodes, nodeFields, terms, comments, aliases, extraTables
+      users, nodes, nodeFields, nodeMultiValueFields, terms, comments, aliases, extraTables
     });
   }
 }
