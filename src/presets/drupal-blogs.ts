@@ -7,40 +7,22 @@ const auth = {
   pass: process.env.MYSQL_PASS
 };
 
-const alt = new Drupal7Import({
-  name: 'angrylittletree-drupal',
-  extraTables: ['file_managed'],
-  database: { dbName: 'angrylittletree-2012', ...auth },
+const vpj = new Drupal6Import({
+  name: '2005-viapositiva2',
+  nodeTypesWithFields: ['oldsite', 'photo', 'review'],
+  ignoreNodeTypes: ['lj', 'amazonnode', 'banner', 'amazon_node'],
+  extraTables: ['delicious_link', 'delicious_tag', 'files', 'links', 'links_node', 'amazonitem', 'amazon_item', 'amazonnode'],
+  database: {
+    dbName: 'jeffblog-2008',
+    host: process.env.MYSQL_HOST,
+    user: process.env.MYSQL_USER,
+    pass: process.env.MYSQL_PASS,
+  }
 });
-await alt.fillCache();
-
-const predicateOld = new Drupal6Import({
-  name: 'predicate-2010',
-  ignoreNodeTypes: ['lj', 'amazonnode', 'banner'],
-  extraTables: ['poll_choices', 'files', 'links', 'links_node'],
-  nodeTypesWithFields: ['game', 'turn', 'quotes', 'recipe'],
-  nodeFields: {
-    ingredients: ['value'],
-    related_links: ['url', 'title']
-  },
-  database: { dbName: 'predicate-2010', ...auth },
-});
-await predicateOld.fillCache();
-
-const predicate = new Drupal7Import({
-  name: 'predicate-2013',
-  extraTables: ['poll_choice', 'bestreply', 'files', 'file_managed', 'weblinks', 'weblinks_node'],
-  nodeFields: {
-    field_image: ['fid'],
-    upload: ['fid', 'description'],
-    field_url: ['url', 'title'],
-  },
-  database: { dbName: 'predicate-2013', ...auth },
-});
-await predicate.fillCache();
+await vpj.fillCache();
 
 const goddy = new Drupal7Import({
-  name: 'goddy',
+  name: '2007-goddy',
   database: { dbName: 'goddy-2013', ...auth },
   nodeFields: {
     field_product: ['asin'],
@@ -53,16 +35,34 @@ const goddy = new Drupal7Import({
 });
 await goddy.fillCache();
 
-const vpj = new Drupal6Import({
-  name: 'positiva-jeff-2008',
-  nodeTypesWithFields: ['oldsite', 'photo', 'review'],
+const predicateOld = new Drupal6Import({
+  name: '2010-predicate2',
   ignoreNodeTypes: ['lj', 'amazonnode', 'banner'],
-  extraTables: ['delicious_link', 'delicious_tag', 'files', 'links', 'links_node', 'amazonitem', 'amazon_item', 'amazonnode'],
-  database: {
-    dbName: 'jeffblog-2008',
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    pass: process.env.MYSQL_PASS,
-  }
+  extraTables: ['poll_choices', 'files', 'links', 'links_node'],
+  nodeTypesWithFields: ['game', 'turn', 'quotes', 'recipe'],
+  nodeFields: {
+    ingredients: ['value'],
+    related_links: ['url', 'title']
+  },
+  database: { dbName: 'predicate-2010', ...auth },
 });
-await vpj.fillCache();
+await predicateOld.fillCache();
+
+const alt = new Drupal7Import({
+  name: '2011-angrylittletree1',
+  extraTables: ['file_managed'],
+  database: { dbName: 'angrylittletree-2012', ...auth },
+});
+await alt.fillCache();
+
+const predicate = new Drupal7Import({
+  name: '2013-predicate3',
+  extraTables: ['poll_choice', 'bestreply', 'files', 'file_managed', 'weblinks', 'weblinks_node'],
+  nodeFields: {
+    field_image: ['fid'],
+    upload: ['fid', 'description'],
+    field_url: ['url', 'title'],
+  },
+  database: { dbName: 'predicate-2013', ...auth },
+});
+await predicate.fillCache();

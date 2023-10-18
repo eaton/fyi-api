@@ -1,47 +1,124 @@
 import { BaseImport, uuid } from '../../index.js';
 
+type InstagramProfileChunk = {
+  title: string,
+  media_map_data: Record<string, unknown>,
+  string_map_data: Record<string, InstagramProfileValue>,
+};
+
+type InstagramProfileValue = {
+  href: string,
+  value: string,
+  timestamp: number
+};
+
 type InstagramPost = {
   title?: string,
-  creation_timestamp?: number,
+  creation_timestamp: number,
   media: InstagramMedia[]
-}
+};
 
 type InstagramMedia = {
   uri: string,
   creation_timestamp: number,
   title: string,
-  media_metadata?: unknown
+  media_metadata?: {
+    photo_metadata?: {
+      exif_data?: Record<string, string | number>[]
+    }
+  },
   cross_post_source?: unknown
-}
+};
 
-export class Instagram extends BaseImport {
+type IGCachedPost = {
+  id: string,
+  title?: string,
+  date?: string,
+  media: {
+    url: string,
+    date: string,
+    title?: string,
+    exif?: Record<string, unknown>
+  }[]
+};
+
+type InstagramCache = {
+  posts: IGCachedPost[],
+  profile: Record<string, string>
+};
+
+export class Instagram extends BaseImport<InstagramCache> {
   collections = ['instagram_post'];
 
-  async doImport(): Promise<void> {
-    const posts = await this.files.read('input/instagram/content/posts_1.json') as InstagramPost[];
-    let mediaCount = 0;
+  async loadCache(): Promise<InstagramCache> {
+    return this.fillCache();
+  }
 
-    for (const post of posts) {
-      const postId = uuid(post);
-      if (post.media.length === 1) {
-        await this.db.collection('instagram_post').save({
-          _key: postId,
-          creation_timestamp: new Date((post.media[0].creation_timestamp ?? 0) * 1000).toISOString(),
-          title: post.media[0].title,
-          media: [post.media[0].uri]
-        });
-      } else {
-        await this.db.collection('instagram_post').save({
-          _key: postId,
-          creation_timestamp: new Date((post.creation_timestamp ?? 0) * 1000).toISOString(),
-          title: post.title,
-          media: post.media.map(m => m.uri)
-        }).then(() => mediaCount++);
+  async fillCache(): Promise<InstagramCache> {
+    const cache: InstagramCache = {
+      posts: [],
+      profile: {}
+    }
+
+    const files = await this.files.findInput('content/posts_*.json');
+    let mediaCount = 0;
+    for (const file of files) {
+      const raw = await this.files.readInput(file) as InstagramPost[];
+      for (const incoming of raw) {
+        const post: IGCachedPost = {
+          id: uuid(incoming),
+          date: incoming.creation_timestamp ? new Date(incoming.creation_timestamp * 1000).toISOString() : undefined,
+          title: incoming.title?.toString() ?? '',
+          media: []
+        };
+        for (const m of incoming.media) {
+          let exif: Record<string, unknown> = {};
+          for (const exifChunk of m.media_metadata?.photo_metadata?.exif_data ?? []) {
+            exif = { ...exif, ...exifChunk }
+          }
+          post.media.push({
+            url: m.uri,
+            date: new Date(m.creation_timestamp * 1000).toISOString(),
+            title: m.title,
+            exif
+          })
+          mediaCount++;
+        }
+        cache.posts.push(post);
       }
     }
 
-    this.log(`Saved ${posts.length} posts, ${mediaCount} media items.`)
+    const profileFiles = ['personal_information/personal_information.json']
+    for (const file of profileFiles) {
+      const raw = await this.files.readInput(file) as Record<string, InstagramProfileChunk[]>;
+      for (const chunks of Object.values(raw)) {
+        for (const chunk of chunks) {
+          for (const [key, values] of Object.entries(chunk.string_map_data)) {
+            if (values.href !== '') {
+              cache.profile[key] = values.href;
+            } else if (values.timestamp !== 0) {
+              cache.profile[key] = new Date(values.timestamp * 1000).toISOString();
+            } else if (values.value !== ''){
+              cache.profile[key] = values.value;
+            }
+          }
+        }
+      }
+    }
+
+    await this.files.writeCache(`profile-${cache.profile['Username']}.json`, cache.profile)
+    for (const p of cache.posts) {
+      await this.files.writeCache(`posts/post-${p.id}.json`, p);
+    }
     
-    return Promise.resolve();
+    this.log(`Cached ${cache.posts.length} posts by ${cache.profile['Username']} with ${mediaCount} media items`)
+
+    return Promise.resolve(cache);
+  }
+
+  async savePosts(cache: InstagramCache): Promise<void> {
+    for (const post of cache.posts) {
+      await this.db.collection('instagram_post').save({ _key: post.id, ...post });
+    }
   }
 }

@@ -27,6 +27,7 @@ import {
 
 export interface MovableTypeOptions extends BaseImportOptions, DatabaseImportOptions {
   extraTables?: Record<string, string>,
+  authors?: number[]
 }
 
 export class MovableType extends BaseImport<MTData> {

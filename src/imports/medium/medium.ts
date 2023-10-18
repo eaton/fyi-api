@@ -120,7 +120,7 @@ export class Medium extends BaseImport {
     };
 
     const profile = await this.files.readInput('profile/profile.html')
-      .then(data => extractWithCheerio(data, template)) as Record<string, unknown>
+      .then(data => data ? extractWithCheerio(data, template) : {}) as Record<string, unknown>
     
     template = {
       editor: [{
@@ -135,7 +135,7 @@ export class Medium extends BaseImport {
       }],
     };
     const publications = await this.files.readInput('profile/publications.html')
-      .then(data => extractWithCheerio(data, template)) as Record<string, unknown>
+      .then(data => data ? extractWithCheerio(data, template) : {}) as Record<string, unknown>
 
     return Promise.resolve({
       ...profile,
@@ -163,7 +163,7 @@ export class Medium extends BaseImport {
       },
     };
     const extracted = await this.files.readInput(file)
-      .then(data => extractWithCheerio(data, template))
+      .then(data => data ? extractWithCheerio(data, template) : {})
     const post: Partial<MediumArticle> = { id, filename, ...extracted, draft };
     return Promise.resolve(post);
   }

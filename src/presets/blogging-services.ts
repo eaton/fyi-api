@@ -8,8 +8,21 @@ const auth = {
   pass: process.env.MYSQL_PASS
 };
 
+const lj = new Livejournal({
+  name: '2001-livejournal',
+  files: { input: process.env.LIVEJOURNAL_INPUT }
+});
+await lj.doImport();
+
+const mt = new MovableType({
+  name: '2004-viapositiva1',
+  authors: [4],
+  database: { ...auth, dbName: process.env.MOVABLETYPE_DBNAME ?? '' }
+});
+await mt.doImport();
+
 const tbl = new Tumblr({
-  name: 'tumblr',
+  name: '2005-tumblr',
   auth: {
     consumer_key: process.env.TUMBLR_CONSUMER_KEY ?? '',
     consumer_secret: process.env.TUMBLR_CONSUMER_SECRET ?? '',
@@ -19,20 +32,8 @@ const tbl = new Tumblr({
 });
 await tbl.doImport();
 
-const mt = new MovableType({
-  name: 'viapositiva-mt',
-  database: { ...auth, dbName: process.env.MOVABLETYPE_DBNAME ?? '' }
-});
-await mt.doImport();
-
 const med = new Medium({
-  name: 'medium-eaton',
+  name: '2013-medium',
   files: { input: process.env.MEDIUM_INPUT }
 });
 await med.fillCache();
-
-const lj = new Livejournal({
-  name: 'livejournal',
-  files: { input: process.env.LIVEJOURNAL_INPUT }
-});
-await lj.doImport();
