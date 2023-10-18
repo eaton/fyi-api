@@ -42,6 +42,7 @@ export class Filestore {
   static input = 'input';
   static cache = 'cache';
   static output = 'output';
+  static base: string | undefined;
 
   _bucket?: string;
   _input?: string;
@@ -352,11 +353,15 @@ export class Filestore {
    * - Absolute paths (ie, those that start with *are not* prefixed
    * - `input`, `cache`, and `output` are expanded to the current Filestore directories
    * - If the input already starts with the prefix, it won't be added a second time.
+   * - If a class-wide alternate base directory has been created, all non-absolute
+   *   paths will live under it.
    */
   prefix(input: string, prefix: string) {
     if (path.isAbsolute(input)) return input;
 
     let fullPrefix = prefix;
+
+
     switch (prefix) {
       case Filestore.input:
         fullPrefix = this.input;
@@ -369,6 +374,10 @@ export class Filestore {
         break;
     }
     
+    if (Filestore.base && !fullPrefix.startsWith(Filestore.base)) {
+      fullPrefix = path.join(Filestore.base, fullPrefix);
+    }
+
     if (input.startsWith(fullPrefix)) return input;
   
     return path.join(fullPrefix, input);
