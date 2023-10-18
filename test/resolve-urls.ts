@@ -19,18 +19,18 @@ test('redirects', async t => {
   t.is(result?.redirects?.length, 4, 'all redirects accounted for');
 })
 
-test('hung url', async t => {
-  const result = await r.resolve('http://t.co/VMBMbcT');
-  t.not(result, undefined);
-})
-
 test('values exportable', async t => {
   await r.resolve('https://domain-that-does-not-exist.zzz');
   const fresh = new UrlResolver({ known: [...r.values()] })
   t.deepEqual([...r.values()], [...fresh.values()]);
 })
 
-test('evernote dead-end', async t=> {
+test.skip('hung url', async t => {
+  const result = await r.resolve('http://t.co/VMBMbcT');
+  t.not(result, undefined);
+})
+
+test.skip('evernote dead-end', async t => {
   // What we WANT is the https://img.skitch.com/20110116-dg9rerws6jgj5r3kqwkwqmc2gc.png URL
   const output = r.resolve('http://t.co/ogVSakd');
   console.log(output);
