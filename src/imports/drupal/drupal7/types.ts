@@ -24,7 +24,7 @@ export type D7Node = {
   title: string,
   body: string,
   format: string,
-  fields?: Record<string, D7NodeField[]>
+  fields?: Record<string, unknown[]>
 }
 
 export type D7Comment = {

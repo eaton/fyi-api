@@ -9,6 +9,7 @@ const auth = {
 
 const alt = new Drupal7Import({
   name: 'angrylittletree-drupal',
+  extraTables: ['file_managed'],
   database: { dbName: 'angrylittletree-2012', ...auth },
 });
 await alt.fillCache();
@@ -35,6 +36,7 @@ const goddy = new Drupal7Import({
     field_link: ['url', 'title'],
   },
   extraTables: ['files', 'file_managed', 'amazon_item', 'amazon_book'],
+  ignoreUids: [0,1,3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
 });
 await goddy.fillCache();
 

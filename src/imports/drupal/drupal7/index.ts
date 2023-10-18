@@ -35,6 +35,8 @@ interface Drupal7ImportOptions extends BaseImportOptions, DatabaseImportOptions 
   nodeFields?: Record<string, string[]>,
 
   ignoreNodeTypes?: string[],
+
+  ignoreUids?: number[],
 }
 
 /**
@@ -64,14 +66,17 @@ export class Drupal7Import extends BaseImport<Drupal7CacheData> {
 
     for (const v of tables.nodes) {
       if ((this.options.ignoreNodeTypes ?? []).includes(v.type)) continue;
-      
+      if ((this.options.ignoreUids ?? []).includes(v.uid)) continue;
+
       // Stich field values into the nodes
       for (const [fieldName, values] of Object.entries(tables.nodeFields)) {
         for (const field of values) {
           if (field.nid === v.nid) {
             v.fields ??= {}
             v.fields[fieldName.replace('field_', '')] ??= [];
-            v.fields[fieldName.replace('field_', '')].push(field);
+
+            const { nid, delta, ...fieldValues } = field;
+            v.fields[fieldName.replace('field_', '')].push(fieldValues);
           }
         }
       }
@@ -84,6 +89,8 @@ export class Drupal7Import extends BaseImport<Drupal7CacheData> {
     }
 
     for (const v of tables.users) {
+      if ((this.options.ignoreUids ?? []).includes(v.uid)) continue;
+
       fixDate(v);
       data.users[v.uid] = v;
       await this.files.writeCache(`users/user-${slugify(v.name)}-${v.uid}.json`, v);

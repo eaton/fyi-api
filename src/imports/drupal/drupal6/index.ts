@@ -29,6 +29,8 @@ interface Drupal6ImportOptions extends BaseImportOptions, DatabaseImportOptions 
    * A list of node types to be ignored when caching and exporting.
    */
   ignoreNodeTypes?: string[],
+
+  ignoreUids?: number[],
 }
 
 /**
@@ -59,7 +61,7 @@ export class Drupal6Import extends BaseImport<Drupal6CacheData> {
     for (const v of tables.nodes) {
       // Bail if it's an ignore-able node type
       if ((this.options.ignoreNodeTypes ?? []).includes(v.type)) continue;
-
+      if ((this.options.ignoreUids ?? []).includes(v.uid)) continue;
       
       // Stich field values into the nodes
       for (const [nodeType, fields] of Object.entries(tables.nodeFields)) {
@@ -82,6 +84,8 @@ export class Drupal6Import extends BaseImport<Drupal6CacheData> {
     }
 
     for (const v of tables.users) {
+      if ((this.options.ignoreUids ?? []).includes(v.uid)) continue;
+
       fixDate(v);
       data.users[v.uid] = v;
       await this.files.writeCache(`users/user-${slugify(v.name)}-${v.uid}.json`, v);
