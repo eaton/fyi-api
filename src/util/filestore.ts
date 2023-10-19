@@ -11,6 +11,7 @@ import { parse as parseYaml, stringify as serializeYaml } from 'yaml';
 import is from "@sindresorhus/is";
 
 export interface FilestoreOptions extends Record<string, unknown> {
+  base?: string,
   input?: string,
   output?: string,
   cache?: string,
@@ -42,8 +43,8 @@ export class Filestore {
   static input = 'input';
   static cache = 'cache';
   static output = 'output';
-  static base: string | undefined;
 
+  _base?: string;
   _bucket?: string;
   _input?: string;
   _output?: string;
@@ -82,15 +83,12 @@ export class Filestore {
   }
 
   constructor(options?: FilestoreOptions) {
+    this._base = options?.base;
     this._input = options?.input;
     this._cache = options?.cache;
     this._output = options?.output;
     this._bucket =  options?.bucket;
     this.readableOutput = options?.readableOutput ?? true;
-
-    this.ensureInput();
-    this.ensureCache();
-    this.ensureOutput();
   }
 
   /**
@@ -285,7 +283,7 @@ export class Filestore {
    * is automatically serialized.
    */
   async write(file: string, data: unknown, options?: FilestoreWriteOptions): Promise<void> {
-    if (options?.ensurePath !== false) {
+    if (options?.ensurePath !== false && path.parse(file).dir !== '') {
       this.ensure(path.parse(file).dir);
     }
 
@@ -375,8 +373,9 @@ export class Filestore {
    */
   prefix(input: string, prefix?: string) {
     if (path.isAbsolute(input)) return input;
+    const base = this._base;
 
-    let fullPrefix: string | undefined = undefined;
+    let fullPrefix: string | undefined = prefix;
 
     switch (prefix) {
       case Filestore.input:
@@ -390,11 +389,11 @@ export class Filestore {
         break;
     }
     
-    if (Filestore.base) {
+    if (base) {
       if (fullPrefix) {
-        if (!fullPrefix.startsWith(Filestore.base)) fullPrefix = path.join(Filestore.base, fullPrefix);
+        if (!fullPrefix.startsWith(base)) fullPrefix = path.join(base, fullPrefix);
       } else {
-        fullPrefix = Filestore.base;
+        fullPrefix = base;
       }
     }
 

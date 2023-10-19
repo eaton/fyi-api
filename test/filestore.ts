@@ -14,16 +14,21 @@ test('bucketing', async t => {
 })
 
 test('custom basepath', async t => {
-  const oldBase = Filestore.base;
-  Filestore.base = 'custom';
-  const fs = new Filestore();
-
+  const fs = new Filestore({ base: 'base' });
   const filename = 'test.txt';
-  t.is(fs.getPath(filename), path.join('custom', filename));
-  t.is(fs.getInputPath(filename),  path.join('custom', 'input', filename));
-  t.is(fs.getCachePath(filename),  path.join('custom', 'cache', filename));
-  t.is(fs.getOutputPath(filename), path.join('custom', 'output', filename));
 
-  Filestore.base = oldBase;
+  t.is(fs.getPath(filename), path.join('base', filename));
+  t.is(fs.getInputPath(filename),  path.join('base', 'input', filename));
+  t.is(fs.getCachePath(filename),  path.join('base', 'cache', filename));
+  t.is(fs.getOutputPath(filename), path.join('base', 'output', filename));
 })
 
+test('basepath with bucket prefix', async t => {
+  const fs = new Filestore({ base: 'base', bucket: 'bucket' });
+  const filename = 'test.txt';
+
+  t.is(fs.getPath(filename), path.join('base', filename));
+  t.is(fs.getInputPath(filename),  path.join('base', 'input', 'bucket', filename));
+  t.is(fs.getCachePath(filename),  path.join('base', 'cache', 'bucket', filename));
+  t.is(fs.getOutputPath(filename), path.join('base', 'output', 'bucket', filename));
+})

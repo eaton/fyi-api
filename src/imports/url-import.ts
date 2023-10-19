@@ -1,7 +1,9 @@
 import is from '@sindresorhus/is';
 import { Browser, BrowserContext, Page, PageScreenshotOptions, chromium } from 'playwright';
-import { BaseImport, BaseImportOptions, extractWithCheerio, CheerioExtractTemplate} from "../index.js";
+import { BaseImport, BaseImportOptions, extractWithCheerio, CheerioExtractTemplate, uuid} from "../index.js";
 import { fileTypeFromBuffer } from 'file-type';
+import slugify from '@sindresorhus/slugify';
+import humanizeUrl from 'humanize-url';
 
 interface UrlImportOptions extends BaseImportOptions {
   /**
@@ -9,7 +11,7 @@ interface UrlImportOptions extends BaseImportOptions {
    * If multiple URLs are passed in, captured data and screenshots
    * will be placed in a subdirectory based on the name.
    */
-  url?: string | Record<string, string>,
+  url?: string | string[] | Record<string, string>,
   
   /**
    * An optional callback that, given a Playwright Page object, can perform
@@ -72,7 +74,7 @@ interface UrlScreenshotOptions extends PageScreenshotOptions {
  */
 
 const defaults: UrlImportOptions = {
-  saveDom: true
+  saveDom: true,
 }
 
 const screenshotDefaults: UrlScreenshotOptions = {
@@ -89,13 +91,21 @@ export class UrlImport extends BaseImport {
   protected context?: BrowserContext;
   protected page?: Page;
 
-  constructor(options?: UrlImportOptions) {
-    if (options?.saveScreenshot === true) {
+  constructor(options: UrlImportOptions) {
+    if (options.saveScreenshot === true) {
       options.saveScreenshot = screenshotDefaults;
+    } else if (is.plainObject(options.saveScreenshot)) {
+      options.saveScreenshot = { ...screenshotDefaults, ...options?.saveScreenshot };
+    } else if (is.array(options.saveScreenshot)) {
+      options.saveScreenshot = options.saveScreenshot.map(o => { return { ...screenshotDefaults, ...o } });
     }
-    if (options?.savePdf === true) {
+
+    if (options.savePdf === true) {
       options.savePdf = pdfDefaults;
+    } else if (is.plainObject(options.savePdf)) {
+      options.savePdf = { ...pdfDefaults, ...options?.savePdf };
     }
+
     super({ ...defaults, ...options });
   }
 
@@ -110,7 +120,6 @@ export class UrlImport extends BaseImport {
     return Promise.resolve(this.page);
   }
 
-
   /**
    * Disposes of the pages and browser instance used for capture.
    */
@@ -122,12 +131,29 @@ export class UrlImport extends BaseImport {
   
   async fillCache() {
     // Here's where we do the business
+    await this.setup();
+
+    if (this.options.url === undefined) {
+      return Promise.resolve();
+    } else if (is.string(this.options.url)) {
+      const name = slugify(humanizeUrl(this.options.url));
+      await this.captureUrl(this.options.url, name);
+    } else if (is.array<string>(this.options.url)) {
+      for (const url of this.options.url) {
+        const name = slugify(humanizeUrl(url));
+        await this.captureUrl(url, name);
+      }
+    } else {
+      for (const [name, url] of Object.entries(this.options.url)) {
+        await this.captureUrl(url, name);
+      }
+    }
   }
 
   async captureUrl(url: string, name?: string, options?: UrlImportOptions) {
     const opt = { ...this.options, ...options };
     const page = await this.setup();
-    const response = await page.goto(url, { waitUntil: 'domcontentloaded' });
+    const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 0 });
 
     if (is.null(response)) {
       this.log(`Couldn't load ${url}`);
@@ -138,7 +164,8 @@ export class UrlImport extends BaseImport {
       const buffer = await response.body();
 
       if (opt.saveBody) {
-        const extension = (await fileTypeFromBuffer(buffer))?.ext ?? 'bin';
+        const ft = await fileTypeFromBuffer(buffer);
+        const extension = ft?.ext ?? 'bin';
         await this.files.writeCache(`${name ?? 'page'}-body.${extension}`, buffer)
       }
   
@@ -185,11 +212,14 @@ export class UrlImport extends BaseImport {
 
   async takeScreenshot(options: UrlScreenshotOptions, name?: string) {
     const page = await this.setup();
+    
+    // this is absolutely terrible, but we need a way to avoid screenshots overwriting each other
+    const hash = uuid(options).slice(0,8);
     if (options.viewport) {
       await page.setViewportSize(options.viewport);
     }
     const buffer = await page.screenshot(options);
-    return this.files.writeCache(`${name ?? 'page'}.${options.type}`, buffer);
+    return this.files.writeCache(`${name ?? 'page'}.${hash}.${options.type}`, buffer);
   }
 }
 
