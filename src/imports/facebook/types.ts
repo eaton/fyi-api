@@ -1,3 +1,17 @@
+export type FacebookRawPostsFile = FacebookRawPost[];
+export type FacebookRawVideosFile = {
+  "videos_v2": FacebookRawVideo[]
+}
+export type FacebookRawCommentsFile = {
+  comments_v2: FacebookRawComment[]
+}
+
+export type FacebookRawComment = {
+  timestamp: 1223230578,
+  data: [{ comment: { timestamp: number, comment: string, author: string } }],
+  title: string
+}
+
 export type FacebookRawPost = {
   timestamp: number,
   attachments?: FacebookRawAttachment[],
@@ -13,7 +27,7 @@ export type FacebookRawVideo = {
   thumbnail: { uri: string },
   description: string
 }
-export type FacebookRawAlbum = {
+export type FacebookRawAlbumFile = {
   name: string,
   photos: [
     {
