@@ -1,72 +1,93 @@
-export type FacebookRawPostsFile = FacebookRawPost[];
-export type FacebookRawVideosFile = {
-  "videos_v2": FacebookRawVideo[]
+export type FBPostsFile = FBPost[];
+export type FBVideosFile = {
+  "videos_v2": FBVideo[]
 }
-export type FacebookRawCommentsFile = {
-  comments_v2: FacebookRawComment[]
+export type FBCommentsFile = {
+  comments_v2: FBComment[]
+}
+export type FBProfileFile = {
+  profile_v2: {
+    username: string,
+    about_me?: string,
+    registration_timestamp?: number,
+    profile_uri: string,
+    name: {
+      full_name: string,
+      first_name?: string,
+      middle_name?: string,
+      last_name?: string
+    }
+    relationship?: {
+      status?: string,
+      anniversary?: { month?: number, day?: number, year?: number }
+      timestamp?: number,
+    },
+    emails: { emails: string[] },
+    hometown?: FbTextValue,
+    current_city?: FbTextValue,
+    religious_view?: FbTextValue,
+    political_view?: FbTextValue,
+    intro_bio?: FbTextValue
+  }
 }
 
-export type FacebookRawComment = {
-  timestamp: 1223230578,
+type FbTextValue = {
+  name: string,
+  description?: string,
+  timestamp: number
+}
+
+export type FBComment = {
+  timestamp: number,
   data: [{ comment: { timestamp: number, comment: string, author: string } }],
   title: string
 }
 
-export type FacebookRawPost = {
+export type FBPost = {
   timestamp: number,
-  attachments?: FacebookRawAttachment[],
-  data: ({ post: string } | { update_timestamp: number })[]
+  attachments?: { data: FBAttachment }[],
+  data: FBPostField[]
 }
 
-export type FacebookRawVideo = {
+export type FBAttachment = 
+  [{ media: FBMedia }] |
+  [{ place: FBPlace }] |
+  [{ external_context: { url: string }}]
+
+type FBPostField = { post: string } | { update_timestamp: number };
+
+export type FBMedia = {
   uri: string,
-  creation_timestamp: number,
+  creation_timestamp?: number,
+  title?: string,
+  description?: string,
+  media_metadata?: Record<string, unknown>
+}
+
+export type FBPhoto = FBMedia & {
+  media_metadata?: {
+    photo_metadata?: { exif_data?: Record<string, number | string>[] }
+  }
+}
+
+export type FBVideo = FBMedia & {
   media_metadata?: {
     video_metadata?: { exif_data?: Record<string, string | number>[] }
   },
   thumbnail: { uri: string },
-  description: string
 }
-export type FacebookRawAlbumFile = {
+
+export type FBAlbum = {
   name: string,
-  photos: [
-    {
-      uri: string,
-      creation_timestamp: number,
-      title: string,
-      description: string
-    }
-  ],
-  cover_photo: {
-    uri: string,
-    creation_timestamp: number,
-    title: string,
-    description: string
-  },
+  photos: FBPhoto[],
+  cover_photo: FBPhoto,
   last_modified_timestamp: number,
   description: string
 }
 
-export type FacebookRawAttachment = FacebookRawMediaAttachment | FacebookRawPlaceAttachment | FacebookRawExternalContextAttachment;
-export type FacebookRawMediaAttachment = { data: [{ 
-  media: {
-    uri: string,
-    creation_timestamp: number,
-    title?: string,
-    description?: string,
-    media_metadata?: {
-      photo_metadata?: { exif_data?: Record<string, number | string>[] }
-    }
-  }
-}]};
-export type FacebookRawPlaceAttachment = { data: [{ 
-  place: {
-    name: string,
-    coordinate?: { latitude: number, longitude: number },
-    address?: string,
-    url?: string
-  }
-}]};
-export type FacebookRawExternalContextAttachment = { data: [{ 
-  external_context: { url: string }
-}]};
+export type FBPlace = {
+  name: string,
+  coordinate?: { latitude: number, longitude: number },
+  address?: string,
+  url?: string
+}
