@@ -1,12 +1,19 @@
 import is from '@sindresorhus/is';
 
+// Posts live in in /posts/your_posts_\d+.json
 export type FBPostsFile = FBPost[];
+
+// Posts live in in /posts/your_videos.json
 export type FBVideosFile = {
   "videos_v2": FBVideo[]
 }
+
+// Comments live in in /comments_and_reactions/comments.json
 export type FBCommentsFile = {
   comments_v2: FBComment[]
 }
+
+// Lives in /profile_information/profile_information.json
 export type FBProfileFile = {
   profile_v2: {
     username: string,
@@ -32,6 +39,9 @@ export type FBProfileFile = {
     intro_bio?: FbTextValue
   }
 }
+
+// This file lives in /your_topics/your_topics.json
+export type FBYourTopics = { inferred_topics_v2: string[] };
 
 type FbTextValue = {
   name: string,
@@ -101,4 +111,24 @@ export type FBPlace = {
   coordinate?: { latitude: number, longitude: number },
   address?: string,
   url?: string
+}
+
+// Message threads live in /messages/(archived_threads|filtered_threads|message_requests|inbox)/[\w\d]+/message_1.json
+export type FBThread = {
+  title: string,
+  thread_type?: string,
+  thread_path?: string,
+  magic_words: string[],
+  participants: { name: string }[],
+  messages: FBThreadMessage[],
+}
+
+export type FBThreadMessage = {
+  sender_name: string,
+  timestamp_ms: number,
+  ip?: string,
+  content?: string,
+  photos?: { uri: string }[]
+  type: string,
+  is_unsent: boolean
 }
