@@ -1,3 +1,5 @@
+import is from '@sindresorhus/is';
+
 export type FBPostsFile = FBPost[];
 export type FBVideosFile = {
   "videos_v2": FBVideo[]
@@ -54,7 +56,7 @@ export type FBAttachment =
   [{ place: FBPlace }] |
   [{ external_context: { url: string }}]
 
-type FBPostField = { post: string } | { update_timestamp: number };
+type FBPostField = { post?: string };
 
 export type FBMedia = {
   uri: string,
@@ -63,11 +65,17 @@ export type FBMedia = {
   description?: string,
   media_metadata?: Record<string, unknown>
 }
+export function isFBMedia(input: unknown): input is FBMedia {
+  return (is.plainObject(input) && is.plainObject(input.media_metadata));
+}
 
 export type FBPhoto = FBMedia & {
   media_metadata?: {
     photo_metadata?: { exif_data?: Record<string, number | string>[] }
   }
+}
+export function isFBPhoto(input: unknown): input is FBPhoto {
+  return (is.plainObject(input) && is.plainObject(input.media_metadata) && 'photo_metadata' in input.media_metadata);
 }
 
 export type FBVideo = FBMedia & {
@@ -75,6 +83,9 @@ export type FBVideo = FBMedia & {
     video_metadata?: { exif_data?: Record<string, string | number>[] }
   },
   thumbnail: { uri: string },
+}
+export function isFBVideo(input: unknown): input is FBVideo {
+  return (is.plainObject(input) && is.plainObject(input.media_metadata) && 'video_metadata' in input.media_metadata);
 }
 
 export type FBAlbum = {

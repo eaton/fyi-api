@@ -37,7 +37,7 @@ export abstract class BaseImport<CacheType = void> {
   }
 
   get name(): string {
-    return this.options.name ?? this.constructor.name;
+    return this.options.name ?? this.constructor.name.toLocaleLowerCase();
   }
 
   get db(): Database {

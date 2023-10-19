@@ -8,7 +8,12 @@ import {
   FBComment,
   FBVideo,
   FBProfileFile,
+  FBMedia,
+  FBPhoto,
+  isFBVideo,
+  isFBPhoto,
 } from './types.js';
+import is from '@sindresorhus/is';
 
 export type FacebookCacheData = {
   profile: Record<string, unknown>,
@@ -29,6 +34,22 @@ export class Facebook extends BaseImport<FacebookCacheData> {
     super(options);
   }
 
+  async loadCache(): Promise<FacebookCacheData> {
+    const cacheData: FacebookCacheData = {
+      profile: {},
+      comments: [],
+      videos: [],
+      albums: [],
+      posts: []
+    }
+
+    if (is.emptyObject(cacheData.profile)) {
+      return this.fillCache();
+    } else {
+      return Promise.resolve(cacheData);
+    }
+  }
+
   async fillCache(): Promise<FacebookCacheData> {
     const cacheData: FacebookCacheData = {
       profile: {},
@@ -38,22 +59,35 @@ export class Facebook extends BaseImport<FacebookCacheData> {
       posts: []
     }
 
+    const inprofile = await this.files.readInput('profile_information/profile_information.json') as FBProfileFile ?? {};
+    cacheData.profile = makeProfile(inprofile);
+
     const postFiles = await this.files.findInput('posts/your_posts_*.json');
     for (const postFile of postFiles) {
-      const inposts = await this.files.readInput(postFile) as FBPostsFile ?? [];
-      for (const post of inposts) {
+      const posts = await this.files.readInput(postFile) as FBPostsFile ?? [];
+      for (const post of posts) {
         cacheData.posts.push(makePost(post));
       }
     }
+
     const albumFiles = await this.files.findInput('posts/album/*.json');
     for (const albumFile of albumFiles) {
       const album = await this.files.readInput(albumFile) as (FBAlbum | undefined);
       if (album) cacheData.albums.push(makeAlbum(album));
     }
 
-    const invideos = await this.files.readInput('posts/your_videos.json') as (FBVideosFile | undefined) ?? [];
-    const incomments = await this.files.readInput('comments_and_reactions/comments.json') as (FBCommentsFile | undefined) ?? {};
-    const inprofile = await this.files.readInput('profile_information/profile_information.json') as (FBProfileFile | undefined) ?? {};
+    const videosFile = await this.files.readInput('posts/your_videos.json') as FBVideosFile ?? {};
+    cacheData.videos = videosFile.videos_v2.map(makeVideo);
+
+    const commentsFile = await this.files.readInput('comments_and_reactions/comments.json') as FBCommentsFile ?? {};
+    cacheData.comments = commentsFile.comments_v2.map(makeComment);
+
+    // Do we want to split these?
+    await this.files.writeCache(`profile.json`, cacheData.profile);
+    await this.files.writeCache(`posts.json`, cacheData.posts);
+    await this.files.writeCache(`videos.json`, cacheData.videos);
+    await this.files.writeCache(`albums.json`, cacheData.albums);
+    await this.files.writeCache(`comments.json`, cacheData.comments);
 
     return Promise.resolve(cacheData);
   }
@@ -72,27 +106,64 @@ function makeProfile(input: FBProfileFile) {
 function makePost(input: FBPost) {
   return {
     date: input.timestamp > 0 ? new Date(input.timestamp * 1000).toISOString() : 0,
-    body: input.data.map(d => 'post' in d ? d.post : ''),
+    body: input.data?.find(d => 'post' in d)?.post,
     attachments: input.attachments?.map(d => d.data)
   };
 }
 
 function makeVideo(input: FBVideo) {
   return {
-    title: input.title,
     url: input.uri,
-    thumbnailUrl: input.thumbnail.uri,
+    date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
+    title: input.title,
     description: input.description,
+    thumbnailUrl: input.thumbnail.uri,
     exif: input.media_metadata?.video_metadata?.exif_data?.flat()
-  };
+  }
+}
+
+function makePhoto(input: FBPhoto) {
+  return {
+    url: input.uri,
+    date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
+    title: input.title,
+    description: input.description,
+    exif: input.media_metadata?.photo_metadata?.exif_data?.flat()
+  }
 }
 
 function makeComment(input: FBComment) {
+  const comment = input.data?.find(d => 'comment' in d);
   return {
-
+    title: input.title,
+    date: input.timestamp > 0 ? new Date(input.timestamp * 1000).toISOString() : 0,
+    author: comment?.comment?.author,
+    body: comment?.comment?.comment, // No, really
   };
 }
 
 function makeAlbum(input: FBAlbum) {
-  return {};
+  return {
+    name: input.name,
+    description: input.description,
+    date: input.last_modified_timestamp > 0 ? new Date(input.last_modified_timestamp * 1000).toISOString() : 0,
+    photos: input.photos.map(makeMedia),
+    cover: input.cover_photo ? makePhoto(input.cover_photo) : undefined
+  }
+}
+
+function makeMedia(input: FBMedia) {
+  if (isFBVideo(input)) {
+    return makeVideo(input);
+  } else if (isFBPhoto(input)) {
+    return makePhoto(input);
+  } else if ('uri' in input) {
+    return {
+      url: input.uri,
+      date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
+      title: input.title,
+      description: input.description,
+    }
+  }
+  throw new TypeError('Could not parse Facebook Media item');
 }
