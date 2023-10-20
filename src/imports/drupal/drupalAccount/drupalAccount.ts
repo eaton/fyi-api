@@ -50,7 +50,6 @@ export class DrupalAccount extends BaseImport<DrupalAccountCache> {
     super(opt);
   }
 
-
   async fillCache() {
     // https://www.drupal.org/user/[user-id] or https://www.drupal.org/u/[user-name]
     // https://www.drupal.org/user/[user-id]/track
@@ -82,7 +81,7 @@ async function extractProfile(html: string) {
       $: 'div.field-name-field-events-attended div.field-items',
       value: 'div.field-item | text'
     }],
-    projectsMaintained: [{
+    maintainer: [{
       $: 'div.view-users-maintained-projects div.field-items',
       value: 'div.field-item | text'
     }]
@@ -91,19 +90,15 @@ async function extractProfile(html: string) {
 
 async function extractTrackerActivity(html: string) {
   return extractWithCheerio(html, {
-    trackerPages: [{
-      $: 'ul.pager li',
-      value: 'a | attr:href'
-    }],
     posts: [{
       $: 'div#content-inner table tbody tr:not(:first-child)',
-      type: 'td:nth-child(0)',
-      title: 'td:nth-child(1)',
-      url: 'td:nth-child(1) a attr:href',
-      author: 'td:nth-child(2) a.username',
-      uid: 'td:nth-child(2) a.username | attr:data-uid | parseAs:int',
-      replies: 'td.replies | parseAs:int',
-      updated: 'td:nth-child(4)'
+      type: '> td:nth-child(0)',
+      title: '> td:nth-child(1)',
+      url: '> td:nth-child(1) a attr:href',
+      author: '> td:nth-child(2) a.username',
+      uid: '> td:nth-child(2) a.username | attr:data-uid | parseAs:int',
+      replies: '> td.replies | parseAs:int',
+      updated: '> td:nth-child(4)'
     }],
   })
 }
