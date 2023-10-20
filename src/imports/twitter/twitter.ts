@@ -116,7 +116,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
   async processArchives(): Promise<void> {
     // Look for all available archive files; batch em up an let em rip
-    let archives = (await this.files.findInput('**/twitter-*.zip')).sort();
+    let archives = (await this.files.findInput('twitter-*.zip')).sort();
       if (this.options.archive === 'newest') {
       archives = archives.slice(-1);
     } else if (this.options.archive === 'oldest') { 
@@ -128,7 +128,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       const archive = new TwitterArchive(buffer, { ignore: ['ad', 'block', 'dm', 'moment', 'mute'] });
       await archive.ready();
 
-      const archiveInfoPath = `${archive.user.screen_name}-${formatDate(archive.generation_date, 'yyyy-MM-dd')}-archive.json`;
+      const archiveInfoPath = `${archive.user.screen_name}/${formatDate(archive.generation_date, 'yyyy-MM-dd')}-archive.json`;
       if (this.files.existsCache(archiveInfoPath)) {
         this.log(
           'Skipping %s archive for %s (already cached)',
@@ -196,7 +196,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     // write the current Tweet index to disk
     for (const [handle, lists] of Object.entries(this.cacheData.tweetIndex.batchedvalues())) {
       for (const [list, tweets] of Object.entries(lists)) {
-        this.files.writeCache(`${handle}-${list}.json`, tweets);
+        this.files.writeCache(`${handle}/${list}.json`, tweets);
       }
     }
 
@@ -205,7 +205,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   async processAnalytics() {
-    const analytics = await this.files.findInput('**/daily_tweet_activity_metrics_*.csv');
+    const analytics = await this.files.findInput('daily_tweet_activity_metrics_*.csv');
     const allData: Record<string, TwitterAnalyticsSet> = {};
 
     const getStart = (a: string | undefined, b: string | undefined) => {
@@ -245,7 +245,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     }
 
     for (const [user, data] of Object.entries(allData)) {
-      await this.files.writeCache(`${user}-analytics.json`, data);
+      await this.files.writeCache(`${user}/analytics.json`, data);
       this.log(`Cached ${user} analytics (covering ${data.rows.length} days)`);
     }
     return Promise.resolve();
