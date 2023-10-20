@@ -149,11 +149,11 @@ function makeVideo(input: FBVideo) {
   if (is.emptyObject(exif)) exif = undefined;
 
   return {
-    url: input.uri,
-    date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
-    title: input.title,
-    description: input.description,
-    thumbnailUrl: input.thumbnail.uri,
+    url: input?.uri ?? undefined,
+    date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : '',
+    title: input?.title ?? undefined,
+    description: input?.description ?? undefined,
+    thumbnailUrl: input?.thumbnail?.uri,
     exif
   }
 }
@@ -166,10 +166,10 @@ function makePhoto(input: FBPhoto) {
   if (is.emptyObject(exif)) exif = undefined;
 
   return {
-    url: input.uri,
-    date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
-    title: input.title,
-    description: input.description,
+    url: input?.uri ?? undefined,
+    date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : '',
+    title: input?.title ?? undefined,
+    description: input?.description ?? undefined,
     exif
   }
 }
@@ -194,17 +194,17 @@ function makeAlbum(input: FBAlbum) {
   }
 }
 
-function makeMedia(input: FBMedia) {
+export function makeMedia(input: FBMedia) {
   if (isFBVideo(input)) {
     return makeVideo(input);
   } else if (isFBPhoto(input)) {
     return makePhoto(input);
   } else if ('uri' in input) {
     return {
-      url: input.uri,
-      date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
-      title: input.title,
-      description: input.description,
+      url: input?.uri,
+      date: input?.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
+      title: input?.title,
+      description: input?.description,
     }
   }
   throw new TypeError('Could not parse Facebook Media item');

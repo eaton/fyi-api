@@ -92,7 +92,7 @@ export function isFBPhoto(input: unknown): input is FBPhoto {
 
 export type FBVideo = FBMedia & {
   media_metadata?: {
-    video_metadata?: { exif_data?: Record<string, string | number>[] }
+    video_metadata?: { exif_data?: Record<string, unknown>[] }
   },
   thumbnail: { uri: string },
 }

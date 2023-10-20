@@ -1,4 +1,4 @@
-import { BaseImport, uuid } from '../../index.js';
+import { BaseImport, makeMedia, uuid } from '../../index.js';
 import { IGCachedPost, InstagramPost, InstagramProfileChunk } from './types.js';
 
 type InstagramCache = {
@@ -31,23 +31,14 @@ export class Instagram extends BaseImport<InstagramCache> {
           media: []
         };
         for (const m of incoming.media) {
-          let exif: Record<string, unknown> = {};
-          for (const exifChunk of m.media_metadata?.photo_metadata?.exif_data ?? []) {
-            exif = { ...exif, ...exifChunk }
-          }
-          post.media.push({
-            url: m.uri,
-            date: new Date(m.creation_timestamp * 1000).toISOString(),
-            title: m.title,
-            exif
-          })
+          post.media.push(makeMedia(m))
           mediaCount++;
         }
         cache.posts.push(post);
       }
     }
 
-    const profileFiles = ['personal_information/personal_information.json']
+    const profileFiles = ['login_and_account_creation/signup_information.json', 'personal_information/personal_information.json']
     for (const file of profileFiles) {
       const raw = await this.files.readInput(file) as Record<string, InstagramProfileChunk[]>;
       for (const chunks of Object.values(raw)) {
