@@ -60,34 +60,39 @@ export class Facebook extends BaseImport<FacebookCacheData> {
     }
 
     const inprofile = await this.files.readInput('profile_information/profile_information.json') as FBProfileFile ?? {};
-    cacheData.profile = makeProfile(inprofile);
+    if (inprofile) {
+      cacheData.profile = makeProfile(inprofile);
+      await this.files.writeCache(`profile.json`, cacheData.profile);
+    }
 
     const postFiles = await this.files.findInput('posts/your_posts_*.json');
-    for (const postFile of postFiles) {
+    for (const postFile of postFiles ?? []) {
       const posts = await this.files.readInput(postFile) as FBPostsFile ?? [];
       for (const post of posts) {
         cacheData.posts.push(makePost(post));
       }
     }
+    if (!is.emptyArray(cacheData.posts)) await this.files.writeCache(`posts.json`, cacheData.posts);
 
     const albumFiles = await this.files.findInput('posts/album/*.json');
-    for (const albumFile of albumFiles) {
+    for (const albumFile of albumFiles ?? []) {
       const album = await this.files.readInput(albumFile) as (FBAlbum | undefined);
       if (album) cacheData.albums.push(makeAlbum(album));
     }
+    if (!is.emptyArray(cacheData.albums)) await this.files.writeCache(`albums.json`, cacheData.albums);
+
 
     const videosFile = await this.files.readInput('posts/your_videos.json') as FBVideosFile ?? {};
-    cacheData.videos = videosFile.videos_v2.map(makeVideo);
+    if (videosFile) {
+      cacheData.videos = videosFile.videos_v2.map(makeVideo);
+      await this.files.writeCache(`videos.json`, cacheData.videos);
+    }
 
     const commentsFile = await this.files.readInput('comments_and_reactions/comments.json') as FBCommentsFile ?? {};
-    cacheData.comments = commentsFile.comments_v2.map(makeComment);
-
-    // Do we want to split these?
-    await this.files.writeCache(`profile.json`, cacheData.profile);
-    await this.files.writeCache(`posts.json`, cacheData.posts);
-    await this.files.writeCache(`videos.json`, cacheData.videos);
-    await this.files.writeCache(`albums.json`, cacheData.albums);
-    await this.files.writeCache(`comments.json`, cacheData.comments);
+    if (commentsFile) {
+      cacheData.comments = commentsFile.comments_v2.map(makeComment);
+      await this.files.writeCache(`comments.json`, cacheData.comments);
+    }
 
     return Promise.resolve(cacheData);
   }
@@ -97,38 +102,75 @@ function makeProfile(input: FBProfileFile) {
   const p = input.profile_v2;
   return {
     username: p.username,
+    date: p.registration_timestamp ? new Date(p.registration_timestamp * 1000).toISOString() : undefined,
     fullname: p.name.full_name,
     email: p.emails.emails.shift(),
     url: p.profile_uri,
+    bio: p.intro_bio,
+    about: p.about_me,
   }
 }
 
 function makePost(input: FBPost) {
   return {
+    title: input.title,
     date: input.timestamp > 0 ? new Date(input.timestamp * 1000).toISOString() : 0,
     body: input.data?.find(d => 'post' in d)?.post,
-    attachments: input.attachments?.map(d => d.data)
+    tags: input.tags?.map(t => t.name),
+    ...extractPostAttachments(input),
   };
 }
 
+function extractPostAttachments(input: FBPost) {
+  const attch: Record<string, unknown[]> = {};
+  for (const a of input.attachments ?? []) {
+    for (const d of a.data) {
+      if ('place' in d) {
+        attch['places'] ??= [];
+        attch['places'].push(d.place);
+      } else if ('media' in d) {
+        attch['media'] ??= [];
+        attch['media'].push(makeMedia(d.media));
+      } else if ('external_context' in d) {
+        attch['links'] ??= [];
+        attch['links'].push(d.external_context.url);
+      }
+    }
+  }
+  if (is.emptyObject(attch)) return undefined;
+  return attch;
+}
+
 function makeVideo(input: FBVideo) {
+  let exif: Record<string, unknown> | undefined = {};
+  for (const newValues of input.media_metadata?.video_metadata?.exif_data ?? []) {
+    exif = { ...exif, ...newValues };
+  }
+  if (is.emptyObject(exif)) exif = undefined;
+
   return {
     url: input.uri,
     date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
     title: input.title,
     description: input.description,
     thumbnailUrl: input.thumbnail.uri,
-    exif: input.media_metadata?.video_metadata?.exif_data?.flat()
+    exif
   }
 }
 
 function makePhoto(input: FBPhoto) {
+  let exif: Record<string, unknown> | undefined = {};
+  for (const newValues of input.media_metadata?.photo_metadata?.exif_data ?? []) {
+    exif = { ...exif, ...newValues };
+  }
+  if (is.emptyObject(exif)) exif = undefined;
+
   return {
     url: input.uri,
     date: input.creation_timestamp ? new Date(input.creation_timestamp * 1000).toISOString() : 0,
     title: input.title,
     description: input.description,
-    exif: input.media_metadata?.photo_metadata?.exif_data?.flat()
+    exif
   }
 }
 

@@ -56,15 +56,17 @@ export type FBComment = {
 }
 
 export type FBPost = {
+  title?: string,
   timestamp: number,
   attachments?: { data: FBAttachment }[],
+  tags?: { name: string }[],
   data: FBPostField[]
 }
 
 export type FBAttachment = 
-  [{ media: FBMedia }] |
-  [{ place: FBPlace }] |
-  [{ external_context: { url: string }}]
+  { media: FBMedia }[] |
+  { place: FBPlace }[] |
+  { external_context: { url: string }}[]
 
 type FBPostField = { post?: string };
 
