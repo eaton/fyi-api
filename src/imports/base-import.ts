@@ -1,6 +1,10 @@
 import { Filestore, Database, FilestoreOptions } from "../index.js"
 import chalk from 'chalk';
 
+
+/**
+ * Core options supported by most imports
+ */
 export interface BaseImportOptions extends Record<string, unknown> {
   name?: string,
   files?: Filestore | FilestoreOptions;
@@ -8,6 +12,9 @@ export interface BaseImportOptions extends Record<string, unknown> {
   logger?: (...data: unknown[]) => void;
 }
 
+/**
+ * Auth and connectivity options for imports that use a SQL database
+ */
 export interface DatabaseImportOptions {
   database?: {
     host?: string,
@@ -15,6 +22,15 @@ export interface DatabaseImportOptions {
     pass?: string,
     dbName?: string,
   }
+}
+
+/**
+ * Concurrency and timing options for imports that scrape pages
+ */
+export interface ScraperImportOptions {
+  maxRequestsPerMinute?: number,
+  maxConcurrency?: number,
+  sameDomainDelaySec?: number
 }
 
 /**

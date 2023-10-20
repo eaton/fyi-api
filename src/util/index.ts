@@ -9,3 +9,4 @@ export * from './formats/index.js';
 export * from './cheerio/index.js';
 export * from './change-case.js';
 export * from './change-date.js';
+export * from './date-from-offset.js';
