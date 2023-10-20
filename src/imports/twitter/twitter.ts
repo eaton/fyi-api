@@ -252,6 +252,11 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   protected pathToTweet(t: TwitterPost, includeDate = false): string {
+    // Get the date in case it's a partial tweet
+    if (t.url && !t.id) {
+      t.id = new TweetUrl(t.url).id;
+    }
+
     if (includeDate) {
       return t.date ?
       `tweets/${formatDate(new Date(t.date), 'yyyy/MM/')}tweet-${t.id}.json`:
