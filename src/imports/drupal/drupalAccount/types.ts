@@ -1,24 +1,23 @@
 export type DrupalProfilePage = {
-  uid?: number,
-  handle: string,
-  displayName: string,
-  sites?: string[],
-  age?: string,
-  docEdits?: number,
-  irc?: string,
+  handle?: string,
+  name?: string,
+  date?: string,
+  avatar?: string,
+  socialLinks?: string[],
   companies?: string[],
-  industries?: string,
+  industries?: string[],
   bio?: string,
   expertise?: string[],
   events?: string[],
-  contributions?: string[],
+  maintainer?: string[]
 }
 
-export type DrupalProfileActivity = {
+export type DrupalTrackerActivity = {
   type: string,
   title: string,
   url: string,
   author: string,
+  uid: number,
   replies: number,
   updated: string,
 }

@@ -28,9 +28,26 @@ export interface DatabaseImportOptions {
  * Concurrency and timing options for imports that scrape pages
  */
 export interface ScraperImportOptions {
-  maxRequestsPerMinute?: number,
-  maxConcurrency?: number,
-  sameDomainDelaySec?: number
+  scraper?: {
+    /**
+     * Limits the number of page requests that will be made per minute
+     */
+    maxRequestsPerMinute?: number,
+
+    /**
+     * Limits the number of requests that will be made simultaneously.
+     */
+    maxConcurrency?: number,
+
+    /**
+     * Imposes a fixed delay between requests made to a single domain.
+     * 
+     * For example, requesting example.com and example2.com would have
+     * no delay; two requests for example.com would insert a pause for
+     * this number of seconds to avoid triggering server limits.
+     */
+    sameDomainDelaySec?: number  
+  }
 }
 
 /**

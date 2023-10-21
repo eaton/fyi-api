@@ -90,7 +90,6 @@
     "html-to-text": "^9.0.5",
     "humanize-url": "^3.0.0",
     "ky": "^1.0.1",
-    "minimatch": "^9.0.3",
     "mysql2": "^3.6.1",
     "neat-csv": "^7.0.0",
     "node-pinboard": "^2.0.1",

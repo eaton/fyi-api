@@ -39,7 +39,9 @@ export function dateFromOffset(timeAgo: string, date?: Date, past = true) {
     }
   }
 
-  return past ?
+  const output = past ?
     sub(date, offset).toISOString() :
-    add(date, offset).toISOString()
+    add(date, offset).toISOString();
+
+  return output;
 }

@@ -1,1 +1,8 @@
-// drupal account created in jan of 2005; might as well stick it here
+import 'dotenv/config';
+import { DrupalAccount } from '../index.js';
+
+const da = new DrupalAccount({
+  userId: process.env.DRUPAL_ORG_USER,
+});
+
+await da.fillCache();
