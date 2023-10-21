@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" version="XHTML+RDFa 1.0" dir="ltr"
+  xmlns:fb="http://ogp.me/ns/fb#"
+  xmlns:og="http://ogp.me/ns#">
+<head profile="http://www.w3.org/1999/xhtml/vocab">
+  <meta name="HandheldFriendly" content="true" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="MobileOptimized" content="width" />
+  <!--[if IE]><![endif]-->
+<link rel="dns-prefetch" href="//fonts.gstatic.com" />
+<link rel="preconnect" href="//fonts.gstatic.com" crossorigin="" />
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+<link rel="preconnect" href="//fonts.googleapis.com" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="description" content="Changes since 7.x-1.4-rc1: #2805811 by das-peter: Views token field length too short Changes since 7.x-1.3: Renamed variable for consitency #2453857 by alweb, axel.rutz: EVA leaves tokens unchanged when value is missing #2459633 by cha0s: More link is broken due to get_path semantics #2055135 by coredumperror, axel.rutz: EVA should tell the view which &quot;view mode&quot; the parent" />
+<meta name="generator" content="Drupal 7 (https://www.drupal.org)" />
+<link rel="image_src" href="https://www.drupal.org/sites/all/themes/bluecheese/images/og.jpg" />
+<link rel="canonical" href="https://www.drupal.org/project/eva/releases/7.x-1.4" />
+<link rel="shortlink" href="https://www.drupal.org/node/2938200" />
+<meta property="og:site_name" content="Drupal.org" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.drupal.org/project/eva/releases/7.x-1.4" />
+<meta property="og:title" content="eva 7.x-1.4" />
+<meta property="og:description" content="Changes since 7.x-1.4-rc1: #2805811 by das-peter: Views token field length too short Changes since 7.x-1.3: Renamed variable for consitency #2453857 by alweb, axel.rutz: EVA leaves tokens unchanged when value is missing #2459633 by cha0s: More link is broken due to get_path semantics #2055135 by coredumperror, axel.rutz: EVA should tell the view which &quot;view mode&quot; the parent entity is using #2414649 by heykarthikwithu, DarrellDuane, axel.rutz: Undefined index: #entity_type #2647692: Arguments set too late (sabotaging views_evi) #1419328 by tim.plunkett: Attach View to Entity Form" />
+<meta property="og:updated_time" content="2018-01-20T00:43:06+00:00" />
+<meta property="article:published_time" content="2018-01-20T00:39:18+00:00" />
+<meta property="article:modified_time" content="2018-01-20T00:43:06+00:00" />
+  <title>eva 7.x-1.4 | Drupal.org</title>
+  <link type="text/css" rel="stylesheet" href="/files/advagg_css/css__jb6WvfQP17GX7XUNzdV0DvlcsHgC2lOReUrKCQiQ44g__Z9Q0-mSzLYCUMXpQ-Q3EAfmElozYeusqCqaTpMtAOI8__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.css" media="all" />
+<link type="text/css" rel="stylesheet" href="/files/advagg_css/css__eFKSCujfWyJYO8J-qSi6T_n29lROS8isvrxzANeHaAY__D_EUHDAfEQdxcLiSDY7hREUWkG1Ge56_h2z3Er8V188__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.css" media="all" />
+<link type="text/css" rel="stylesheet" href="/files/advagg_css/css__WF0PRotZAhCcl0aJjY5W2LYj8UwiYuB2dZEFluOh3Tc__FviX13FUB-Ppa2XB29BUIJQZ1Wg-F5XiDE7XD5y7mjQ__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.css" media="all" />
+<link type="text/css" rel="stylesheet" href="/files/advagg_css/css__QPp1snPjYt_xYr0c_V0IORcEElkIUBBBrvOB4ZE0Gnw__sSbXnf2KRjxKg4dpjdXT1rW5GvByqOvE6lGJDErTJ7Q__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.css" media="all" />
+  </head>
+<body class="html not-front not-logged-in no-sidebars page-node page-node- page-node-2938200 node-type-project-release drupalorg-site-main new-style" >
+  <div id="skip-link" tabindex="-1">
+    <a class="element-invisible element-focusable" href="#content">Skip to main content</a>
+    <a class="element-invisible element-focusable skip-link-search" href="#search-block-form">Skip to search</a>
+  </div>
+    <div class="region region-page-top">
+    <noscript aria-hidden="true"><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-W36H8DW" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<div id="drupalorg-crosssite-gdpr">Can we use first and third party cookies and web beacons to <a href="https://www.drupal.org/terms">understand our audience, and to tailor promotions you see</a>?<br><button class="yes">Yes, please</button><button class="no">No, do not track me</button></div>  </div>
+      <div id="nav-header">
+          <div class="menu-nav">
+        <a class="nav-btn" id="nav-open-btn" href="#block-system-main-menu"><img src="/sites/all/themes/bluecheese/images/icon-w-menu.svg" alt="Main menu"></a>
+      </div>
+        <nav id="navigation-inner" class="container-12" role="navigation">
+        <div class="region region-navigation">
+    <div id="block-system-main-menu" class="block block-system block-menu">
+<div class="block-inner">
+    
+  <div class="content">
+    <div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/home" title="Drupal.org home page">Drupal.org home</a></li>
+<li class="expanded"><a href="/about" title="">Why Drupal?</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/case-studies" title="View case studies to see how your peers have built success on Drupal">Case studies</a></li>
+<li class="leaf"><a href="/about" title="Learn about Drupal">About Drupal</a></li>
+<li class="leaf"><a href="/about/10" title="">Drupal 10</a></li>
+<li class="leaf"><a href="https://www.drupal.org/association/beyond-the-build" title="">Video series</a></li>
+<li class="last leaf"><a href="/about/in-the-news" title="">In the news</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/industries" title="Examples of solutions built on Drupal">Solutions</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/developers" title="">For developers</a></li>
+<li class="leaf"><a href="/marketers" title="Why marketers should choose Drupal for their ambitious digital experiences">For marketers</a></li>
+<li class="leaf"><a href="/agencies" title="Learn why agencies are betting their future on Drupal">For agencies</a></li>
+<li class="leaf"><a href="/industries" title="Learn why Drupal is the best solution for your industry">By industry</a></li>
+<li class="leaf"><a href="/features" title="">By feature</a></li>
+<li class="leaf"><a href="/case-studies" title="View Drupal success stories">Case studies</a></li>
+<li class="last leaf"><a href="/hosting" title="Find a solution for hosting your Drupal application">For hosting</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/download" title="Build your solution on Drupal">Build</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/download" title="Download and Extend Drupal">Download &amp; Extend</a></li>
+<li class="leaf"><a href="https://git.drupalcode.org/project/drupal" title="">Browse Repository</a></li>
+<li class="leaf"><a href="/documentation" title="">Documentation</a></li>
+<li class="leaf"><a href="/project/modules" title="Find modules to extend Drupal to meet any need">Modules</a></li>
+<li class="leaf"><a href="/project/themes" title="Browse themes as a starting point for making your Drupal site your own">Themes</a></li>
+<li class="leaf"><a href="/project/distributions" title="Use a distribution to start with a version of Drupal customized to purpose">Distributions</a></li>
+<li class="leaf"><a href="/project/project_general" title="General projects might include javascript libraries, development tools, or other non-module/non-theme Drupal components.">General</a></li>
+<li class="leaf"><a href="/project/issues" title="Dive into the issues queues and contribute back to Drupal">Issue queues</a></li>
+<li class="last leaf"><a href="/about/core/strategic-initiatives" title="">Strategic Initiatives</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/drupal-services" title="Buy Drupal Products and Services">Services</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/drupal-services" title="View the Drupal service provider marketplace">Marketplace</a></li>
+<li class="leaf"><a href="/hosting" title="Find trusted Drupal hosting providers">Hosting</a></li>
+<li class="last leaf"><a href="/training" title="Find expert Drupal training">Training</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/community" title="Drupal Community">Community</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/community" title="View the community portal and find all the ways you can contribute to Drupal">Portal</a></li>
+<li class="leaf"><a href="/community/contributor-guide" title="">Contributor guide</a></li>
+<li class="leaf"><a href="/organizations" title="Learn about the organizations that are part of the Drupal ecosystem">Organizations</a></li>
+<li class="leaf"><a href="/forum" title="Find support or chat with the community on the forum">Forum</a></li>
+<li class="leaf"><a href="/community/agency-marketing/promotedrupal" title="">Promote Drupal</a></li>
+<li class="leaf"><a href="/case-studies/community" title="">Community Case Studies</a></li>
+<li class="leaf"><a href="https://www.drupal.org/swag?utm_source=drupalorg&amp;utm_medium=banner&amp;utm_campaign=drupal_swag_shop_2020_09_17" title="Purchase Drupal merchandise and be the coolest kid on the block">Drupal Swag</a></li>
+<li class="last leaf"><a href="/about/core" title="">Core Development &amp; Strategic Initiatives</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/documentation" title="Resources to help you on your Drupal journey">Resources</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/docs/user_guide/en/index.html" title="The Drupal 8 user guide will get you up to speed in no time">User guide</a></li>
+<li class="leaf"><a href="/documentation" title="Drupal Documentation">Documentation</a></li>
+<li class="leaf"><a href="/support" title="Support for using Drupal">Support</a></li>
+<li class="leaf"><a href="/security" title="Find information about security releases for Drupal">Security</a></li>
+<li class="leaf"><a href="/about/drupal-7/d7eol/partners" title="Find help for your Drupal 7 migration">Drupal 7 Migrations</a></li>
+<li class="leaf"><a href="/association/become-a-drupal-certified-partner" title="">Become a Certified Partner</a></li>
+<li class="leaf"><a href="/association/find-a-drupal-certified-partner" title="">Find a Certified Partner</a></li>
+<li class="leaf"><a href="https://jobs.drupal.org/" title="Drupal Jobs">Jobs</a></li>
+<li class="leaf"><a href="https://events.drupal.org" title="Learn about official Drupal Association events">Events</a></li>
+<li class="leaf"><a href="/subscribe" title="">Newsletter</a></li>
+<li class="leaf"><a href="/news" title="News about the Drupal ecosystem">Project News</a></li>
+<li class="last leaf"><a href="/drupalorg/docs/diversity-equity-and-inclusion-resources" title="">Diversity, Equity, and Inclusion Resources</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/association" title="About the Drupal Association - the non-profit that supports the Drupal project">Give</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/association" title="Learn about the Drupal Association - the nonprofit that supports the Drupal project">Drupal Association</a></li>
+<li class="leaf"><a href="https://www.drupal.org/association/individual-membership" title="">Membership</a></li>
+<li class="leaf"><a href="/association/supporters" title="Learn more about the organizations that support the Drupal Association and our mission">Supporters</a></li>
+<li class="leaf"><a href="/promotedrupal" title="">Promote Drupal</a></li>
+<li class="leaf"><a href="/association/support" title="We depend on you to move the Drupal project forward">Join us</a></li>
+<li class="leaf"><a href="/community/contributor-guide" title="">Contributor guide</a></li>
+<li class="leaf"><a href="/drupalorg" title="">About Drupal.org</a></li>
+<li class="last leaf"><a href="/association/discover-drupal" title="">Discover Drupal</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/community/events" title="Find Drupal Events around the world, from the official DrupalCons, to community Camps and Meet-Ups">Events</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="https://events.drupal.org/lille2023" title="DrupalCon Europe | 17-20 October 2023">DrupalCon Lille</a></li>
+<li class="last leaf"><a href="/community/events" title="">Community Events</a></li>
+</ul></div></li>
+<li class="last expanded"><a href="/try-drupal" title="Try Drupal">Try Drupal</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/try-drupal" title="Demo Drupal online with a Drupal platform partner">Demo online</a></li>
+<li class="last leaf"><a href="/download" title="">Download</a></li>
+</ul></div></li>
+</ul></div><a class="close-btn" href="#top">Return to content</a>  </div>
+  </div>
+</div>
+<div id="block-search-form" class="block block-search">
+<div class="block-inner">
+    
+  <div class="content">
+    <form action="/project/eva/releases/7.x-1.4" method="post" id="search-block-form" accept-charset="UTF-8"><div><div class="container-inline">
+      <h2 class="element-invisible">Search form</h2>
+    <div class="form-item form-type-textfield form-item-search-block-form">
+  <label class="element-invisible" for="edit-search-block-form--2">Search </label>
+ <input placeholder="Search…" type="text" id="edit-search-block-form--2" name="search_block_form" value="" size="15" maxlength="128" class="form-text" />
+</div>
+<div class="form-actions form-wrapper" id="edit-actions"><input alt="Search" type="image" id="edit-submit" name="submit" value="Search" src="/sites/all/themes/bluecheese/images/icon-w-search.svg" class="form-submit" /></div><input type="hidden" name="form_build_id" value="form-Wzthb1RALhlakuvd8zykzCTDXq3F3y2O5_f9mT-iFS8" />
+<input type="hidden" name="form_id" value="search_block_form" />
+</div>
+</div></form>  </div>
+  </div>
+</div>
+<div id="block-system-user-menu" class="block block-system block-menu">
+<div class="block-inner">
+    
+  <div class="content">
+    <div class="menu-block"><ul class="menu"><li class="button default"><a href="#block-system-user-menu"><img src="https://www.drupal.org/sites/all/themes/bluecheese/images/icon-w-user.svg" alt="Log in, view profile, and more"></a><ul><li class="first leaf"><a href="/user/login?destination=node/2938200" title="">Log in</a></li>
+<li class="last leaf"><a href="/user/register?destination=node/2938200" title="">Create account</a></li>
+</ul></li></ul></div>  </div>
+  </div>
+</div>
+  </div>
+    </nav>
+  </div>
+
+    <div id="header" class="clearfix">
+    <div id="header-inner" class="container-12 clearfix">
+      <div id="header-left">
+        <div id="site-name"><a href="/" title="Drupal"><img src="https://www.drupal.org/files/drupal-wordmark.svg" alt="Drupal" /></a></div>
+              </div>
+      <div id="header-right">
+              </div>
+    </div>
+  </div>
+  
+      <div id="banner" data-nosnippet>
+        <div class="region region-banner">
+    <div id="block-drupalorg-announcements" class="block block-drupalorg">
+<div class="block-inner">
+    
+  <div class="content">
+    <div class="announcement"><img class="photo" src="https://www.drupal.org/files/styles/grid-2-2x-square/public/announcements/drupal-evergreen-logo-280X280px%20%281%29_0.jpg?itok=PHpn6rCb" width="280" height="280" alt="Announcement icon" title="Announcement icon" />Drupal 7 will officially reach its End of Life on 5 January 2025. This date marks the 14-year anniversary since Drupal 7 was released on 5 January 2011. It is recommended to migrate your site as soon as possible.</div>
+<div class="cta"><a href="https://www.drupal.org/about/drupal-7/d7eol/partners" class="global-announce-banner drupal-7-eol">Learn more</a></div>  </div>
+  </div>
+</div>
+  </div>
+    </div>
+  
+  <div id="page" class="clearfix">
+    <div id="page-heading">
+                    <div id="page-title-tools" class="container-12 clearfix" role="navigation">
+
+          <div class="page-title-wrapper">
+                      </div>
+
+                  </div> <!-- /#page-title-tools -->
+
+        
+        <div class="breadbox"><nav class="breadcrumb container-12"><span><a href="/">Home</a></span><span><a href="/project/project_module">Module project</a></span><span><a href="/project/eva">EVA: Entity Views Attachment</a></span><span><a href="/project/eva/releases">Releases</a></span></nav></div>
+
+                            <h1 id="page-subtitle" class="container-12">eva 7.x-1.4</h1>
+                  
+      
+    </div> <!-- /#page-heading -->
+
+    
+    <div class="container-12 page-inner">      
+      <div id="main" role="main">
+        
+        <div id="content" class="clearfix">
+                                        <div id="content-inner" class="clearfix">  <div class="region region-content">
+    <div id="block-system-main" class="block block-system">
+<div class="block-inner">
+    
+  <div class="content">
+    <div id="node-2938200" class="node node-project-release node-content-2938200 clearfix">
+
+  
+      
+  
+  <div class="content">
+    <div class="group-release-main"><h2>Install</h2>Works with Drupal: 7.x<br><div><textarea class="drupalorg-copy drupalorg-copy-release language-bash composer-command" rows="1">composer require 'drupal/eva:^1.4'</textarea></div><p><small><a href="/docs/develop/using-composer/using-composer-to-manage-drupal-site-dependencies">Using Composer to manage Drupal site dependencies</a></small></p><div class="field field-name-field-release-files field-type-field-collection field-label-hidden"><div class="field-items"><div class="field-item even"><div class="view-header"><h2>Downloads</h2></div><div class="view view-project-release-files view-id-project_release_files view-display-id-release_files_pane no-hashes view-dom-id-6182a46e3d921e9a5e55dec049641722">
+        
+  
+  
+      <div class="view-content">
+        <div class="views-row views-row-1">
+      
+          <span><a href="https://ftp.drupal.org/files/projects/eva-7.x-1.4.tar.gz" class="download">Download <span class="filename">eva-7.x-1.4.tar.gz</span><span class="extension">tar.gz</span></a></span>    
+          <span class="field-content">14.34 KB</span>    
+  <div class="views-field views-field-field-release-file-hash">    <span class="views-label views-label-field-release-file-hash">MD5: </span>    <span class="field-content hash">61830fbe23ecd326899635b8643e6368</span>  </div>  
+  <div class="views-field views-field-field-release-file-sha1">    <span class="views-label views-label-field-release-file-sha1">SHA-1: </span>    <span class="field-content hash">bcf3cd7af3588d5e1eb4512e0e6adc4b1d996a58</span>  </div>  
+  <div class="views-field views-field-field-release-file-sha256">    <span class="views-label views-label-field-release-file-sha256">SHA-256: </span>    <span class="field-content hash">b1113f58df3eaf9855020718f18b685d85e5bd287c0341dca379a13c6e22a4ee</span>  </div>  </div>
+  <div class="views-row views-row-2">
+      
+          <span><a href="https://ftp.drupal.org/files/projects/eva-7.x-1.4.zip" class="download">Download <span class="filename">eva-7.x-1.4.zip</span><span class="extension">zip</span></a></span>    
+          <span class="field-content">16.32 KB</span>    
+  <div class="views-field views-field-field-release-file-hash">    <span class="views-label views-label-field-release-file-hash">MD5: </span>    <span class="field-content hash">8816f867ce0fdceb6670411033cb7821</span>  </div>  
+  <div class="views-field views-field-field-release-file-sha1">    <span class="views-label views-label-field-release-file-sha1">SHA-1: </span>    <span class="field-content hash">d8f77e7392192e62144ad6fb9f78febc2186a4a1</span>  </div>  
+  <div class="views-field views-field-field-release-file-sha256">    <span class="views-label views-label-field-release-file-sha256">SHA-256: </span>    <span class="field-content hash">b39fa2bec893713e06003ad928d2b26fee60dc71aa15d85485c0815a285270f6</span>  </div>  </div>
+    </div>
+  
+  
+  
+  
+  
+  
+</div></div></div></div><h2>Release notes</h2><div class="field field-name-body field-type-text-with-summary field-label-hidden"><div class="field-items"><div class="field-item even"><p>Changes since 7.x-1.4-rc1:</p>
+<ul>
+<li><a href="/node/2805811" rel="nofollow">#2805811</a> by <a href="/u/das-peter" rel="nofollow">das-peter</a>: Views token field length too short</li>
+</ul>
+<p>Changes since 7.x-1.3:</p>
+<ul>
+<li>Renamed variable for consitency</li>
+<li><a href="/node/2453857" rel="nofollow">#2453857</a> by <a href="/u/alweb" rel="nofollow">alweb</a>, <a href="/u/axel.rutz" rel="nofollow">axel.rutz</a>: EVA leaves tokens unchanged when value is missing</li>
+<li><a href="/node/2459633" rel="nofollow">#2459633</a> by <a href="/u/cha0s" rel="nofollow">cha0s</a>: More link is broken due to get_path semantics</li>
+<li><a href="/node/2055135" rel="nofollow">#2055135</a> by <a href="/u/coredumperror" rel="nofollow">coredumperror</a>, <a href="/u/axel.rutz" rel="nofollow">axel.rutz</a>: EVA should tell the view which "view mode" the parent entity is using</li>
+<li><a href="/node/2414649" rel="nofollow">#2414649</a> by <a href="/u/heykarthikwithu" rel="nofollow">heykarthikwithu</a>, <a href="/u/darrellduane" rel="nofollow">DarrellDuane</a>, <a href="/u/axel.rutz" rel="nofollow">axel.rutz</a>: Undefined index:  #entity_type</li>
+<li><a href="/node/2647692" rel="nofollow">#2647692</a>: Arguments set too late (sabotaging views_evi)</li>
+<li><a href="/node/1419328" rel="nofollow">#1419328</a> by <a href="/u/tim.plunkett" rel="nofollow">tim.plunkett</a>: Attach View to Entity Form</li>
+</ul></div></div></div></div><div class="group-release-sidebar"><div class="release-info">Created by: <a href="/user/229048">geek-merlin</a><br>Created on: 20 Jan 2018 at 00:39 UTC<br>Last updated: 20 Jan 2018 at 00:43 UTC</div><div class="field field-name-field-release-vcs-label field-type-text field-label-hidden"><div class="field-items"><div class="field-item even"><img src="/sites/all/modules/drupalorg/drupalorg/images/vcs_label/static.svg" alt="Git tag" title="Git tag" class="icon-inline gray"> <a href="https://git.drupalcode.org/project/eva/tree/7.x-1.4">7.x-1.4</a></div></div></div><div class="field field-name-taxonomy-vocabulary-7 field-type-taxonomy-term-reference field-label-hidden"><div class="field-items"><div class="field-item even"><strong class="bug-fixes">Bug fixes</strong></div><div class="field-item odd"><strong class="new-features">New features</strong></div></div></div><h2>Other releases</h2><div class="view view-related-project-releases view-id-related_project_releases view-display-id-related_project_releases_block view-dom-id-4bdc6ae0b920bbb2dc306e0375ee4636">
+        
+  
+  
+      <div class="view-content">
+      <div class="item-list">    <ul>          <li class="views-row views-row-1 views-row-odd views-row-first">  
+  <span class="views-field views-field-field-release-version">        <span class="field-content"><a href="/project/eva/releases/7.x-1.4" class="active">7.x-1.4</a></span>  </span>       -   
+  <span class="views-field views-field-created">        <span class="field-content">20 January 2018</span>  </span></li>
+          <li class="views-row views-row-2 views-row-even">  
+  <span class="views-field views-field-field-release-version">        <span class="field-content"><a href="/project/eva/releases/7.x-1.4-rc1">7.x-1.4-rc1</a></span>  </span>       -   
+  <span class="views-field views-field-created">        <span class="field-content">8 August 2016</span>  </span></li>
+          <li class="views-row views-row-3 views-row-odd">  
+  <span class="views-field views-field-field-release-version">        <span class="field-content"><a href="/project/eva/releases/7.x-1.3">7.x-1.3</a></span>  </span>       -   
+  <span class="views-field views-field-created">        <span class="field-content">8 August 2016</span>  </span></li>
+          <li class="views-row views-row-4 views-row-even">  
+  <span class="views-field views-field-field-release-version">        <span class="field-content"><a href="/project/eva/releases/7.x-1.2">7.x-1.2</a></span>  </span>       -   
+  <span class="views-field views-field-created">        <span class="field-content">31 July 2012</span>  </span></li>
+          <li class="views-row views-row-5 views-row-odd">  
+  <span class="views-field views-field-field-release-version">        <span class="field-content"><a href="/project/eva/releases/7.x-1.1">7.x-1.1</a></span>  </span>       -   
+  <span class="views-field views-field-created">        <span class="field-content">13 September 2011</span>  </span></li>
+          <li class="views-row views-row-6 views-row-even">  
+  <span class="views-field views-field-field-release-version">        <span class="field-content"><a href="/project/eva/releases/7.x-1.0">7.x-1.0</a></span>  </span>       -   
+  <span class="views-field views-field-created">        <span class="field-content">10 June 2011</span>  </span></li>
+          <li class="views-row views-row-7 views-row-odd views-row-last">  
+  <span class="views-field views-field-field-release-version">        <span class="field-content"><a href="/project/eva/releases/7.x-1.x-dev">7.x-1.x-dev</a></span>  </span>       -   
+  <span class="views-field views-field-created">        <span class="field-content">22 March 2011</span>  </span></li>
+      </ul></div>    </div>
+  
+  
+  
+  
+  
+  
+</div></div>  </div>
+
+  <ul class="links inline"><li class="node-usage first last"><a href="/project/usage/2938200">View usage statistics for this release</a></li>
+</ul>
+
+</div>
+
+  </div>
+  </div>
+</div>
+  </div>
+</div>
+                            </div> <!-- /#content -->
+
+      </div> <!-- /#column-left -->
+
+      
+          </div>  </div> <!-- /#page -->
+
+  <div id="footer" role="contentinfo">
+            <div class="region region-footer">
+    <div id="block-drupalorg-crosssite-contrib-partners" class="block block-drupalorg-crosssite">
+<div class="block-inner">
+    
+  <div class="content">
+    <h2>
+  Thank you to these Drupal contributors
+</h2>
+
+<p>Top Drupal contributor <a class="hc" href="https://acquia.com">Acquia</a> would like to thank their partners for their contributions to Drupal.</p> 
+<div class="contrib-partners">
+  <div class="contrib-partner">
+     <a href="https://www.thirdandgrove.com/"><img alt="Third and Grove" src="/files/styles/grid-3/public/thirdandgrove.png" width="100%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.srijan.net/"><img alt="Srijan" src="https://www.drupal.org/files/styles/grid-3/public/Neo%20Srijan%20Noir.png" width="95%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.mediacurrent.com/"><img alt="MediaCurrent" src="/files/cta/graphic/MC_Badge_Blue.png" width="76%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.acromedia.com/"><img alt ="Acro Media" src="/files/styles/grid-3/public/Acro-Media-Drupal.png" width="90%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.opensenselabs.com/"><img alt="OpenSense Labs" src="/files/styles/grid-4-2x/public/OSL%20Logo%202020-01.png" width="100%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="http://tag1consulting.com"><img alt="Tag1 Consulting" src="/files/styles/grid-4-2x/public/tag1_blk-blu320p-trimmed.png" width="98%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="http://www.previousnext.com.au/"><img alt="PreviousNext" src="/files/styles/grid-4-2x/public/new-pnx-logo-320x132.png" width="100%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.fullfatthings.com/"><img alt="Full Fat Things" src="/files/styles/grid-4-2x/public/FFT_onwhite%403x.png" width="100%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.lullabot.com/"><img alt="Lullabot" src="/files/styles/grid-3/public/Lullabot_Logo_Vertical-svg.png" width="64%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://salsa.digital/"><img alt="Salsa Digital" src="/files/styles/grid-4-2x/public/logo_300x120.png" width="100%"/></a>
+  </div>
+</div>  </div>
+  </div>
+</div>
+<div id="block-drupalorg-crosssite-infra-partner" class="block block-drupalorg-crosssite">
+<div class="block-inner">
+    
+  <div class="content">
+    <a href="https://tag1consulting.com" >Infrastructure management for Drupal.org provided by <img src="/files/cta/graphic/tag1_wht.svg" alt="Tag1 logo" ></a>  </div>
+  </div>
+</div>
+<div id="block-drupalorg-crosssite-drupalorg-footer" class="block block-drupalorg-crosssite">
+<div class="block-inner">
+    
+  <div class="content">
+    <h4 class="element-invisible">News items</h4><ul class="drupal-news"><li class="0 first"><a href="https://www.drupal.org/news">News</a></li>
+<li class="1"><a href="https://www.drupal.org/planet" title="News from Drupal community members">Planet Drupal</a></li>
+<li class="2"><a href="https://www.drupal.org/about/media-kit/social-media" title="Drupal on social media">Social media</a></li>
+<li class="3"><a href="https://www.drupal.org/subscribe">Sign up for Drupal news</a></li>
+<li class="4"><a href="https://www.drupal.org/security" title="Announcements from the Drupal Security Team">Security advisories</a></li>
+<li class="5 last"><a href="https://jobs.drupal.org/" title="Drupal Jobs">Jobs</a></li>
+</ul><h4 class="element-invisible">Our community</h4><ul class="community"><li class="0 first"><a href="https://www.drupal.org/community">Community</a></li>
+<li class="1"><span><a href="https://www.drupal.org/drupal-services" title="People and organizations offering Drupal services">Services</a>, <a href="https://www.drupal.org/training" title="People and organizations offering Drupal training">Training</a> & <a href="https://www.drupal.org/hosting" title="Organizations offering Drupal hosting">Hosting</a></span></li>
+<li class="2"><a href="https://www.drupal.org/community/contributor-guide">Contributor guide</a></li>
+<li class="3"><a href="https://groups.drupal.org/groups" title="groups.drupal.org">Groups &amp; meetups</a></li>
+<li class="4"><a href="https://events.drupal.org" title="Upcoming and past DrupalCons">DrupalCon</a></li>
+<li class="5 last"><a href="https://www.drupal.org/dcoc" title="Drupal code of conduct">Code of conduct</a></li>
+</ul><h4 class="element-invisible">Documentation</h4><ul class="get-started"><li class="0 first"><a href="https://www.drupal.org/documentation" title="Documentation for working with Drupal">Documentation</a></li>
+<li class="1"><a href="https://www.drupal.org/docs">Drupal Guide</a></li>
+<li class="2"><a href="https://www.drupal.org/docs/user_guide/en/index.html">Drupal User Guide</a></li>
+<li class="3"><a href="https://www.drupal.org/documentation/develop">Developer docs</a></li>
+<li class="4 last"><a href="https://api.drupal.org/" title="Drupal API reference">API.Drupal.org</a></li>
+</ul><h4 class="element-invisible">Drupal code base</h4><ul class="download-extend"><li class="0 first"><a href="https://www.drupal.org/download">Download &amp; Extend</a></li>
+<li class="1"><a href="https://www.drupal.org/project/drupal" title="Download the latest version of the Drupal software">Drupal core</a></li>
+<li class="2"><a href="https://www.drupal.org/project/project_module" title="Download add-on features and functionality">Modules</a></li>
+<li class="3"><a href="https://www.drupal.org/project/project_theme" title="Download pre-designed styles for Drupal">Themes</a></li>
+<li class="4 last"><a href="https://www.drupal.org/project/project_distribution" title="Download a pre-packaged Drupal site">Distributions</a></li>
+</ul><h4 class="element-invisible">Governance of community</h4><ul class="about"><li class="0 first"><a href="https://www.drupal.org/about">About</a></li>
+<li class="1"><a href="https://www.drupal.org/about/features/accessibility" title="Our committment to accessibility">Web accessibility</a></li>
+<li class="2"><a href="https://www.drupal.org/association" title="About the Drupal Association">Drupal Association</a></li>
+<li class="3"><a href="https://www.drupal.org/drupalorg" title="About Drupal.org">About Drupal.org</a></li>
+<li class="4"><a href="https://www.drupal.org/terms" title="Drupal.org terms of service">Terms of service</a></li>
+<li class="5 last"><a href="https://www.drupal.org/privacy" title="Drupal.org privacy policy">Privacy policy</a></li>
+</ul>  </div>
+  </div>
+</div>
+<div id="block-block-77" class="block block-block">
+<div class="block-inner">
+    
+  <div class="content">
+    <p>Drupal is a <a href="/about/trademark">registered trademark</a> of <a href="https://dri.es">Dries Buytaert</a>.</p>
+  </div>
+  </div>
+</div>
+  </div>
+      </div>
+    <div class="region region-page-bottom">
+    <script type="text/javascript">
+      (function(){
+          window._pxAppId = 'PXVnPBBfwe';
+          window._pxParam2 = '';
+          window._pxParam3 = '0';
+          var p = document.getElementsByTagName('script')[0],
+              s = document.createElement('script');
+          s.async = 1;
+          s.src = '/VnPBBfwe/init.js';
+          p.parentNode.insertBefore(s,p);
+      }());
+  </script>
+  <noscript>
+      <div style="position:fixed; top:0; left:0; display:none" width="1" height="1">
+          <img src="/VnPBBfwe/xhr/api/v1/collector/noScript.gif?appId=PXVnPBBfwe">
+      </div>
+  </noscript>  </div>
+<script type="text/javascript" src="/files/advagg_js/js__B0FBwiP97ZnD38IFraZus4upS4KVkMXI3ou0fJ2ZXGA__pPDESRJz9GHsxqQIwQ_V8xnFYEH5jipG2eicsfrdWCs__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+
+<!--[if lte IE 9]>
+<script type="text/javascript" src="/files/advagg_js/js__79M6UrZjAw3oNGnUjsWip12JsvnUZmJGA3h9LI0kuzE__J0sbXAJNry2-C_ZL2xd0RdVuzwTLvwN-UisIv5RNCvU__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js#ie9-" onload="if(jQuery.isFunction(jQuery.holdReady)){jQuery.holdReady(true);}"></script>
+<![endif]-->
+
+<!--[if gt IE 9]>
+<script type="text/javascript" src="/files/advagg_js/js__79M6UrZjAw3oNGnUjsWip12JsvnUZmJGA3h9LI0kuzE__J0sbXAJNry2-C_ZL2xd0RdVuzwTLvwN-UisIv5RNCvU__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js#ie10+" defer="defer" onload="if(jQuery.isFunction(jQuery.holdReady)){jQuery.holdReady(true);}"></script>
+<![endif]-->
+
+<!--[if !IE]><!-->
+<script type="text/javascript" src="/files/advagg_js/js__79M6UrZjAw3oNGnUjsWip12JsvnUZmJGA3h9LI0kuzE__J0sbXAJNry2-C_ZL2xd0RdVuzwTLvwN-UisIv5RNCvU__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer" onload="if(jQuery.isFunction(jQuery.holdReady)){jQuery.holdReady(true);}"></script>
+<!--<![endif]-->
+<script type="text/javascript" src="/files/advagg_js/js__pqoYaVR8NVhof-vNXe50j2TKhFv__IihVag_h4G6kus__B4mbn4wICLQjWm1m3-z1kw8F1FtP0cDAHKp00Xy_-88__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__H5AFmq1RrXKsrazzPq_xPQPy4K0wUKqecPjczzRiTgQ__wor4r9P8YTtQ7p6fbywTetZ47Z_orumIfrrhgxrpLus__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer" onload="
+function advagg_mod_1() {
+  // Count how many times this function is called.
+  advagg_mod_1.count = ++advagg_mod_1.count || 1;
+  try {
+    if (advagg_mod_1.count <= 40) {
+      init_drupal_core_settings();
+
+      // Set this to 100 so that this function only runs once.
+      advagg_mod_1.count = 100;
+    }
+  }
+  catch(e) {
+    if (advagg_mod_1.count >= 40) {
+      // Throw the exception if this still fails after running 40 times.
+      throw e;
+    }
+    else {
+      // Try again in 1 ms.
+      window.setTimeout(advagg_mod_1, 1);
+    }
+  }
+}
+function advagg_mod_1_check() {
+  if (window.init_drupal_core_settings && window.jQuery && window.Drupal) {
+    advagg_mod_1();
+  }
+  else {
+    window.setTimeout(advagg_mod_1_check, 1);
+  }
+}
+advagg_mod_1_check();"></script>
+<script type="text/javascript" src="/files/advagg_js/js__Oc0wwB7MVRfxtYw6EQM7d9sXj9PAQePoWSzQJ0uTk6c__iXqOGoaPhZHCPEspUr5BC8BwOx5P8B11xv7VOhoUii8__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__FabcJ6qluktliDejymsuV-FqaN_HyMKGe93c2rO9Ky0__el1ZLGkKneOoCS6OWa01WHuIEsTsXZ46MRLCF390Fbw__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__xNXZEl6CREO_N4cX50nXAG3o3PPW1f2SzBBHY8rEKV8__kEr2ft18NyUxNoN5MteYM9DX6pFx1tAb2oKF3RFJQBM__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__mj2TlWhks9oJxPMS-NZeTpU46WwFVlMGEIo6S9H_Qx8__C389Vc_zjTfBmrTqoRNGUK0zY_nSOyzn-bjDheR_WiY__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__GzpZCQ7BryjbIlF9RVmjHIrAmt9RKE_fNR7adiGsi5w__PcMNECygXSBj78w__hjxrr90zdypyZhWlWuc0buP7io__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__pLKQd4r7OrHglE7Qkqw53K2UXCqQdhqQ9v0cz7hMCQY__OErfYuQdGbFHcCoLoUW_ESSvaumApNojzjJit8-2xcw__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__hHUWFbMAa11eJtx5V0ym9o0YBsB1udk34qUT5wr1ihI__ntICfIdx3SsBpfvYB8AF0VuFk7gZjQgBaS1C9CyMj6o__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+function init_drupal_core_settings() {jQuery.extend(Drupal.settings,{"basePath":"\/","pathPrefix":"","setHasJsCookie":0,"ajaxPageState":{"theme":"bluecheese","theme_token":"M98cm4TRVjL61x8OId0OmOqrI9LOZ_fwOnyyBw34rxs"},"drupalorgGitlab":{"gitlab_base_url":"https:\/\/git.drupalcode.org","base_url":"https:\/\/www.drupal.org"},"better_exposed_filters":{"views":{"project_release_files":{"displays":{"release_files_pane":{"filters":[]}}},"related_project_releases":{"displays":{"related_project_releases_block":{"filters":[]}}}}},"urlIsAjaxTrusted":{"\/project\/eva\/releases\/7.x-1.4":true},"drupalOrg":{"copyIcon":"\u003Cimg src=\u0022https:\/\/www.drupal.org\/sites\/all\/modules\/drupalorg\/drupalorg\/images\/copy-black.svg\u0022 width=\u002220\u0022 height=\u002220\u0022 alt=\u0022Copy to clipboard\u0022 title=\u0022Copy to clipboard\u0022 \/\u003E"},"field_group":{"div":"full"},"drupalorgCrosssiteConsentNeeded":true}); 
+if(jQuery.isFunction(jQuery.holdReady)){jQuery.holdReady(false);}} if(window.jQuery && window.Drupal){init_drupal_core_settings();}
+//--><!]]>
+</script>
+<script type="text/javascript" src="/files/advagg_js/js__2k0CJ3KAQNFTFab3y6ZvNtxs3HLons0Brq7VwvPSkKo__RYlZCliQTuN7U7I5I1Xhn1dAop17g2hAft1wVGgKHGA__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__vj0LjvNwl-3K1P9LGT4BGuXCZcAovYsVlVmoJN3TMRg__KW8SiGceRY3sjIKVrffDjf2MK4A5Vp3EDDxVO-4pegI__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+</body>
+</html>

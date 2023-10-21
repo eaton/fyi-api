@@ -7,10 +7,11 @@ const pipeFns: PipeFnMap = {
   html: ({ $scope, selector, opts }) => getScope($scope, selector, opts).html(),
   shift: ({ value }) => Array.isArray(value) ? value.shift() : void 0,
   pop: ({ value }) => Array.isArray(value) ? value.pop() : void 0,
+  count: ({ value }) => Array.isArray(value) ? value.length : void 0,
   split: ({ value, args }) => {
     if (value !== null && value !== void 0) {
       const [arg1] = args ?? [];
-      const joiner = arg1?.toString() ?? ',';
+      const joiner = arg1?.toString() ?? ' ';
       return value.toString().split(joiner).map(value => value.trim());
     }
     return void 0;

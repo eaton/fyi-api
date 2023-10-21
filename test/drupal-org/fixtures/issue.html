@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" version="XHTML+RDFa 1.0" dir="ltr"
+  xmlns:fb="http://ogp.me/ns/fb#"
+  xmlns:og="http://ogp.me/ns#">
+<head profile="http://www.w3.org/1999/xhtml/vocab">
+  <meta name="HandheldFriendly" content="true" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="MobileOptimized" content="width" />
+  <!--[if IE]><![endif]-->
+<link rel="dns-prefetch" href="//fonts.gstatic.com" />
+<link rel="preconnect" href="//fonts.gstatic.com" crossorigin="" />
+<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+<link rel="preconnect" href="//fonts.googleapis.com" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="description" content="The following patch adds several functions that can be used by any module: system_set_default_theme($theme) block_set_status($module, $delta, $status, $theme) block_set_position($module, $delta, $region, $position, $theme) It also adds two functions to install.inc, which can only be called when that file is included: drupal_install_module($module)" />
+<meta name="generator" content="Drupal 7 (https://www.drupal.org)" />
+<link rel="image_src" href="https://www.drupal.org/sites/all/themes/bluecheese/images/og.jpg" />
+<link rel="canonical" href="https://www.drupal.org/project/drupal/issues/76104" />
+<link rel="shortlink" href="https://www.drupal.org/node/76104" />
+<meta property="og:site_name" content="Drupal.org" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.drupal.org/project/drupal/issues/76104" />
+<meta property="og:title" content="Drupal: provide utility functions to manage blocks, themes, and modules" />
+<meta property="og:description" content="The following patch adds several functions that can be used by any module: system_set_default_theme($theme) block_set_status($module, $delta, $status, $theme) block_set_position($module, $delta, $region, $position, $theme) It also adds two functions to install.inc, which can only be called when that file is included: drupal_install_module($module) drupal_uninstall_module($module) The uninstall function in particular calls a module&#039;s &#039;uninstall&#039; hook, then *deletes* its entry from the system table." />
+<meta property="og:updated_time" content="2023-09-16T11:04:48+00:00" />
+<meta property="article:published_time" content="2006-07-28T19:57:22+00:00" />
+<meta property="article:modified_time" content="2023-09-16T11:04:48+00:00" />
+  <title>Drupal: provide utility functions to manage blocks, themes, and modules [#76104] | Drupal.org</title>
+  <link type="text/css" rel="stylesheet" href="/files/advagg_css/css__jb6WvfQP17GX7XUNzdV0DvlcsHgC2lOReUrKCQiQ44g__Z9Q0-mSzLYCUMXpQ-Q3EAfmElozYeusqCqaTpMtAOI8__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.css" media="all" />
+<link type="text/css" rel="stylesheet" href="/files/advagg_css/css__eFKSCujfWyJYO8J-qSi6T_n29lROS8isvrxzANeHaAY__D_EUHDAfEQdxcLiSDY7hREUWkG1Ge56_h2z3Er8V188__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.css" media="all" />
+<link type="text/css" rel="stylesheet" href="/files/advagg_css/css__WF0PRotZAhCcl0aJjY5W2LYj8UwiYuB2dZEFluOh3Tc__FviX13FUB-Ppa2XB29BUIJQZ1Wg-F5XiDE7XD5y7mjQ__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.css" media="all" />
+<link type="text/css" rel="stylesheet" href="/files/advagg_css/css__QPp1snPjYt_xYr0c_V0IORcEElkIUBBBrvOB4ZE0Gnw__sSbXnf2KRjxKg4dpjdXT1rW5GvByqOvE6lGJDErTJ7Q__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.css" media="all" />
+  </head>
+<body class="html not-front not-logged-in two-sidebars page-node page-node- page-node-76104 node-type-project-issue drupalorg-site-main" >
+  <div id="skip-link" tabindex="-1">
+    <a class="element-invisible element-focusable" href="#content">Skip to main content</a>
+    <a class="element-invisible element-focusable skip-link-search" href="#search-block-form">Skip to search</a>
+  </div>
+    <div class="region region-page-top">
+    <noscript aria-hidden="true"><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-W36H8DW" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<div id="drupalorg-crosssite-gdpr">Can we use first and third party cookies and web beacons to <a href="https://www.drupal.org/terms">understand our audience, and to tailor promotions you see</a>?<br><button class="yes">Yes, please</button><button class="no">No, do not track me</button></div>  </div>
+      <div id="nav-header">
+          <div class="menu-nav">
+        <a class="nav-btn" id="nav-open-btn" href="#block-system-main-menu"><img src="/sites/all/themes/bluecheese/images/icon-w-menu.svg" alt="Main menu"></a>
+      </div>
+        <nav id="navigation-inner" class="container-12" role="navigation">
+        <div class="region region-navigation">
+    <div id="block-system-main-menu" class="block block-system block-menu">
+<div class="block-inner">
+    
+  <div class="content">
+    <div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/home" title="Drupal.org home page">Drupal.org home</a></li>
+<li class="expanded"><a href="/about" title="">Why Drupal?</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/case-studies" title="View case studies to see how your peers have built success on Drupal">Case studies</a></li>
+<li class="leaf"><a href="/about" title="Learn about Drupal">About Drupal</a></li>
+<li class="leaf"><a href="/about/10" title="">Drupal 10</a></li>
+<li class="leaf"><a href="https://www.drupal.org/association/beyond-the-build" title="">Video series</a></li>
+<li class="last leaf"><a href="/about/in-the-news" title="">In the news</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/industries" title="Examples of solutions built on Drupal">Solutions</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/developers" title="">For developers</a></li>
+<li class="leaf"><a href="/marketers" title="Why marketers should choose Drupal for their ambitious digital experiences">For marketers</a></li>
+<li class="leaf"><a href="/agencies" title="Learn why agencies are betting their future on Drupal">For agencies</a></li>
+<li class="leaf"><a href="/industries" title="Learn why Drupal is the best solution for your industry">By industry</a></li>
+<li class="leaf"><a href="/features" title="">By feature</a></li>
+<li class="leaf"><a href="/case-studies" title="View Drupal success stories">Case studies</a></li>
+<li class="last leaf"><a href="/hosting" title="Find a solution for hosting your Drupal application">For hosting</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/download" title="Build your solution on Drupal">Build</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/download" title="Download and Extend Drupal">Download &amp; Extend</a></li>
+<li class="leaf"><a href="https://git.drupalcode.org/project/drupal" title="">Browse Repository</a></li>
+<li class="leaf"><a href="/documentation" title="">Documentation</a></li>
+<li class="leaf"><a href="/project/modules" title="Find modules to extend Drupal to meet any need">Modules</a></li>
+<li class="leaf"><a href="/project/themes" title="Browse themes as a starting point for making your Drupal site your own">Themes</a></li>
+<li class="leaf"><a href="/project/distributions" title="Use a distribution to start with a version of Drupal customized to purpose">Distributions</a></li>
+<li class="leaf"><a href="/project/project_general" title="General projects might include javascript libraries, development tools, or other non-module/non-theme Drupal components.">General</a></li>
+<li class="leaf"><a href="/project/issues" title="Dive into the issues queues and contribute back to Drupal">Issue queues</a></li>
+<li class="last leaf"><a href="/about/core/strategic-initiatives" title="">Strategic Initiatives</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/drupal-services" title="Buy Drupal Products and Services">Services</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/drupal-services" title="View the Drupal service provider marketplace">Marketplace</a></li>
+<li class="leaf"><a href="/hosting" title="Find trusted Drupal hosting providers">Hosting</a></li>
+<li class="last leaf"><a href="/training" title="Find expert Drupal training">Training</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/community" title="Drupal Community">Community</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/community" title="View the community portal and find all the ways you can contribute to Drupal">Portal</a></li>
+<li class="leaf"><a href="/community/contributor-guide" title="">Contributor guide</a></li>
+<li class="leaf"><a href="/organizations" title="Learn about the organizations that are part of the Drupal ecosystem">Organizations</a></li>
+<li class="leaf"><a href="/forum" title="Find support or chat with the community on the forum">Forum</a></li>
+<li class="leaf"><a href="/community/agency-marketing/promotedrupal" title="">Promote Drupal</a></li>
+<li class="leaf"><a href="/case-studies/community" title="">Community Case Studies</a></li>
+<li class="leaf"><a href="https://www.drupal.org/swag?utm_source=drupalorg&amp;utm_medium=banner&amp;utm_campaign=drupal_swag_shop_2020_09_17" title="Purchase Drupal merchandise and be the coolest kid on the block">Drupal Swag</a></li>
+<li class="last leaf"><a href="/about/core" title="">Core Development &amp; Strategic Initiatives</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/documentation" title="Resources to help you on your Drupal journey">Resources</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/docs/user_guide/en/index.html" title="The Drupal 8 user guide will get you up to speed in no time">User guide</a></li>
+<li class="leaf"><a href="/documentation" title="Drupal Documentation">Documentation</a></li>
+<li class="leaf"><a href="/support" title="Support for using Drupal">Support</a></li>
+<li class="leaf"><a href="/security" title="Find information about security releases for Drupal">Security</a></li>
+<li class="leaf"><a href="/about/drupal-7/d7eol/partners" title="Find help for your Drupal 7 migration">Drupal 7 Migrations</a></li>
+<li class="leaf"><a href="/association/become-a-drupal-certified-partner" title="">Become a Certified Partner</a></li>
+<li class="leaf"><a href="/association/find-a-drupal-certified-partner" title="">Find a Certified Partner</a></li>
+<li class="leaf"><a href="https://jobs.drupal.org/" title="Drupal Jobs">Jobs</a></li>
+<li class="leaf"><a href="https://events.drupal.org" title="Learn about official Drupal Association events">Events</a></li>
+<li class="leaf"><a href="/subscribe" title="">Newsletter</a></li>
+<li class="leaf"><a href="/news" title="News about the Drupal ecosystem">Project News</a></li>
+<li class="last leaf"><a href="/drupalorg/docs/diversity-equity-and-inclusion-resources" title="">Diversity, Equity, and Inclusion Resources</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/association" title="About the Drupal Association - the non-profit that supports the Drupal project">Give</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/association" title="Learn about the Drupal Association - the nonprofit that supports the Drupal project">Drupal Association</a></li>
+<li class="leaf"><a href="https://www.drupal.org/association/individual-membership" title="">Membership</a></li>
+<li class="leaf"><a href="/association/supporters" title="Learn more about the organizations that support the Drupal Association and our mission">Supporters</a></li>
+<li class="leaf"><a href="/promotedrupal" title="">Promote Drupal</a></li>
+<li class="leaf"><a href="/association/support" title="We depend on you to move the Drupal project forward">Join us</a></li>
+<li class="leaf"><a href="/community/contributor-guide" title="">Contributor guide</a></li>
+<li class="leaf"><a href="/drupalorg" title="">About Drupal.org</a></li>
+<li class="last leaf"><a href="/association/discover-drupal" title="">Discover Drupal</a></li>
+</ul></div></li>
+<li class="expanded"><a href="/community/events" title="Find Drupal Events around the world, from the official DrupalCons, to community Camps and Meet-Ups">Events</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="https://events.drupal.org/lille2023" title="DrupalCon Europe | 17-20 October 2023">DrupalCon Lille</a></li>
+<li class="last leaf"><a href="/community/events" title="">Community Events</a></li>
+</ul></div></li>
+<li class="last expanded"><a href="/try-drupal" title="Try Drupal">Try Drupal</a><div class="menu-block"><ul class="menu button"><li class="first leaf"><a href="/try-drupal" title="Demo Drupal online with a Drupal platform partner">Demo online</a></li>
+<li class="last leaf"><a href="/download" title="">Download</a></li>
+</ul></div></li>
+</ul></div><a class="close-btn" href="#top">Return to content</a>  </div>
+  </div>
+</div>
+<div id="block-search-form" class="block block-search">
+<div class="block-inner">
+    
+  <div class="content">
+    <form action="/project/drupal/issues/76104" method="post" id="search-block-form" accept-charset="UTF-8"><div><div class="container-inline">
+      <h2 class="element-invisible">Search form</h2>
+    <div class="form-item form-type-textfield form-item-search-block-form">
+  <label class="element-invisible" for="edit-search-block-form--2">Search </label>
+ <input placeholder="Search…" type="text" id="edit-search-block-form--2" name="search_block_form" value="" size="15" maxlength="128" class="form-text" />
+</div>
+<div class="form-actions form-wrapper" id="edit-actions"><input alt="Search" type="image" id="edit-submit" name="submit" value="Search" src="/sites/all/themes/bluecheese/images/icon-w-search.svg" class="form-submit" /></div><input type="hidden" name="form_build_id" value="form-YfsSHSmcqa8Fr5wqibQq_wBwx9G6fhpoiAR6artCvP0" />
+<input type="hidden" name="form_id" value="search_block_form" />
+</div>
+</div></form>  </div>
+  </div>
+</div>
+<div id="block-system-user-menu" class="block block-system block-menu">
+<div class="block-inner">
+    
+  <div class="content">
+    <div class="menu-block"><ul class="menu"><li class="button default"><a href="#block-system-user-menu"><img src="https://www.drupal.org/sites/all/themes/bluecheese/images/icon-w-user.svg" alt="Log in, view profile, and more"></a><ul><li class="first leaf"><a href="/user/login?destination=node/76104" title="">Log in</a></li>
+<li class="last leaf"><a href="/user/register?destination=node/76104" title="">Create account</a></li>
+</ul></li></ul></div>  </div>
+  </div>
+</div>
+  </div>
+    </nav>
+  </div>
+
+    <div id="header" class="clearfix">
+    <div id="header-inner" class="container-12 clearfix">
+      <div id="header-left">
+        <div id="site-name"><a href="/" title="Drupal"><img src="https://www.drupal.org/files/drupal-wordmark.svg" alt="Drupal" /></a></div>
+              </div>
+      <div id="header-right">
+              </div>
+    </div>
+  </div>
+  
+      <div id="banner" data-nosnippet>
+        <div class="region region-banner">
+    <div id="block-drupalorg-announcements" class="block block-drupalorg">
+<div class="block-inner">
+    
+  <div class="content">
+    <div class="announcement"><img class="photo" src="https://www.drupal.org/files/styles/grid-2-2x-square/public/announcements/drupal-evergreen-logo-280X280px%20%281%29_0.jpg?itok=PHpn6rCb" width="280" height="280" alt="Announcement icon" title="Announcement icon" />Drupal 7 will officially reach its End of Life on 5 January 2025. This date marks the 14-year anniversary since Drupal 7 was released on 5 January 2011. It is recommended to migrate your site as soon as possible.</div>
+<div class="cta"><a href="https://www.drupal.org/about/drupal-7/d7eol/partners" class="global-announce-banner drupal-7-eol">Learn more</a></div>  </div>
+  </div>
+</div>
+  </div>
+    </div>
+  
+  <div id="page" class="clearfix">
+    <div id="page-heading">
+                    <div id="page-title-tools" class="container-12 clearfix" role="navigation">
+
+          <div class="page-title-wrapper">
+                                          <div id="page-title" class="h2">Download &amp; Extend</div>
+                                    </div>
+
+                  </div> <!-- /#page-title-tools -->
+
+                  <div id="nav-content" class="container-12">
+            <ul class="links"><li class="core active first"><a href="/project/drupal" class="active">Drupal Core</a></li>
+<li class="distributions"><a href="/project/project_distribution">Distributions</a></li>
+<li class="modules"><a href="/project/project_module">Modules</a></li>
+<li class="themes"><a href="/project/project_theme">Themes</a></li>
+<li class="components last"><a href="/project/project_general">General projects</a></li>
+</ul>          </div> <!-- /#nav-content -->
+        
+        <div class="breadbox"><nav class="breadcrumb container-12"><span><a href="/project/issues/drupal">Issues</a></span></nav></div>
+
+                            <h1 id="page-subtitle" class="container-12">Drupal: provide utility functions to manage blocks, themes, and modules</h1>
+                  
+      
+    </div> <!-- /#page-heading -->
+
+    
+    <div class="container-12 page-inner">              <div id="sidebar-first" role="complementary" >
+          <div id="sidebar-first-region">
+              <div class="region region-sidebar-first">
+    <div id="block-project-issue-issue-metadata" class="block block-project-issue">
+<div class="block-inner">
+    
+  <div class="content">
+    <div class="field field-name-field-issue-status field-type-list-integer field-label-hidden field-issue-status-17"><div class="field-items"><div class="field-item even">Closed (outdated)</div></div></div><div class="field field-name-field-project field-type-entityreference field-label-inline clearfix"><div class="field-label">Project:&nbsp;</div><div class="field-items"><div class="field-item even">Drupal core</div></div></div><div class="field field-name-field-issue-version field-type-list-text field-label-inline clearfix"><div class="field-label">Version:&nbsp;</div><div class="field-items"><div class="field-item even">9.5.x-dev</div></div></div><div class="field field-name-field-issue-component field-type-list-text field-label-inline clearfix"><div class="field-label">Component:&nbsp;</div><div class="field-items"><div class="field-item even">base system</div></div></div><div class="field field-name-field-issue-priority field-type-list-integer field-label-inline clearfix"><div class="field-label">Priority:&nbsp;</div><div class="field-items"><div class="field-item even">Normal</div></div></div><div class="field field-name-field-issue-category field-type-list-integer field-label-inline clearfix"><div class="field-label">Category:&nbsp;</div><div class="field-items"><div class="field-item even">Feature request</div></div></div><div class="field field-name-field-issue-assigned field-type-entityreference field-label-inline clearfix"><div class="field-label">Assigned:&nbsp;</div><div class="field-items"><div class="field-item even">Unassigned</div></div></div><div class="field field-name-taxonomy-vocabulary-9 field-type-taxonomy-term-reference field-label-above"><div class="field-label">Issue tags:&nbsp;</div><div class="field-items"><div class="field-item even"><a href="/project/issues/search?issue_tags=Needs%20issue%20summary%20update" class="has-description" title="Issue summaries save everyone time if they are kept up-to-date. See Update issue summary task instructions.
+
+Click “about tags” for links">Needs issue summary update</a> <a href="javascript:void(0)" id="about-tags-link">about tags</a><div class="clearfix"></div><dl id="about-tags"><dt>Needs issue summary update</dt><dd><p>Issue summaries save everyone time if they are kept up-to-date. See <a href="http://drupal.org/node/1427826" rel="nofollow">Update issue summary task instructions</a>.</p></dd></dl></div></div></div><div class="field field-name-project-issue-created-by field-type-list-text field-label-inline clearfix"><div class="field-label">Reporter:&nbsp;</div><div class="field-items"><div class="field-item even"><a href="/u/eaton" title="View user profile." data-uid="16496" class="username">eaton</a> </div></div></div><div class="field field-name-project-issue-created field-type-list-text field-label-inline clearfix"><div class="field-label">Created:&nbsp;</div><div class="field-items"><div class="field-item even">28 Jul 2006 at 19:57 UTC</div></div></div><div class="field field-name-project-issue-updated field-type-list-text field-label-inline clearfix"><div class="field-label">Updated:&nbsp;</div><div class="field-items"><div class="field-item even">16 Sep 2023 at 11:04 UTC</div></div></div><div id="project-issue-jumplinks">
+  Jump to comment: <a href="/project/drupal/issues/76104#comment-15233244" class="most-recent active">Most recent</a></div>
+  </div>
+  </div>
+</div>
+  </div>
+          </div> <!-- /#column-right-region-first -->
+        </div> <!-- /#column-right-first -->
+      
+      <div id="main" role="main">
+        
+        <div id="content" class="clearfix">
+                                        <div id="content-inner" class="clearfix">  <div class="region region-content">
+    <div id="block-system-main" class="block block-system">
+<div class="block-inner">
+    
+  <div class="content">
+    <div id="node-76104" class="node node-project-issue node-content-76104 clearfix">
+
+  
+      
+  
+  <div class="content">
+    <div class="field field-name-body field-type-text-with-summary field-label-hidden"><div class="field-items"><div class="field-item even"><p>The following patch adds several functions that can be used by any module:<br />
+system_set_default_theme($theme)<br />
+block_set_status($module, $delta, $status, $theme)<br />
+block_set_position($module, $delta, $region, $position, $theme)</p>
+<p>It also adds two functions to install.inc, which can only be called when that file is included:<br />
+drupal_install_module($module)<br />
+drupal_uninstall_module($module)</p>
+<p>The uninstall function in particular calls a module's 'uninstall' hook, then *deletes* its entry from the system table. There's no UI for it yet, but the feature has been requested by a number of users -- modules would be expected to drop their tables and so on in the 'uninstall' hook.</p>
+<p>The main purpose of all of these functions is to make more of Drupal's system management work available via API functions. With the installer, and the advent of install profiles, making it easier to do this work without a long list of db_query() calls is a good thing.</p></div></div></div><div class="field field-name-field-issue-files field-type-file field-label-hidden"><div class="field-items"><div class="field-item even"><table id="extended-file-field-table-field-issue-files">
+ <thead><tr><th name="extended-file-field-table-header-cid" class="extended-file-field-table-header">Comment</th><th name="extended-file-field-table-header-filename" class="extended-file-field-table-header">File</th><th name="extended-file-field-table-header-filesize" class="extended-file-field-table-header">Size</th><th name="extended-file-field-table-header-uid" class="extended-file-field-table-header">Author</th> </tr></thead>
+<tbody>
+ <tr class="extended-file-field-table-row odd" name="issue-file-summary-table-row-178499"><td name="extended-file-field-table-cid-178499" class="extended-file-field-table-cid" rowspan="2"></td><td name="extended-file-field-table-filename-178499" class="extended-file-field-table-filename"><span class="file"> <a href="https://www.drupal.org/files/issues/utility_functions.patch" type="application/octet-stream; length=3755">utility_functions.patch</a></span></td><td name="extended-file-field-table-filesize-178499" class="extended-file-field-table-filesize">3.67 KB</td><td name="extended-file-field-table-uid-178499" class="extended-file-field-table-uid"><a href="/u/eaton" title="View user profile." data-uid="16496" class="username">eaton</a></td> </tr>
+ <tr class="extended-file-field-table-result-row pift-test-info odd extended-file-field-table-row"><td class="" colspan="3"></td> </tr>
+</tbody>
+</table>
+</div></div></div>  </div>
+
+  
+
+</div>
+
+<a href="/acquia" class="ci-ad">Support from Acquia helps fund testing for Drupal <img src="/files/ads/acquia-issue-sponsorship.png" alt="Acquia logo"></a><section class="comments comment-wrapper">
+          <h2 class="title">Comments</h2>
+      
+  
+<div class="comment comment-content-430629 clearfix" id="comment-430629">
+  <a href="/u/merlinofchaos" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-26979-1449616925.jpg?itok=f4Td9FGU" width="80" height="80" alt="merlinofchaos’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-430629" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#1</a></h3>    <a href="/u/merlinofchaos" title="View user profile." data-uid="26979" class="username">merlinofchaos</a> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> merlinofchaos</span></span> commented <time pubdate datetime="2006-07-28T20:01:37+00:00">28 July 2006 at 20:01</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>I +1 the principle, I think having these available will be a good thing; they'll be useful in refactoring the modules/themes admin page.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-430630 clearfix" id="comment-430630">
+  <a href="/u/dries" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-1-1401055330.jpg?itok=Pyrh2RoB" width="80" height="80" alt="Dries’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-430630" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#2</a></h3>    <a href="/u/dries" title="View user profile." data-uid="1" class="username">Dries</a> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> Dries</span></span> commented <time pubdate datetime="2006-07-29T17:58:19+00:00">29 July 2006 at 17:58</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>Can't we use these in core itself?</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-430631 clearfix" id="comment-430631">
+  <a href="/u/merlinofchaos" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-26979-1449616925.jpg?itok=f4Td9FGU" width="80" height="80" alt="merlinofchaos’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-430631" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#3</a></h3>    <a href="/u/merlinofchaos" title="View user profile." data-uid="26979" class="username">merlinofchaos</a> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> merlinofchaos</span></span> commented <time pubdate datetime="2006-07-29T18:11:35+00:00">29 July 2006 at 18:11</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>Dries: I sure hope so =)</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-by-node-author comment-content-430632 clearfix" id="comment-430632">
+  <a href="/u/eaton" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-16496-1602687876.jpg?itok=AkE5sBIM" width="80" height="80" alt="eaton’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-430632" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#4</a></h3>    <a href="/u/eaton" title="View user profile." data-uid="16496" class="username">eaton</a> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> eaton</span></span> commented <time pubdate datetime="2006-07-29T18:58:47+00:00">29 July 2006 at 18:58</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>Dries: Actually I'm in the process of making a new version of this patch that would use the same functions on admin/theme, admin/module, and so on. Once I'm finished with it (hopefully in the next day or so) even the install system would be able to use single-call 'install module x' functions.</p>
+<p>So, yes. Eating our own dogfood, coming soon to a patch near you. :-)</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-by-node-author comment-content-430633 clearfix" id="comment-430633">
+  <a href="/u/eaton" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-16496-1602687876.jpg?itok=AkE5sBIM" width="80" height="80" alt="eaton’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-430633" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#5</a></h3>    <a href="/u/eaton" title="View user profile." data-uid="16496" class="username">eaton</a> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> eaton</span></span> commented <time pubdate datetime="2006-07-30T16:30:58+00:00">30 July 2006 at 16:30</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>Some of the module install/enabling related functions in this patch ended up being important for an actual bug-fix over at <a href="http://drupal.org/node/76209" rel="nofollow">http://drupal.org/node/76209</a>. I've split out those changes in particular to that patch, and will be re-rolling a version of this patch that *just* includes the block and theme management code (as well as changes to system.module and block.module to use the new centralized functions.)</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-430634 clearfix" id="comment-430634">
+  <a href="/u/webchick" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-24967-1628129044.jpg?itok=60DSUMs1" width="80" height="80" alt="webchick’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-430634" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#6</a></h3>    <a href="/u/webchick" title="View user profile." data-uid="24967" class="username">webchick</a><div class="field field-name-field-user-pronouns field-type-text field-label-hidden"><div class="field-items"><div class="field-item even">she/they</div></div></div><div class="field field-name-field-user-primary-language field-type-list-text field-label-hidden"><div class="field-items"><div class="field-item even"><img src="/sites/all/themes/bluecheese/images/community-dk-comments.svg" alt="Primary language" title="Primary language" class="icon-inline" /> English</div></div></div><div class="field field-name-field-user-location field-type-text field-label-hidden"><div class="field-items"><div class="field-item even"><img src="/sites/all/modules/drupalorg/drupalorg/images/location-icon-gray.svg" alt="Location" title="Location" class="icon-inline" /> Vancouver 🇨🇦</div></div></div> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> webchick</span></span> commented <time pubdate datetime="2007-06-24T04:01:46+00:00">24 June 2007 at 04:01</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">x.y.z </td><td class="nodechanges-new">» 6.x-dev</td> </tr>
+ <tr class="even"><td class="nodechanges-label">Status: </td><td class="nodechanges-old">Needs review </td><td class="nodechanges-new">» Needs work</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>While the patch still (surprisingly!) applies, I'm pretty sure the module_install and module_uninstall functions are totally irrelevant at this point. Marking CNW. It would be nice to have those block helper functions for install profiles.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-430635 clearfix" id="comment-430635">
+  <a href="/u/catch" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/default-avatar.png?itok=ZYxnS__Q" width="80" height="80" alt="catch’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-430635" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#7</a></h3>    <a href="/u/catch" title="View user profile." data-uid="35733" class="username">catch</a><div class="field field-name-field-user-pronouns field-type-text field-label-hidden"><div class="field-items"><div class="field-item even">he/him</div></div></div><div class="field field-name-field-user-primary-language field-type-list-text field-label-hidden"><div class="field-items"><div class="field-item even"><img src="/sites/all/themes/bluecheese/images/community-dk-comments.svg" alt="Primary language" title="Primary language" class="icon-inline" /> English</div></div></div> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> catch</span></span> commented <time pubdate datetime="2007-10-24T14:15:38+00:00">24 October 2007 at 14:15</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">6.x-dev </td><td class="nodechanges-new">» 7.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-2412678 clearfix" id="comment-2412678">
+  <a href="/u/casey" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-32403-1488384501.png?itok=E-r17qKl" width="80" height="80" alt="casey’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-2412678" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#8</a></h3>    <a href="/u/casey" title="View user profile." data-uid="32403" class="username">casey</a> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> casey</span></span> commented <time pubdate datetime="2009-12-28T10:37:30+00:00">28 December 2009 at 10:37</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">7.x-dev </td><td class="nodechanges-new">» 8.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>We do have now:</p>
+<p><a href="http://api.drupal.org/api/function/drupal_install_modules/7" rel="nofollow">http://api.drupal.org/api/function/drupal_install_modules/7</a><br />
+<a href="http://api.drupal.org/api/function/drupal_uninstall_modules/7" rel="nofollow">http://api.drupal.org/api/function/drupal_uninstall_modules/7</a></p>
+<p>Leaves this issue to:<br />
+system_set_default_theme($theme)<br />
+block_set_status($module, $delta, $status, $theme)<br />
+block_set_position($module, $delta, $region, $position, $theme)</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-8183145 clearfix" id="comment-8183145">
+  <a href="/u/valthebald" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-239562-1400198420.jpg?itok=xyYVfZlr" width="80" height="80" alt="valthebald’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-8183145" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#9</a></h3>    <a href="/u/valthebald" title="View user profile." data-uid="239562" class="username">valthebald</a><div class="field field-name-field-user-location field-type-text field-label-hidden"><div class="field-items"><div class="field-item even"><img src="/sites/all/modules/drupalorg/drupalorg/images/location-icon-gray.svg" alt="Location" title="Location" class="icon-inline" /> Sofia</div></div></div> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> valthebald</span></span> commented <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Issue summary: </td><td class="nodechanges-changed" colspan="2"><a href="/node/76104/revisions/view/3045915/6709107">View changes</a></td> </tr>
+ <tr class="even"><td class="nodechanges-label">Issue tags: </td><td class="nodechanges-old"></td><td class="nodechanges-new">+<a href="/project/issues/search?issue_tags=Needs%20issue%20summary%20update">Needs issue summary update</a></td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-11065925 system-message clearfix" id="comment-11065925">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-11065925" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#10</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.0.x-dev </td><td class="nodechanges-new">» 8.1.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="/drupal-8.0.6-release-notes" rel="nofollow">Drupal 8.0.6</a> was released on April 6 and is the final bugfix release for the Drupal 8.0.x series. Drupal 8.0.x will not receive any further development aside from security fixes. <a href="/drupal-8.1.0-rc1" rel="nofollow">Drupal 8.1.0-rc1</a> is now available and sites should prepare to update to 8.1.0. </p>
+<p>Bug reports should be targeted against the 8.1.x-dev branch from now on, and new development or disruptive changes should be targeted against the 8.2.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal 8 minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal 8 release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-11596997 system-message clearfix" id="comment-11596997">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-11596997" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#11</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.1.x-dev </td><td class="nodechanges-new">» 8.2.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="https://www.drupal.org/project/drupal/releases/8.1.9" rel="nofollow">Drupal 8.1.9</a> was released on September 7 and is the final bugfix release for the Drupal 8.1.x series. Drupal 8.1.x will not receive any further development aside from security fixes. <a href="https://www.drupal.org/project/drupal/releases/8.2.0-rc1" rel="nofollow">Drupal 8.2.0-rc1</a> is now available and sites should prepare to upgrade to 8.2.0. </p>
+<p>Bug reports should be targeted against the 8.2.x-dev branch from now on, and new development or disruptive changes should be targeted against the 8.3.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal 8 minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal 8 release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-11908767 system-message clearfix" id="comment-11908767">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-11908767" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#12</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.2.x-dev </td><td class="nodechanges-new">» 8.3.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="https://www.drupal.org/project/drupal/releases/8.2.6" rel="nofollow">Drupal 8.2.6</a> was released on February 1, 2017 and is the final full bugfix release for the Drupal 8.2.x series. Drupal 8.2.x will not receive any further development aside from critical and security fixes. Sites should prepare to update to 8.3.0 on April 5, 2017. (<a href="https://www.drupal.org/project/drupal/releases/8.3.0-alpha1" rel="nofollow">Drupal 8.3.0-alpha1</a> is available for testing.) </p>
+<p>      Bug reports should be targeted against the 8.3.x-dev branch from now on, and new development or disruptive changes should be targeted against the 8.4.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal 8 minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal 8 release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-12206707 system-message clearfix" id="comment-12206707">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-12206707" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#13</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.3.x-dev </td><td class="nodechanges-new">» 8.4.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="https://www.drupal.org/project/drupal/releases/8.3.6" rel="nofollow">Drupal 8.3.6</a> was released on August 2, 2017 and is the final full bugfix release for the Drupal 8.3.x series. Drupal 8.3.x will not receive any further development aside from critical and security fixes. Sites should prepare to update to 8.4.0 on October 4, 2017. (<a href="https://www.drupal.org/project/drupal/releases/8.4.0-alpha1" rel="nofollow">Drupal 8.4.0-alpha1</a> is available for testing.) </p>
+<p>Bug reports should be targeted against the 8.4.x-dev branch from now on, and new development or disruptive changes should be targeted against the 8.5.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal 8 minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal 8 release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-12435469 system-message clearfix" id="comment-12435469">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-12435469" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#14</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.4.x-dev </td><td class="nodechanges-new">» 8.5.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="https://www.drupal.org/project/drupal/releases/8.4.4" rel="nofollow">Drupal 8.4.4</a> was released on January 3, 2018 and is the final full bugfix release for the Drupal 8.4.x series. Drupal 8.4.x will not receive any further development aside from critical and security fixes. Sites should prepare to update to 8.5.0 on March 7, 2018. (<a href="https://www.drupal.org/project/drupal/releases/8.5.0-alpha1" rel="nofollow">Drupal 8.5.0-alpha1</a> is available for testing.) </p>
+<p>Bug reports should be targeted against the 8.5.x-dev branch from now on, and new development or disruptive changes should be targeted against the 8.6.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal 8 minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal 8 release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-12742345 system-message clearfix" id="comment-12742345">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-12742345" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#15</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.5.x-dev </td><td class="nodechanges-new">» 8.6.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="/project/drupal/releases/8.5.6" rel="nofollow">Drupal 8.5.6</a> was released on August 1, 2018 and is the final bugfix release for the Drupal 8.5.x series. Drupal 8.5.x will not receive any further development aside from security fixes. Sites should prepare to update to 8.6.0 on September 5, 2018. (<a href="/project/drupal/releases/8.6.0-rc1" rel="nofollow">Drupal 8.6.0-rc1</a> is available for testing.) </p>
+<p>      Bug reports should be targeted against the 8.6.x-dev branch from now on, and new development or disruptive changes should be targeted against the 8.7.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal 8 minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal 8 release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-13496782 system-message clearfix" id="comment-13496782">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-13496782" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#16</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.6.x-dev </td><td class="nodechanges-new">» 8.8.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>Drupal 8.6.x will not receive any further development aside from security fixes. Bug reports should be targeted against the 8.8.x-dev branch from now on, and new development or disruptive changes should be targeted against the 8.9.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal 8 and 9 minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal 8 and 9 release cycles</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-13689401 system-message clearfix" id="comment-13689401">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-13689401" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#17</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.8.x-dev </td><td class="nodechanges-new">» 8.9.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="/project/drupal/releases/8.8.7" rel="nofollow">Drupal 8.8.7</a> was released on June 3, 2020 and is the final full bugfix release for the Drupal 8.8.x series. Drupal 8.8.x will not receive any further development aside from security fixes. Sites should prepare to update to <a href="/project/drupal/releases/8.9.0" rel="nofollow">Drupal 8.9.0</a> or <a href="/project/drupal/releases/9.0.0" rel="nofollow">Drupal 9.0.0</a> for ongoing support.</p>
+<p>Bug reports should be targeted against the 8.9.x-dev branch from now on, and new development or disruptive changes should be targeted against the 9.1.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal 8 and 9 minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal 8 and 9 release cycles</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-14321182 system-message clearfix" id="comment-14321182">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-14321182" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#18</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">8.9.x-dev </td><td class="nodechanges-new">» 9.2.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="/psa-2021-11-30" rel="nofollow">Drupal 8 is end-of-life as of November 17, 2021</a>. There will not be further changes made to Drupal 8. Bugfixes are now made to the 9.3.x and higher branches only. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal core minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal core release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-14366503 system-message clearfix" id="comment-14366503">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-14366503" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#19</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">9.2.x-dev </td><td class="nodechanges-new">» 9.3.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-14549454 system-message clearfix" id="comment-14549454">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-14549454" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#20</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">9.3.x-dev </td><td class="nodechanges-new">» 9.4.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="/project/drupal/releases/9.3.15" rel="nofollow">Drupal 9.3.15</a> was released on June 1st, 2022 and is the final full bugfix release for the Drupal 9.3.x series. Drupal 9.3.x will not receive any further development aside from security fixes. Drupal 9 bug reports should be targeted for the 9.4.x-dev branch from now on, and new development or disruptive changes should be targeted for the 9.5.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal core minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal core release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-14830658 system-message clearfix" id="comment-14830658">
+  
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-14830658" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#21</a></h3>    <time pubdate datetime="2013-11-16T12:29:54+00:00">16 November 2013 at 12:29</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Version: </td><td class="nodechanges-old">9.4.x-dev </td><td class="nodechanges-new">» 9.5.x-dev</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p><a href="/project/drupal/releases/9.4.9" rel="nofollow">Drupal 9.4.9</a> was released on December 7, 2022 and is the final full bugfix release for the Drupal 9.4.x series. Drupal 9.4.x will not receive any further development aside from security fixes. Drupal 9 bug reports should be targeted for the 9.5.x-dev branch from now on, and new development or disruptive changes should be targeted for the 10.1.x-dev branch. For more information see the <a href="/core/release-cycle-overview#minor" rel="nofollow">Drupal core minor version schedule</a> and the <a href="/core/d8-allowed-changes" rel="nofollow">Allowed changes during the Drupal core release cycle</a>.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+<div class="comment comment-content-15233244 clearfix" id="comment-15233244">
+  <a href="/u/quietone" title="View user profile." class="picture"><img src="https://www.drupal.org/files/styles/drupalorg_user_picture/public/user-pictures/picture-2572884-1413636022.png?itok=hb37HODX" width="80" height="80" alt="quietone’s picture" /></a>
+  
+    <h3></h3>
+  
+  <div class="submitted">
+    <h3 class="permalink-wrapper"><a href="/project/drupal/issues/76104#comment-15233244" class="permalink active" rel="bookmark"><span class="element-invisible">Comment </span>#22</a></h3>    <a href="/u/quietone" title="View user profile." data-uid="2572884" class="username">quietone</a> <span class="attribution-label">Credit<span class="attribution element-invisible"><strong>Attribution:</strong> quietone as a volunteer</span></span> commented <time pubdate datetime="2023-09-16T11:04:48+00:00">16 September 2023 at 11:04</time>  </div>
+
+  <div class="content">
+    <div class="field field-name-field-issue-changes field-type-nodechanges-revision-diff field-label-hidden"><div class="field-items"><div class="field-item even"><table class="nodechanges-field-changes">
+<tbody>
+ <tr class="odd"><td class="nodechanges-label">Status: </td><td class="nodechanges-old">Needs work </td><td class="nodechanges-new">» Closed (outdated)</td> </tr>
+</tbody>
+</table>
+</div></div></div><div class="field field-name-comment-body field-type-text-long field-label-hidden"><div class="field-items"><div class="field-item even"><p>@eaton, thanks for patch.</p>
+<p>With the move to OO code this is not outdated.</p></div></div></div>      </div>
+
+  <ul class="links inline"><li class="comment_forbidden first last"><span><a href="/user/login?destination=comment/reply/76104%23comment-form">Log in</a> or <a href="/user/register?destination=comment/reply/76104%23comment-form">register</a> to post comments</span></li>
+</ul></div>
+
+  </section>
+  </div>
+  </div>
+</div>
+  </div>
+</div>
+                            </div> <!-- /#content -->
+
+      </div> <!-- /#column-left -->
+
+              <div id="aside" role="complementary" >
+          <div id="aside-region">
+              <div class="region region-sidebar-second">
+    <div id="block-views-e84165300884f34464eebe80f5010454" class="block block-views">
+<div class="block-inner">
+    
+  <div class="content">
+    <div class="view view-project-issue-issue-relations view-id-project_issue_issue_relations view-display-id-block_child_issues view-dom-id-9bf4db298f15b0b1430572c7d508ddc2">
+        
+  
+  
+  
+  
+  
+  
+      <div class="view-footer">
+      <a href="/node/add/project-issue/drupal?field_issue_parent=76104">Add child issue</a>, <a href="/node/add/project-issue/drupal?title=Drupal%3A%20provide%20utility%20functions%20to%20manage%20blocks%2C%20themes%2C%20and%20modules&amp;field_issue_parent=76104&amp;clone_body=1&amp;categories=3&amp;priorities=200&amp;status=17&amp;version=9.5.x-dev&amp;component=base%20system&amp;assigned=0&amp;tags=Needs%20issue%20summary%20update">clone issue</a>    </div>
+  
+  
+</div>  </div>
+  </div>
+</div>
+  </div>
+          </div> <!-- /#column-right-region -->
+        </div> <!-- /#column-right -->
+      
+          </div>  </div> <!-- /#page -->
+
+  <div id="footer" role="contentinfo">
+            <div class="region region-footer">
+    <div id="block-drupalorg-crosssite-contrib-partners" class="block block-drupalorg-crosssite">
+<div class="block-inner">
+    
+  <div class="content">
+    <h2>
+  Thank you to these Drupal contributors
+</h2>
+
+<p>Top Drupal contributor <a class="hc" href="https://acquia.com">Acquia</a> would like to thank their partners for their contributions to Drupal.</p> 
+<div class="contrib-partners">
+  <div class="contrib-partner">
+     <a href="https://www.thirdandgrove.com/"><img alt="Third and Grove" src="/files/styles/grid-3/public/thirdandgrove.png" width="100%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.srijan.net/"><img alt="Srijan" src="https://www.drupal.org/files/styles/grid-3/public/Neo%20Srijan%20Noir.png" width="95%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.mediacurrent.com/"><img alt="MediaCurrent" src="/files/cta/graphic/MC_Badge_Blue.png" width="76%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.acromedia.com/"><img alt ="Acro Media" src="/files/styles/grid-3/public/Acro-Media-Drupal.png" width="90%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.opensenselabs.com/"><img alt="OpenSense Labs" src="/files/styles/grid-4-2x/public/OSL%20Logo%202020-01.png" width="100%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="http://tag1consulting.com"><img alt="Tag1 Consulting" src="/files/styles/grid-4-2x/public/tag1_blk-blu320p-trimmed.png" width="98%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="http://www.previousnext.com.au/"><img alt="PreviousNext" src="/files/styles/grid-4-2x/public/new-pnx-logo-320x132.png" width="100%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.fullfatthings.com/"><img alt="Full Fat Things" src="/files/styles/grid-4-2x/public/FFT_onwhite%403x.png" width="100%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://www.lullabot.com/"><img alt="Lullabot" src="/files/styles/grid-3/public/Lullabot_Logo_Vertical-svg.png" width="64%"/></a>
+  </div>
+  <div class="contrib-partner">
+     <a href="https://salsa.digital/"><img alt="Salsa Digital" src="/files/styles/grid-4-2x/public/logo_300x120.png" width="100%"/></a>
+  </div>
+</div>  </div>
+  </div>
+</div>
+<div id="block-drupalorg-crosssite-infra-partner" class="block block-drupalorg-crosssite">
+<div class="block-inner">
+    
+  <div class="content">
+    <a href="https://tag1consulting.com" >Infrastructure management for Drupal.org provided by <img src="/files/cta/graphic/tag1_wht.svg" alt="Tag1 logo" ></a>  </div>
+  </div>
+</div>
+<div id="block-drupalorg-crosssite-drupalorg-footer" class="block block-drupalorg-crosssite">
+<div class="block-inner">
+    
+  <div class="content">
+    <h4 class="element-invisible">News items</h4><ul class="drupal-news"><li class="0 first"><a href="https://www.drupal.org/news">News</a></li>
+<li class="1"><a href="https://www.drupal.org/planet" title="News from Drupal community members">Planet Drupal</a></li>
+<li class="2"><a href="https://www.drupal.org/about/media-kit/social-media" title="Drupal on social media">Social media</a></li>
+<li class="3"><a href="https://www.drupal.org/subscribe">Sign up for Drupal news</a></li>
+<li class="4"><a href="https://www.drupal.org/security" title="Announcements from the Drupal Security Team">Security advisories</a></li>
+<li class="5 last"><a href="https://jobs.drupal.org/" title="Drupal Jobs">Jobs</a></li>
+</ul><h4 class="element-invisible">Our community</h4><ul class="community"><li class="0 first"><a href="https://www.drupal.org/community">Community</a></li>
+<li class="1"><span><a href="https://www.drupal.org/drupal-services" title="People and organizations offering Drupal services">Services</a>, <a href="https://www.drupal.org/training" title="People and organizations offering Drupal training">Training</a> & <a href="https://www.drupal.org/hosting" title="Organizations offering Drupal hosting">Hosting</a></span></li>
+<li class="2"><a href="https://www.drupal.org/community/contributor-guide">Contributor guide</a></li>
+<li class="3"><a href="https://groups.drupal.org/groups" title="groups.drupal.org">Groups &amp; meetups</a></li>
+<li class="4"><a href="https://events.drupal.org" title="Upcoming and past DrupalCons">DrupalCon</a></li>
+<li class="5 last"><a href="https://www.drupal.org/dcoc" title="Drupal code of conduct">Code of conduct</a></li>
+</ul><h4 class="element-invisible">Documentation</h4><ul class="get-started"><li class="0 first"><a href="https://www.drupal.org/documentation" title="Documentation for working with Drupal">Documentation</a></li>
+<li class="1"><a href="https://www.drupal.org/docs">Drupal Guide</a></li>
+<li class="2"><a href="https://www.drupal.org/docs/user_guide/en/index.html">Drupal User Guide</a></li>
+<li class="3"><a href="https://www.drupal.org/documentation/develop">Developer docs</a></li>
+<li class="4 last"><a href="https://api.drupal.org/" title="Drupal API reference">API.Drupal.org</a></li>
+</ul><h4 class="element-invisible">Drupal code base</h4><ul class="download-extend"><li class="0 first"><a href="https://www.drupal.org/download">Download &amp; Extend</a></li>
+<li class="1"><a href="https://www.drupal.org/project/drupal" title="Download the latest version of the Drupal software">Drupal core</a></li>
+<li class="2"><a href="https://www.drupal.org/project/project_module" title="Download add-on features and functionality">Modules</a></li>
+<li class="3"><a href="https://www.drupal.org/project/project_theme" title="Download pre-designed styles for Drupal">Themes</a></li>
+<li class="4 last"><a href="https://www.drupal.org/project/project_distribution" title="Download a pre-packaged Drupal site">Distributions</a></li>
+</ul><h4 class="element-invisible">Governance of community</h4><ul class="about"><li class="0 first"><a href="https://www.drupal.org/about">About</a></li>
+<li class="1"><a href="https://www.drupal.org/about/features/accessibility" title="Our committment to accessibility">Web accessibility</a></li>
+<li class="2"><a href="https://www.drupal.org/association" title="About the Drupal Association">Drupal Association</a></li>
+<li class="3"><a href="https://www.drupal.org/drupalorg" title="About Drupal.org">About Drupal.org</a></li>
+<li class="4"><a href="https://www.drupal.org/terms" title="Drupal.org terms of service">Terms of service</a></li>
+<li class="5 last"><a href="https://www.drupal.org/privacy" title="Drupal.org privacy policy">Privacy policy</a></li>
+</ul>  </div>
+  </div>
+</div>
+<div id="block-block-77" class="block block-block">
+<div class="block-inner">
+    
+  <div class="content">
+    <p>Drupal is a <a href="/about/trademark">registered trademark</a> of <a href="https://dri.es">Dries Buytaert</a>.</p>
+  </div>
+  </div>
+</div>
+  </div>
+      </div>
+    <div class="region region-page-bottom">
+    <script type="text/javascript">
+      (function(){
+          window._pxAppId = 'PXVnPBBfwe';
+          window._pxParam2 = '';
+          window._pxParam3 = '0';
+          var p = document.getElementsByTagName('script')[0],
+              s = document.createElement('script');
+          s.async = 1;
+          s.src = '/VnPBBfwe/init.js';
+          p.parentNode.insertBefore(s,p);
+      }());
+  </script>
+  <noscript>
+      <div style="position:fixed; top:0; left:0; display:none" width="1" height="1">
+          <img src="/VnPBBfwe/xhr/api/v1/collector/noScript.gif?appId=PXVnPBBfwe">
+      </div>
+  </noscript>  </div>
+<script type="text/javascript" src="/files/advagg_js/js__B0FBwiP97ZnD38IFraZus4upS4KVkMXI3ou0fJ2ZXGA__pPDESRJz9GHsxqQIwQ_V8xnFYEH5jipG2eicsfrdWCs__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+
+<!--[if lte IE 9]>
+<script type="text/javascript" src="/files/advagg_js/js__79M6UrZjAw3oNGnUjsWip12JsvnUZmJGA3h9LI0kuzE__J0sbXAJNry2-C_ZL2xd0RdVuzwTLvwN-UisIv5RNCvU__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js#ie9-" onload="if(jQuery.isFunction(jQuery.holdReady)){jQuery.holdReady(true);}"></script>
+<![endif]-->
+
+<!--[if gt IE 9]>
+<script type="text/javascript" src="/files/advagg_js/js__79M6UrZjAw3oNGnUjsWip12JsvnUZmJGA3h9LI0kuzE__J0sbXAJNry2-C_ZL2xd0RdVuzwTLvwN-UisIv5RNCvU__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js#ie10+" defer="defer" onload="if(jQuery.isFunction(jQuery.holdReady)){jQuery.holdReady(true);}"></script>
+<![endif]-->
+
+<!--[if !IE]><!-->
+<script type="text/javascript" src="/files/advagg_js/js__79M6UrZjAw3oNGnUjsWip12JsvnUZmJGA3h9LI0kuzE__J0sbXAJNry2-C_ZL2xd0RdVuzwTLvwN-UisIv5RNCvU__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer" onload="if(jQuery.isFunction(jQuery.holdReady)){jQuery.holdReady(true);}"></script>
+<!--<![endif]-->
+<script type="text/javascript" src="/files/advagg_js/js__pqoYaVR8NVhof-vNXe50j2TKhFv__IihVag_h4G6kus__B4mbn4wICLQjWm1m3-z1kw8F1FtP0cDAHKp00Xy_-88__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__H5AFmq1RrXKsrazzPq_xPQPy4K0wUKqecPjczzRiTgQ__wor4r9P8YTtQ7p6fbywTetZ47Z_orumIfrrhgxrpLus__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer" onload="
+function advagg_mod_1() {
+  // Count how many times this function is called.
+  advagg_mod_1.count = ++advagg_mod_1.count || 1;
+  try {
+    if (advagg_mod_1.count <= 40) {
+      init_drupal_core_settings();
+
+      // Set this to 100 so that this function only runs once.
+      advagg_mod_1.count = 100;
+    }
+  }
+  catch(e) {
+    if (advagg_mod_1.count >= 40) {
+      // Throw the exception if this still fails after running 40 times.
+      throw e;
+    }
+    else {
+      // Try again in 1 ms.
+      window.setTimeout(advagg_mod_1, 1);
+    }
+  }
+}
+function advagg_mod_1_check() {
+  if (window.init_drupal_core_settings && window.jQuery && window.Drupal) {
+    advagg_mod_1();
+  }
+  else {
+    window.setTimeout(advagg_mod_1_check, 1);
+  }
+}
+advagg_mod_1_check();"></script>
+<script type="text/javascript" src="/files/advagg_js/js__Oc0wwB7MVRfxtYw6EQM7d9sXj9PAQePoWSzQJ0uTk6c__iXqOGoaPhZHCPEspUr5BC8BwOx5P8B11xv7VOhoUii8__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__FabcJ6qluktliDejymsuV-FqaN_HyMKGe93c2rO9Ky0__el1ZLGkKneOoCS6OWa01WHuIEsTsXZ46MRLCF390Fbw__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__xNXZEl6CREO_N4cX50nXAG3o3PPW1f2SzBBHY8rEKV8__kEr2ft18NyUxNoN5MteYM9DX6pFx1tAb2oKF3RFJQBM__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__ZZsOghtfqr5qi0zJX_mKZRfY2Nu-Jb_VVNE7oys6mwQ__wn1KTlUadkLZbOMDmGYYvnVNjcxMow9mV_4Jp90JctM__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__pLKQd4r7OrHglE7Qkqw53K2UXCqQdhqQ9v0cz7hMCQY__OErfYuQdGbFHcCoLoUW_ESSvaumApNojzjJit8-2xcw__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript" src="/files/advagg_js/js__hHUWFbMAa11eJtx5V0ym9o0YBsB1udk34qUT5wr1ihI__ntICfIdx3SsBpfvYB8AF0VuFk7gZjQgBaS1C9CyMj6o__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+<script type="text/javascript">
+<!--//--><![CDATA[//><!--
+function init_drupal_core_settings() {jQuery.extend(Drupal.settings,{"basePath":"\/","pathPrefix":"","setHasJsCookie":0,"ajaxPageState":{"theme":"bluecheese","theme_token":"ka_DXIrR_8WgtC65DFRZb8srGQhdpDEHBmTW9wQH8Cw"},"drupalorgGitlab":{"gitlab_base_url":"https:\/\/git.drupalcode.org","base_url":"https:\/\/www.drupal.org"},"drupalorgGitlabCiIconsPath":"\/sites\/all\/modules\/drupalorg\/drupalorg\/images\/ci_favicons\/","better_exposed_filters":{"views":{"change_records":{"displays":{"block_2":{"filters":[]},"block_1":{"filters":[]}}},"project_issue_issue_relations":{"displays":{"block_parent_issue":{"filters":[]},"block_child_issues":{"filters":[]},"block_related_issues":{"filters":[]},"block_referenced":{"filters":[]}}}}},"urlIsAjaxTrusted":{"\/project\/drupal\/issues\/76104":true},"drupalorgCrosssiteConsentNeeded":true}); 
+if(jQuery.isFunction(jQuery.holdReady)){jQuery.holdReady(false);}} if(window.jQuery && window.Drupal){init_drupal_core_settings();}
+//--><!]]>
+</script>
+<script type="text/javascript" src="/files/advagg_js/js__2k0CJ3KAQNFTFab3y6ZvNtxs3HLons0Brq7VwvPSkKo__RYlZCliQTuN7U7I5I1Xhn1dAop17g2hAft1wVGgKHGA__YaNGWokqa69Wq8hHbkE322PVJ8I-GmpfBsT8LGsMpcI.js" defer="defer"></script>
+</body>
+</html>

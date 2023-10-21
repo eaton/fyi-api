@@ -1,7 +1,8 @@
 import 'dotenv/config';
-import { DrupalAccount } from '../index.js';
+import { DrupalOrg } from '../index.js';
 
-const da = new DrupalAccount({
+const da = new DrupalOrg({
+  name: 'drupal',
   userId: process.env.DRUPAL_ORG_USER,
 });
 
