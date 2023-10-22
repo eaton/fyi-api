@@ -97,7 +97,7 @@ export class DrupalOrg extends BaseImport<DrupalOrgCache> {
             ]});
           }
         } else if (pageType === 'project' && this.options.nodes !== false) {
-          cache.projects.push(await extractProject(html, uid));
+          cache.projects.push(await extractProject(html));
         } else if (pageType === 'release' && this.options.nodes !== false) {
           cache.releases.push(await extractRelease(html));
         } else if (pageType === 'issue' && this.options.nodes !== false) {
