@@ -19,16 +19,15 @@ export interface DrupalOrgOptions extends BaseImportOptions, ScraperImportOption
    */
   baseUrl?: string,
 
-
   /**
    * Process Drupal.org nodes posted by the user
    */
-  nodes?: boolean,
+  nodes?: true | string[] | false,
 
   /**
    * Process comments posted by the user
    */
-  comments?: boolean,
+  comments?: true | 'user' | false,
 }
 
 type DrupalOrgCache = {
@@ -47,6 +46,11 @@ const defaults: DrupalOrgOptions = {
 /**
  * Extracts a user's profile information, posts and comments,
  * and project contributions from drupal.org.
+ * 
+ * This should be updated to use https://www.drupal.org/api-d7 
+ * rather than scrapingg, but for now it'll do. See the docs at
+ * https://www.drupal.org/drupalorg/docs/apis/rest-and-other-apis
+ * for details.
  */
 export class DrupalOrg extends BaseImport<DrupalOrgCache> {
   declare options: DrupalOrgOptions;
@@ -97,11 +101,10 @@ export class DrupalOrg extends BaseImport<DrupalOrgCache> {
         } else if (pageType === 'release' && this.options.nodes !== false) {
           this.log(`TODO: Processing ${pageType} (${context.request.url})`)
         } else if (pageType === 'issue' && this.options.nodes !== false) {
-          this.log(`TODO: Processing ${pageType} (${context.request.url})`)
+          cache.issues.push(await extractIssue(html));
         } else if (pageType === 'topic' && this.options.nodes !== false) {
-          this.log(`TODO: Processing ${pageType} (${context.request.url})`)
+          cache.topics.push(await extractTopic(html));
         }
-
         return Promise.resolve();
       }
     });
@@ -191,35 +194,51 @@ export async function extractIssue(html: string, userId?: number) {
     nid: 'head link[rel="shortlink"] | attr:href | split:/ | pop',
     url: 'head link[rel="canonical"] | attr:href',
 
-    body: 'div.field-name-body div.field-item',
+    body: 'div.field-name-body div.field-item | html',
 
     status: '#block-project-issue-issue-metadata div.field-name-field-issue-status div.field-item',
     author: '#block-project-issue-issue-metadata div.field-name-project-issue-created-by a | attr:href | split:/ | pop',
     uid: 'div.field-name-project-issue-created-by a | attr:data-uid | parseAs:int',
     date: '#block-project-issue-issue-metadata div.field-name-project-issue-created div.field-item',
-    tags: '#block-project-issue-issue-metadata div.field-name-taxonomy-vocabulary-9 div.field-item a',
+    tags: [{ $: '#about-tags', value: 'dt' }],
     priority: '#block-project-issue-issue-metadata div.field-name-field-issue-priority div.field-item',
     followers: 'span.flag-project-issue-follow span.flag-tracker-count | split | shift | trim',
+
+    replies: [{
+      $: 'section.comments div.comment:not(div.system-message)',
+      cid: '$ | attr:id | substr:8 | parseAs:int',
+      author: 'div.submitted *.username | text | default',
+      uid: 'div.submitted *.username | attr:data-uid | default:0 | parseAs:int',
+      date: 'div.submitted time | attr:datetime',
+      body: 'div.content div.field-name-comment-body div.field-item | html',
+      changes: [{
+        $: 'table.nodechanges-field-changes tr',
+        key: 'td.nodechanges-label | split:: | shift',
+        value: 'td.nodechanges-new | substr:2'
+      }]
+    }]
   })
-  .then(data => (data.posts ?? []) as DrupalOrgIssue)
+  .then(data => (data ?? {}) as DrupalOrgIssue)
 }
 
-export async function extractProject(html: string, userId?: number) {
+export async function extractProject(html: string) {
   return extractWithCheerio(html, {
     title: '#page-subtitle',
     nid: 'head link[rel="shortlink"] | attr:href | split:/ | pop',
     url: 'head link[rel="canonical"] | attr:href',
 
-    body: 'div.field-name-body div.field-item',
+    body: 'div.field-name-body div.field-item | html',
 
-    tags: 'ul.project-info li:nth-child(1) a',
-    usage: 'ul.project-info li:nth-child(2) a strong | parseAs:int',
-    author: 'ul.project-info li:nth-child(3) a',
-    uid: 'ul.project-info li:nth-child(3) a | attr:data-uid | parseAs:int',
-    date: 'ul.project-info li:nth-child(3) time:nth-child(1) | attr:datetime | parseAs:date',
-    favorites: '#block-drupalorg-project-follow span.flag-wrapper span.count | trim | parseAs:int'
+    tags: [{
+      $: 'ul.project-info li:nth-child(1) a',
+      value: '$ | text'
+    }],
+    usage: 'ul.project-info li:nth-child(2) a strong | replace:, | parseAs:int | default:0',
+    creator: 'ul.project-info li:nth-child(3) a',
+    date: 'ul.project-info li:nth-child(3) time:nth-child(2) | parseAs:date',
+    favorites: '#block-drupalorg-project-follow a.log-in-to-star | text | split | shift | replace:, | parseAs:int | default:0'
   })
-  .then(data => (data.posts ?? []) as DrupalOrgProject)
+  .then(data => (data ?? {}) as DrupalOrgProject)
 }
 
 export async function extractTopic(html: string, userId?: number) {
@@ -228,13 +247,38 @@ export async function extractTopic(html: string, userId?: number) {
     nid: 'head link[rel="shortlink"] | attr:href | split:/ | pop',
     url: 'head link[rel="canonical"] | attr:href',
     
-    author: 'div.submitted a',
-    uid: 'div.submitted a | attr:data-uid | parseAs:int',
-    date: 'div.submitted time | attr:datetime | parseAs:date',
+    author: 'div.node-forum div.submitted span.username',
+    uid: 'div.node-forum div.submitted a | attr:data-uid | parseAs:int',
+    date: 'div.node-forum div.submitted time | attr:datetime',
 
-    body: 'div.node-forum div.field-name-body div.field-item',
+    body: 'div.node-forum div.field-name-body div.field-item | html',
 
-    replies: 'section.comments div.comment | count'
+    replies: [{
+      $: 'section.comments div.comment',
+      cid: '$ | attr:id | substr:8 | parseAs:int',
+      nid: '$ | attr:id | substr:8 | parseAs:int',
+      author: 'div.submitted *.username | text',
+      uid: 'div.submitted *.username | attr:data-uid | default:0 | parseAs:int',
+      date: 'div.submitted time | attr:datetime',
+      title: 'h3',
+      body: 'div.content div.field-name-comment-body div.field-item | html'
+    }]
   })
-  .then(data => (data.posts ?? []) as DrupalOrgTopic)
+  .then(data => (data ?? {}) as DrupalOrgTopic)
+}
+
+export async function extractRelease(html: string) {
+  return extractWithCheerio(html, {
+    title: '#page-subtitle',
+    nid: 'head link[rel="shortlink"] | attr:href | split:/ | pop',
+    url: 'head link[rel="canonical"] | attr:href',
+
+    project: 'head link[rel="canonical"] | attr:href | split:/ | index:4',
+    version: 'head link[rel="canonical"] | attr:href | split:/ | index:6',
+    creator: 'div.group-release-sidebar > div.release-info > a',
+    date: 'head meta[property="article:published_time"] | attr:content',
+
+    body: 'div.field-name-body div.field-item | html',
+  })
+  .then(data => (data ?? {}) as DrupalOrgTopic)
 }

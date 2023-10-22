@@ -1,5 +1,6 @@
 import { cheerioJsonMapper, getScope, PipeFnMap, JsonTemplate } from 'cheerio-json-mapper'
 import * as cheerio from 'cheerio';
+import is from '@sindresorhus/is';
 
 export type CheerioExtractTemplate = JsonTemplate;
 
@@ -7,7 +8,18 @@ const pipeFns: PipeFnMap = {
   html: ({ $scope, selector, opts }) => getScope($scope, selector, opts).html(),
   shift: ({ value }) => Array.isArray(value) ? value.shift() : void 0,
   pop: ({ value }) => Array.isArray(value) ? value.pop() : void 0,
-  count: ({ value }) => Array.isArray(value) ? value.length : void 0,
+  index: ({ value, args }) => {
+    console.log(value, args);
+    if (Array.isArray(value)) {
+      const [idx] = args ?? [];
+      if (is.numericString(idx)) {
+        return value[Number.parseInt(idx)];
+      }
+      return void 0;
+    }
+    return void 0;
+  },
+  replace: ({ value, args }) => (typeof value === 'string') ? value.replaceAll(args?.[0] as string ?? '', args?.[1] as string ?? '') : value,
   split: ({ value, args }) => {
     if (value !== null && value !== void 0) {
       const [arg1] = args ?? [];

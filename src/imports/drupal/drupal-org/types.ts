@@ -33,7 +33,7 @@ export type DrupalOrgNode = {
 }
 
 export type DrupalOrgTopic = DrupalOrgNode & {
-  replies?: number,
+  replies?: DrupalOrgComment[]
 }
 
 export type DrupalOrgProject = DrupalOrgNode & {
@@ -50,21 +50,22 @@ export type DrupalOrgIssue = DrupalOrgNode & {
   tags?: string[]
   followers?: number,
   status?: string,
+  replies?: DrupalOrgComment[],
 }
 
 export type DrupalOrgRelease = DrupalOrgNode & {
-  project: string,
-  version: string
+  project?: string,
+  version?: string
+  creator?: string,
 }
-
 
 export type DrupalOrgComment = {
   cid: number,
-  nid: number,
-  url: string,
+  nid?: number,
   uid: number,
   author: string,
   date: string,
   title?: string,
   body?: string,
+  changes?: { property: string, value: string }[]
 }
