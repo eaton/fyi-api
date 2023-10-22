@@ -97,13 +97,13 @@ export class DrupalOrg extends BaseImport<DrupalOrgCache> {
             ]});
           }
         } else if (pageType === 'project' && this.options.nodes !== false) {
-          cache.projects.push(await extractProject(html));
+          cache.projects.push(await extractProject(html, uid));
         } else if (pageType === 'release' && this.options.nodes !== false) {
-          this.log(`TODO: Processing ${pageType} (${context.request.url})`)
+          cache.releases.push(await extractRelease(html));
         } else if (pageType === 'issue' && this.options.nodes !== false) {
-          cache.issues.push(await extractIssue(html));
+          cache.issues.push(await extractIssue(html, uid));
         } else if (pageType === 'topic' && this.options.nodes !== false) {
-          cache.topics.push(await extractTopic(html));
+          cache.topics.push(await extractTopic(html, uid));
         }
         return Promise.resolve();
       }
