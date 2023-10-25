@@ -1,7 +1,12 @@
-import { Facebook } from './index.js';
+import 'dotenv/config';
+import { Twitter } from './index.js';
 
-const ui = new Facebook({
-  files: { input: process.env.FACEBOOK_INPUT }
+const t = new Twitter({
+  name: '2007-twitter',
+  files: { input: process.env.TWITTER_INPUT },
+  threads: true,
+  favorites: true,
+  retweets: true,
 });
-
-await ui.fillCache();
+await t.loadCache();
+console.log(t.cacheStats());

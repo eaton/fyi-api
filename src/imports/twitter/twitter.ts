@@ -8,7 +8,7 @@ import { MediaGDPREntity, PartialFavorite, PartialTweet, PartialTweetMediaEntity
 import { parseString } from '@fast-csv/parse';
 import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
 import path from 'path';
-import { TweetIndex } from './tweet-index.js';
+import { TweetIndex } from './index.js';
 
 const defaultOptions: TwitterImportOptions = {
   archive: true,
@@ -33,15 +33,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     super(options);
     this.browser = new TwitterBrowser({ headless: !!this.options.headless });
     this.resolver = new UrlResolver();
-    this.cacheData = {
-      archives: [],
-      tweets: new Map<string, TwitterPost>(),
-      threads: new Map<string, Set<string>>(),
-      media: new Map<string, TwitterMedia>(),
-      tweetIndex: new TweetIndex(),
-      userIndex: new TwitterUserIndex(),
-      metrics: new Map<string, TwitterAnalyticsRow[]>(),
-    };
+    this.cacheData = makeFreshCache();
 
     // Wrap our protected internal lookup function in a throttling mechanism
     const throttle = pThrottle({
@@ -52,37 +44,67 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     this.parentIndex = new Map<string, string>();
   }
 
+  cacheStats() {
+    const rawTweets = [...this.cacheData.tweets.values() ];
+
+    return {
+      tweets: rawTweets.length,
+      replies: rawTweets.filter(t => !!t.isReplyToTweet).length,
+      selfReplies: rawTweets.filter(t => (t.isReplyToUser && t.isReplyToUser === t.handle)).length,
+      threads: this.cacheData.threads.size,
+      incomplete: rawTweets.filter(t => t.incomplete).length,
+      fromId: rawTweets.filter(t => t.fromBareId).length,
+      fromFavorites: rawTweets.filter(t => t.fromFav).length,
+      withMedia: rawTweets.filter(t => t.media).length,
+      withAlt: rawTweets.filter(t => t.media?.find(m => m.alt)).length
+    }
+  }
+
   async doImport(): Promise<void> {
     await this.loadCache();
-    await this.buildThreads();
     return Promise.resolve();
   }
 
-  async buildThreads() {
-    
-  }
-
-  async loadCache(): Promise<void> {
+  async loadCache(): Promise<TwitterImportCache> {
+    this.cacheData = makeFreshCache();
     this.resolver = new UrlResolver({ known: await this.files.readCache('known-urls.json') });
-    await this.fillCache();
-    this.files.writeCache('known-urls.json', this.resolver.values());
-    return Promise.resolve();    
+    
+    const tweetFiles = await this.files.findCache('tweets/tweet-*.json');
+    for (const tf of tweetFiles) {
+      const t = await this.files.readCache(tf) as TwitterPost;
+      this.cacheData.tweets.set(t.id, t);
+      this.addToThread(t);
+    }
+
+    const metricsFiles = await this.files.findCache('*/analytics.json');
+    for (const mf of metricsFiles) {
+      const m = await this.files.readCache(mf) as TwitterAnalyticsSet;
+      this.cacheData.metrics.set(m.handle ?? 'unknown', m.rows);
+    }
+
+    if (isEmptyCache(this.cacheData)) {
+      this.cacheData = await this.fillCache();
+    }
+
+    return Promise.resolve(this.cacheData);
   }
 
-  async fillCache(): Promise<void> {
+  async fillCache(): Promise<TwitterImportCache> {
+    const cache = makeFreshCache();
+
     if (this.options.metrics !== false) {
-      await this.processAnalytics();
+      await this.fillMetricsCache();
     }
 
     if (this.options.archive !== false) {
-      await this.processArchives();
+      await this.fillCacheFromArchive();
     }
 
     if (this.options.custom) {
       await this.processCustom(this.options.custom);
     }
 
-    return Promise.resolve();
+    return Promise.resolve(cache);
   }
   
   async processCustom(input: boolean | string | string[]) {
@@ -114,7 +136,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     }
   }
 
-  async processArchives(): Promise<void> {
+  async fillCacheFromArchive(): Promise<void> {
     // Look for all available archive files; batch em up an let em rip
     let archives = (await this.files.findInput('twitter-*.zip')).sort();
       if (this.options.archive === 'newest') {
@@ -204,7 +226,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     // write the current KnownUrls index to disk
   }
 
-  async processAnalytics() {
+  async fillMetricsCache() {
     const analytics = await this.files.findInput('daily_tweet_activity_metrics_*.csv');
     const allData: Record<string, TwitterAnalyticsSet> = {};
 
@@ -239,16 +261,18 @@ export class Twitter extends BaseImport<TwitterImportCache> {
             ) as TwitterAnalyticsRow;
             allData[handle].start = getStart(allData[handle].start, mappedRow.date);
             allData[handle].end = getEnd(allData[handle].end, mappedRow.date);
-            allData[handle].rows.push(mappedRow);
+            allData[handle].rows.push({ handle, ...mappedRow });
           })
         );
     }
 
     for (const [user, data] of Object.entries(allData)) {
       await this.files.writeCache(`${user}/analytics.json`, data);
+      this.cacheData.metrics.set(user, data.rows);
       this.log(`Cached ${user} analytics (covering ${data.rows.length} days)`);
     }
-    return Promise.resolve();
+
+    return Promise.resolve(allData);
   }
 
   protected pathToTweet(t: TwitterPost, includeDate = false): string {
@@ -378,12 +402,27 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   ): Promise<TwitterPost> {
     let tweet = this.toTwitterPost(input);
 
-    // If the tweet isn't already cached, cache it
+    // Populate the internal cache
+    this.cacheData.tweets.set(tweet.id, tweet);
+    tweet.isInThreadId = this.getThread(tweet)?.id;
+    this.addToThread(tweet);
+
+    // If the tweet isn't already written to disk, push it to be sure
     if (!this.tweetIsCached(tweet.id) || options.force) {
       await this.files.writeCache(this.pathToTweet(tweet), tweet);
     }
 
     return Promise.resolve(tweet);
+  }
+
+  protected addToThread(tweet: TwitterPost) {
+    if (tweet.isInThreadId) {
+      if (!this.cacheData.threads.has(tweet.isInThreadId)) {
+        this.cacheData.threads.set(tweet.isInThreadId, new Set(tweet.id));
+      } else {
+        this.cacheData.threads.get(tweet.isInThreadId)?.add(tweet.id);
+      }
+    }
   }
 
   async cleanupUrls() {
@@ -422,7 +461,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
   async scrapeTweet(tweet: TwitterPost, level: TwitterLookupLevel = 'basic') {
     const { screenshot, screenshotFormat, ...scraped } = await this.lookupTweet(tweet.id, level);
-    tweet = this.mergedScrapedData(tweet, scraped);
+    tweet = this._mergedScrapedData(tweet, scraped);
     if (screenshot) {
       const screenshotPath = `screenshots/${tweet.id}.${screenshotFormat}`;
       await this.files.writeCache(screenshotPath, screenshot);
@@ -471,7 +510,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return Promise.resolve(tweet);
   }
 
-  protected mergedScrapedData(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {
+  protected _mergedScrapedData(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {
     tweet.handle ??= scraped.handle;
     tweet.displayName ??= scraped.displayName;
     tweet.favorites ??= scraped.favorites;
@@ -523,6 +562,26 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       return scrapeTweetOembed(id);
     }
   }
+
+  getParent(tweet: TwitterPost, sameUser = true) {
+    if (tweet.isReplyToTweet === undefined) {
+      return undefined;
+    } else if (sameUser && (tweet.isReplyToUser !== tweet.handle)) {
+      return undefined;
+    } else {
+      return this.cacheData.tweets.get(tweet.isReplyToTweet);
+    }
+  }
+
+  getAncestors(tweet: TwitterPost, sameUser = true): TwitterPost[] {
+    const parent = this.getParent(tweet, sameUser);
+    if (parent === undefined) return [];
+    return [parent, ...this.getAncestors(parent, sameUser)];
+  }
+
+  getThread(tweet: TwitterPost, sameUser = true) {
+    return this.getAncestors(tweet, sameUser).pop();
+  }
 }
 
 export function isTwitterPost(input: unknown): input is TwitterPost {
@@ -559,4 +618,25 @@ export function isReply(t: PartialTweet): boolean {
 
 export function isSelfReply(t: PartialTweet): boolean {
   return (t.in_reply_to_user_id_str === t.user.id_str);
+}
+
+function makeFreshCache(): TwitterImportCache {
+  return {
+    archives: [],
+    tweets: new Map<string, TwitterPost>(),
+    threads: new Map<string, Set<string>>(),
+    media: new Map<string, TwitterMedia>(),
+    metrics: new Map<string, TwitterAnalyticsRow[]>(),
+    tweetIndex: new TweetIndex(),
+    userIndex: new TwitterUserIndex()
+  }
+}
+
+function isEmptyCache(cache: TwitterImportCache) {
+  return (
+    cache.archives.length === 0 &&
+    cache.tweets.size === 0 &&
+    cache.media.size === 0 &&
+    cache.metrics.size === 0
+  )
 }

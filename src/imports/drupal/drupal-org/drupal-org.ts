@@ -80,7 +80,7 @@ export class DrupalOrg extends BaseImport<DrupalOrgCache> {
     log.setLevel(log.LEVELS.ERROR);
     const crawler = new CheerioCrawler({
       sameDomainDelaySecs: 2,
-      ...this.options.scraper,
+      ...this.options.scraper ?? {},
       requestHandler: async context => {
         const pageType = getPageType(context.request.url);
         const html = context.body.toString();

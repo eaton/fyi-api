@@ -1,6 +1,7 @@
 # Twitter Importer
 
-This importer is designed to hoover up a handful of data sources in parallel:
+This importer is designed to hoover up a handful of data sources, potentially
+multiple sources in one migration operation:
 
 - Text files containing arbitrary lists of Twitter URLs or Tweet IDs
 - One or more 'Account Archive' zip files, downloaded from Twitter

@@ -164,6 +164,7 @@ export type TwitterPost = TwitterUser & {
   url?: string,
   status?: number,
   isInThreadId?: string,
+  threadChildren?: string[],
   isReplyToTweet?: string,
   isReplyToUser?: string,
   isRetweetOf?: string,
@@ -208,6 +209,7 @@ export type TwitterAnalyticsSet = {
 }
 
 export type TwitterAnalyticsRow = Record<string, unknown> & {
+  handle?: string,
   date: string,
   tweetsPublished?: number,
   impressions?: number,
