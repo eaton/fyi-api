@@ -5,10 +5,12 @@ const { async: glob } = gpkg;
 type GlobOptions = Parameters<typeof glob>[1];
 
 import fpkg, { PathLike } from 'fs-extra';
-const { readFile, readJson, writeFile, writeJson, statSync, existsSync, ensureDirSync, remove } = fpkg;
+const { readFile, readJson, writeFile, writeJson, createReadStream, createWriteStream, statSync, existsSync, ensureDirSync, remove } = fpkg;
 import { parse as parseYaml, stringify as serializeYaml } from 'yaml';
 
 import is from "@sindresorhus/is";
+
+import ndjson from 'ndjson';
 
 export interface FilestoreOptions extends Record<string, unknown> {
   base?: string,
@@ -249,6 +251,13 @@ export class Filestore {
         return readFile(file)
           .then(data => parseYaml(data.toString()))
           .catch(errorHandler);
+      } else if (extension === '.ndjson') {
+        const output: unknown[] = [];
+        createReadStream(file)
+          .pipe(ndjson.parse())
+          .on('data', (obj) => output.push(obj))
+          .on('error', errorHandler);
+        return Promise.resolve(output);
       }
     }
     
@@ -293,6 +302,15 @@ export class Filestore {
         return writeJson(file, data, this.readableOutput ? { spaces: 2 } : {});
       } else if (extension === '.yaml' || extension === '.yml') {
         return writeFile(file, serializeYaml(data));
+      } else if (extension === '.ndjson' && Array.isArray(data)) {
+        const stream = createWriteStream(file)
+        const serialize = ndjson.stringify().on('data', (line) => stream.write(line));
+        for (const d of data) {
+          serialize.write(d);
+        }
+        serialize.end();
+        stream.close();
+        return Promise.resolve();
       }
     }
 
@@ -300,7 +318,7 @@ export class Filestore {
       return writeFile(file, data);
     }
 
-    throw new Error(`${file} couldn't be written.`)
+    throw new Error(`${file} couldn't be written.`);
   }
 
   /**
