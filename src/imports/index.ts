@@ -7,6 +7,7 @@ export * from './jekyll.js';
 export * from './movabletype/movabletype.js';
 export * from './instagram/instagram.js';
 export * from './livejournal/livejournal.js';
+export * from './autogram/index.js';
 
 // Incomplete but broken out to follow the new convention
 export * from './tumblr/index.js';

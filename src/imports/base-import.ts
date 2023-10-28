@@ -27,7 +27,7 @@ export interface DatabaseImportOptions {
 /**
  * Concurrency and timing options for imports that scrape pages
  */
-export interface ScraperImportOptions {
+export interface ScraperImportOptions extends Record<string, unknown> {
   maxRequestsPerMinute?: number,
   maxConcurrency?: number,
   sameDomainDelaySec?: number
@@ -40,6 +40,7 @@ export interface ScraperImportOptions {
 export abstract class BaseImport<CacheType = void> {
   collections?: string[] = undefined;
   relationships?: string[] = undefined;
+  cacheData?: CacheType;
 
   constructor(protected options: BaseImportOptions = {}) {};
 
