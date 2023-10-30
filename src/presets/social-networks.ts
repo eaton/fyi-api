@@ -16,6 +16,8 @@ await ig.doImport();
 // This is the grand-daddy of them all
 const tw = new Twitter({
   name: '2007-twitter',
-  files: { input: process.env.TWITTER_INPUT }
+  files: { input: process.env.TWITTER_INPUT },
+  retweets: true,
+  favorites: true,
 });
-await tw.fillCache();
+await tw.loadCache();

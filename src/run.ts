@@ -7,6 +7,10 @@ const t = new Twitter({
   threads: true,
   favorites: true,
   retweets: true,
+  attemptLogin: true,
 });
 await t.loadCache();
-console.log(t.cacheStats());
+
+t.log(t.cacheStats());
+// await t.populateAltText();
+// t.log(t.cacheStats());

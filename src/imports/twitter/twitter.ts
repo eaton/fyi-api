@@ -1,12 +1,10 @@
-import { BaseImport, ScrapedTweet, TweetUrl, TwitterBrowser, TwitterUserIndex, scrapeTweetOembed } from '../index.js';
-import { camelCase, UrlResolver } from '../../index.js';
-import { TwitterImportOptions, TwitterAnalyticsRow, TwitterAnalyticsSet, TwitterImportCache, TwitterPost, TwitterMedia, TwitterLookupLevel } from "./types.js";
+import { BaseImport, ScrapedTweet, TweetUrl, TwitterBrowser, scrapeTweetOembed } from '../index.js';
+import { UrlResolver } from '../../index.js';
+import { TwitterImportOptions, TwitterImportCache, TwitterPost, TwitterMedia, TwitterLookupLevel } from "./types.js";
 
 import is from '@sindresorhus/is';
-import pThrottle from 'p-throttle';
-import { MediaGDPREntity, PartialFavorite, PartialTweet, PartialTweetMediaEntity, TwitterArchive } from "twitter-archive-reader";
-import { parseString } from '@fast-csv/parse';
-import { parseISO, max as maxDate, min as minDate, format as formatDate } from 'date-fns';
+import { MediaGDPREntity, PartialFavorite, PartialTweet, PartialTweetMediaEntity, TwitterArchive, TwitterHelpers } from "twitter-archive-reader";
+import { format as formatDate } from 'date-fns';
 import path from 'path';
 import { TweetIndex } from './index.js';
 
@@ -14,33 +12,28 @@ const defaultOptions: TwitterImportOptions = {
   archive: true,
   favorites: true,
   media: true,
-  metrics: true
 }
 
 export class Twitter extends BaseImport<TwitterImportCache> {
-  collections = ['twitter_post'];
   declare options: TwitterImportOptions;
+  declare cacheData: TwitterImportCache;
   
   browser: TwitterBrowser;
   resolver: UrlResolver;
-  cacheData: TwitterImportCache;
   parentIndex: Map<string, string>;
-  lookupTweet: (id: string, level: TwitterLookupLevel) => Promise<ScrapedTweet>;
 
   constructor(options: TwitterImportOptions = {}) {
     options = { ...defaultOptions, ...options };
 
     super(options);
-    this.browser = new TwitterBrowser({ headless: !!this.options.headless });
+    this.browser = new TwitterBrowser({
+      headless: !!this.options.headless,
+      attemptLogin: !!this.options.attemptLogin
+    });
     this.resolver = new UrlResolver();
     this.cacheData = makeFreshCache();
 
     // Wrap our protected internal lookup function in a throttling mechanism
-    const throttle = pThrottle({
-      limit: options.scrapingLimit ?? 7,
-      interval: options.scrapingInterval ?? 5000
-    });
-    this.lookupTweet = throttle(this._lookupTweet);
     this.parentIndex = new Map<string, string>();
   }
 
@@ -49,12 +42,9 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
     return {
       tweets: rawTweets.length,
-      replies: rawTweets.filter(t => !!t.isReplyToTweet).length,
-      selfReplies: rawTweets.filter(t => (t.isReplyToUser && t.isReplyToUser === t.handle)).length,
+      replies: rawTweets.filter(t => !!t.opId).length,
+      selfReplies: rawTweets.filter(t => (t.handle && t.opHandle === t.handle)).length,
       threads: this.cacheData.threads.size,
-      incomplete: rawTweets.filter(t => t.incomplete).length,
-      fromId: rawTweets.filter(t => t.fromBareId).length,
-      fromFavorites: rawTweets.filter(t => t.fromFav).length,
       withMedia: rawTweets.filter(t => t.media).length,
       withAlt: rawTweets.filter(t => t.media?.find(m => m.alt)).length
     }
@@ -67,7 +57,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
   async loadCache(): Promise<TwitterImportCache> {
     this.cacheData = makeFreshCache();
-    this.resolver = new UrlResolver({ known: await this.files.readCache('known-urls.json') });
     
     const tweetFiles = await this.files.findCache('tweets/tweet-*.json');
     for (const tf of tweetFiles) {
@@ -76,67 +65,14 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       this.addToThread(t);
     }
 
-    const metricsFiles = await this.files.findCache('*/analytics.json');
-    for (const mf of metricsFiles) {
-      const m = await this.files.readCache(mf) as TwitterAnalyticsSet;
-      this.cacheData.metrics.set(m.handle ?? 'unknown', m.rows);
-    }
-
     if (isEmptyCache(this.cacheData)) {
       this.cacheData = await this.fillCache();
     }
 
     return Promise.resolve(this.cacheData);
-  }
+  }  
 
   async fillCache(): Promise<TwitterImportCache> {
-    const cache = makeFreshCache();
-
-    if (this.options.metrics !== false) {
-      await this.fillMetricsCache();
-    }
-
-    if (this.options.archive !== false) {
-      await this.fillCacheFromArchive();
-    }
-
-    if (this.options.custom) {
-      await this.processCustom(this.options.custom);
-    }
-
-    return Promise.resolve(cache);
-  }
-  
-  async processCustom(input: boolean | string | string[]) {
-    let tweets: Record<string, string[]> = {};
-    if (input === true) {
-      for (const file of await this.files.findInput('*.txt')) {
-        const data = await this.files.readInput(file);
-        if (is.string(data)) {
-          tweets[path.parse(file).base] = data.split(/\n,/);
-        }
-      }
-    } else if (is.string(input)) {
-      for (const file of await this.files.findInput(input)) {
-        const data = await this.files.readInput(file);
-        if (is.string(data)) {
-          tweets[path.parse(file).base] = data.split(/\n,/);
-        }
-      }
-    } else if (is.array<string>(input)) {
-      tweets.custom = input.map(v => new TweetUrl(v).href);
-    }
-
-    for (const [batch, ids] of Object.entries(tweets)) {
-      for (const id of ids) {
-        await this.cacheTweet(id);
-      }
-      this.files.writeCache(`${batch}.txt`, ids.join('\n'));
-      this.log('Processed %d tweets from %s', ids.length, batch);
-    }
-  }
-
-  async fillCacheFromArchive(): Promise<void> {
     // Look for all available archive files; batch em up an let em rip
     let archives = (await this.files.findInput('twitter-*.zip')).sort();
       if (this.options.archive === 'newest') {
@@ -183,34 +119,61 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       );
   
       for (const t of archive.tweets.sortedIterator('asc')) {
-        await this.cacheTweet(t);
-        if (this.options.media) {
-          for (const me of t.extended_entities?.media ?? []) {
-            const variant = me.video_info?.variants?.filter(v => v.content_type === 'video/mp4').pop();
-            const filename = path.parse(variant?.url ?? me.media_url_https).base.split('?')[0];
-
-            if (!this.files.existsCache(filename)) {
-              try {
-                const ab = await archive.medias.fromTweetMediaEntity(me, true);
-                const buffer = Buffer.from(ab as ArrayBuffer);
-                await this.files.writeCache(`media/${filename}`, buffer);
-              } catch(err: unknown) {
-                // Swallow this
-              }
-            }
+        if (isRetweet(t)) {
+          if (this.options.retweets) {
+            const ct = await this.cacheTweet(t);
+            this.cacheData.tweetIndex.add({
+              id: ct.id,
+              handle: archive.user.screen_name,
+              list: 'retweets',
+              date: t.created_at_d?.toISOString()
+            });
           }
+        } else {
+          if (this.options.media) {
+            await this.copyTweetMedia(t, archive);
+          }
+          await this.cacheTweet(t);
         }
       }
   
       if (this.options.favorites) {
         for (const f of archive.favorites.all) {
+
+          this.cacheData.tweetIndex.add({
+            id: f.tweetId,
+            handle: archive.user.screen_name,
+            list: 'favorites',
+          });
+  
           await this.cacheTweet(f);
-          this.cacheData.tweetIndex.add({ id: f.tweetId, handle: archive.user.screen_name, list: 'favorites', date: f.date?.toISOString() });
         }
       }
 
       await this.cacheIndexes();
       archive.releaseZip();
+    }
+
+    return Promise.resolve(this.cacheData);
+  }
+
+  async copyTweetMedia(t: PartialTweet, archive: TwitterArchive) {
+    if (this.options.media) {
+      for (const me of t.extended_entities?.media ?? []) {
+        const variant = me.video_info?.variants?.filter(v => v.content_type === 'video/mp4').pop();
+        const filename = path.parse(variant?.url ?? me.media_url_https).base.split('?')[0];
+
+        if (!this.files.existsCache(filename)) {
+          try {
+            const ab = await archive.medias.fromTweetMediaEntity(me, true);
+            const buffer = Buffer.from(ab as ArrayBuffer);
+            await this.files.writeCache(`media/${filename}`, buffer);
+          } catch(err: unknown) {
+            // Swallow this; it generally means the tweet is a RT with media,
+            // and the original files aren't in the local archive.
+          }
+        }
+      }
     }
   }
 
@@ -221,70 +184,18 @@ export class Twitter extends BaseImport<TwitterImportCache> {
         this.files.writeCache(`${handle}/${list}.json`, tweets);
       }
     }
-
-    // write the current User index to disk
-    // write the current KnownUrls index to disk
   }
 
-  async fillMetricsCache() {
-    const analytics = await this.files.findInput('daily_tweet_activity_metrics_*.csv');
-    const allData: Record<string, TwitterAnalyticsSet> = {};
-
-    const getStart = (a: string | undefined, b: string | undefined) => {
-      return formatDate(
-        minDate([
-          parseISO(a ?? '9999-01-01'),
-          parseISO(b ?? '9999-01-01')
-        ]),'yyyy-MM-dd');
-    }
-    const getEnd = (a: string | undefined, b: string | undefined) => {
-      return formatDate(
-        maxDate([
-        parseISO(a ?? '0001-01-01'),
-        parseISO(b ?? '0001-01-01')
-      ]),'yyyy-MM-dd');
-    }
-
-    const metricsRegex = /daily_tweet_activity_metrics_(.+)_\d{8}_\d{8}_(\w+).csv/;
-    for (const file of analytics) {
-      const [handle, locale] = file.match(metricsRegex)?.slice(1) ?? [];
-      allData[handle] ??= { handle, start: undefined, end: undefined, locale, rows: [] };
-      
-      // ridic. inefficient, but it works for now. We should cache in headers/rows
-      // nested array format rather than full named object mode.
-      await this.files.readInput(file, { parse: false })
-        .then(raw => parseString(raw, { headers: true })
-          .on('error', error => this.log(error))
-          .on('data', row => {
-              const mappedRow = Object.fromEntries(
-              Object.entries(row).map(([k, v]) => [camelCase(k), (v === '-') ? undefined : v])
-            ) as TwitterAnalyticsRow;
-            allData[handle].start = getStart(allData[handle].start, mappedRow.date);
-            allData[handle].end = getEnd(allData[handle].end, mappedRow.date);
-            allData[handle].rows.push({ handle, ...mappedRow });
-          })
-        );
-    }
-
-    for (const [user, data] of Object.entries(allData)) {
-      await this.files.writeCache(`${user}/analytics.json`, data);
-      this.cacheData.metrics.set(user, data.rows);
-      this.log(`Cached ${user} analytics (covering ${data.rows.length} days)`);
-    }
-
-    return Promise.resolve(allData);
-  }
-
-  protected pathToTweet(t: TwitterPost, includeDate = false): string {
+  protected pathToTweet(t: TwitterPost): string {
     // Get the date in case it's a partial tweet
     if (t.url && !t.id) {
       t.id = new TweetUrl(t.url).id;
     }
 
-    if (includeDate) {
-      return t.date ?
-      `tweets/${formatDate(new Date(t.date), 'yyyy/MM/')}tweet-${t.id}.json`:
-      `tweets/unknown/tweet-${t.id}.json`;
+    if (t.fromFav) {
+      return `favorites/tweet-${t.id}.json`
+    } else if (t.fromRetweet) {
+      return `retweets/tweet-${t.id}.json`
     } else {
       return `tweets/tweet-${t.id}.json`
     }
@@ -295,7 +206,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   protected tweetIsCached(id: string) {
-    return this.files.existsCache(`tweets/tweet-${id}.json`);
+    return this.files.existsCache(`(tweets, favorites, retweets)/tweet-${id}.json`);
   }
 
   protected tweetHasScreenshot(id: string) {
@@ -315,44 +226,42 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       tweet = {
         id: url.id,
         url: url.href,
-        incomplete: true,
         fromBareId: true,
       };
 
     } else if (isPartialTweet(input)) {
-      // Tweets and retweets from a downloaded Twitter Archive; this is
-      // fairly complete but some information (alt text on media, etc)
-      // can only be retrieved by scraping after the fact.
-      const url = new TweetUrl(input.id_str, input.user.screen_name);
       tweet = {
-        id: url.id,
-        url: url.href,
-        date: input.created_at_d ? input.created_at_d.toISOString() : undefined,
+        id: input.id_str,
+        date: TwitterHelpers.dateFromTweet(input).toUTCString() ?? undefined,
         userId: input.user.id_str,
         handle: input.user.screen_name,
         displayName: input.user.name,
         text: input.full_text ?? input.text,
         retweets: input.retweet_count,
         favorites: input.favorite_count,
-        isReplyToTweet: input.in_reply_to_status_id_str,
-        isReplyToUser: input.in_reply_to_screen_name,
+        opId: input.in_reply_to_status_id_str,
+        opHandle: input.in_reply_to_screen_name,
         urls: input.entities.urls.map(u => {
           return { text: u.url, title: u.display_url, url: u.expanded_url }
         }),
         media: this.toTwitterMedia(input.extended_entities?.media ?? input.entities?.media ?? []),
-      };
-
-      if (input.extended_entities?.media) {
-        tweet.hasMedia = true;
-        tweet.incomplete = true; // We need to look up image alt tags
       }
 
-      if (input.retweeted_status) {
-        // We record the fact that this user retweeted it, but return the underlying
-        // retweeted status for caching purposes.
-        this.cacheData.tweetIndex.add({ id: tweet.id, handle: tweet.handle, list: 'retweets', date: tweet.date });
-        tweet = this.toTwitterPost(input.retweeted_status);
+      // Retweets impose some extra strangeness
+      if (isRetweet(input)) {
+        if (input.retweeted_status) {
+          tweet = this.toTwitterPost(input.retweeted_status);
+          tweet.fromRetweet = true;
+        } else {
+          // old-style chained retweets mangle the user's handle and userID
+          tweet.handle = input.user.screen_name.split(' ').shift();
+          tweet.userId = undefined;
+          tweet.fromRetweet = true;
+        }
       }
+      
+      tweet.url = new TweetUrl(tweet.id, tweet.handle).href;
+      if (tweet?.urls?.length === 0) tweet.urls = undefined;
 
     } else if (isPartialFavorite(input)) {
       tweet = {
@@ -361,7 +270,6 @@ export class Twitter extends BaseImport<TwitterImportCache> {
         text: input.fullText,
         date: input.date?.toISOString(),
         fromFav: true,
-        incomplete: true, // We need to look up user name, full text, etc.
       };
     } else {
       tweet = input;
@@ -404,7 +312,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
     // Populate the internal cache
     this.cacheData.tweets.set(tweet.id, tweet);
-    tweet.isInThreadId = this.getThread(tweet)?.id;
+    tweet.threadId = this.getThread(tweet)?.id;
     this.addToThread(tweet);
 
     // If the tweet isn't already written to disk, push it to be sure
@@ -416,30 +324,68 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   protected addToThread(tweet: TwitterPost) {
-    if (tweet.isInThreadId) {
-      if (!this.cacheData.threads.has(tweet.isInThreadId)) {
-        this.cacheData.threads.set(tweet.isInThreadId, new Set(tweet.id));
+    if (tweet.threadId) {
+      if (!this.cacheData.threads.has(tweet.threadId)) {
+        this.cacheData.threads.set(tweet.threadId, new Set(tweet.id));
       } else {
-        this.cacheData.threads.get(tweet.isInThreadId)?.add(tweet.id);
+        this.cacheData.threads.get(tweet.threadId)?.add(tweet.id);
       }
     }
   }
 
-  async cleanupUrls() {
-    for (const file of await this.files.findCache('tweets/tweet-*.json')) {
-      let tweet = await this.files.readCache(file) as TwitterPost;
-      if (tweet.urls) tweet = await this.expandUrls(tweet);
-      this.cacheTweet(tweet, { force: true });
+  async cleanupUrls(limit?: number) {
+    for (const tweet of this.cacheData.tweets.values()) {
+      if (tweet.urlsExpanded) continue;
+      if (tweet.urls) {
+        await this.expandUrls(tweet);
+        tweet.urlsExpanded = true;
+        this.cacheTweet(tweet, { force: true });
+      }
+      if (limit) limit--;
+      if (limit === 0) return Promise.resolve();
     }
+    return Promise.resolve();
+  }
+
+  async populateAltText(limit?: number): Promise<void> {
+    let success = 0;
+    let fail = 0;
+
+    const incompleteMediaTweets = [...this.cacheData.tweets.values()].filter(t => t.media && !t.scraped);
+    this.log(`Processing ${incompleteMediaTweets.length} media tweets`);
+
+    for (const tweet of incompleteMediaTweets) {
+      if (!tweet.url) continue;
+      const scraped = await this.browser.capture(tweet.url)
+
+      if (scraped.success) {
+        success++;
+        this._mergeScrapedData(tweet, scraped);
+        tweet.scraped = true;
+        this.cacheTweet(tweet, { force: true });
+      } else { 
+        this.log(scraped.errors);
+        fail++;
+      }
+
+      if (limit) limit--;
+      if (limit === 0) {
+        this.log('Reached batch limit');
+        await this.browser.teardown();
+        return Promise.resolve();
+      }
+    }
+    await this.browser.teardown();
+    return Promise.resolve();
   }
 
   async populateFavorites() {
     let favs = 0;
-    for (const file of await this.files.findCache('tweets/tweet-*.json')) {
+    for (const file of await this.files.findCache('favorites/tweet-*.json')) {
       let tweet = await this.files.readCache(file) as TwitterPost;
-      if (tweet.incomplete && tweet.fromFav && !tweet.errors) {
+      if (tweet.fromFav && !tweet.favScraped) {
         tweet = await this.scrapeTweet(tweet, 'basic');
-        if (!tweet.errors) tweet.incomplete = undefined;
+        if (!tweet.errors) tweet.favScraped = true;
         this.cacheTweet(tweet, { force: true });
         favs++;
       }
@@ -460,8 +406,9 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   async scrapeTweet(tweet: TwitterPost, level: TwitterLookupLevel = 'basic') {
-    const { screenshot, screenshotFormat, ...scraped } = await this.lookupTweet(tweet.id, level);
-    tweet = this._mergedScrapedData(tweet, scraped);
+    const { screenshot, screenshotFormat, ...scraped } = await this.lookupTweet(tweet.url ?? tweet.id, level);
+    this.log(tweet, scraped);
+    tweet = this._mergeScrapedData(tweet, scraped);
     if (screenshot) {
       const screenshotPath = `screenshots/${tweet.id}.${screenshotFormat}`;
       await this.files.writeCache(screenshotPath, screenshot);
@@ -510,7 +457,29 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     return Promise.resolve(tweet);
   }
 
-  protected _mergedScrapedData(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {
+  protected _mergeScrapedAltText(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {
+    for (const sm of scraped.media ?? []) {
+      if (!sm.alt || sm.alt === 'Image') continue;
+      const match = tweet.media?.find(em => em.imageUrl === sm.imageUrl);
+      if (match) {
+        match.alt ??= sm.alt;
+      }
+    }
+    return tweet;
+  }
+
+  protected _mergeScrapedUrls(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {
+    for (const su of scraped.urls ?? []) {
+      const match = tweet.urls?.find(em => em.url === su.url);
+      if (!match) {
+        tweet.urls ??= [];
+        tweet.urls.push(su);
+      }
+    }
+    return tweet;
+  }
+
+  protected _mergeScrapedData(tweet: TwitterPost, scraped: ScrapedTweet): TwitterPost {
     tweet.handle ??= scraped.handle;
     tweet.displayName ??= scraped.displayName;
     tweet.favorites ??= scraped.favorites;
@@ -521,32 +490,16 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     tweet.deleted = scraped.deleted;
     tweet.protected = scraped.protected;
 
-    if (scraped.date) tweet.date = scraped.date;
-    if (scraped.url) tweet.url = scraped.url
+    if (scraped.date) tweet.date ??= scraped.date;
+    if (scraped.url) tweet.url ??= scraped.url
 
-    for (const su of scraped.urls ?? []) {
-      const match = tweet.urls?.find(em => em.url === su.url);
-      if (!match) {
-        tweet.urls ??= [];
-        tweet.urls.push(su);
-      }
-    }
-
-    // We need to take a look at these and resolve them cleanly
-    for (const sm of scraped.media ?? []) {
-      const match = tweet.media?.find(em => em.imageUrl === sm.imageUrl);
-      if (match) {
-        match.alt ??= sm.alt;
-      } else {
-        tweet.media ??= [];
-        tweet.media.push(sm);
-      }
-    }
+    this._mergeScrapedAltText(tweet, scraped);
+    this._mergeScrapedUrls(tweet, scraped);
 
     return tweet;
   }
 
-  protected async _lookupTweet(id: string, level: TwitterLookupLevel = 'basic') {
+  protected async lookupTweet(id: string, level: TwitterLookupLevel = 'basic') {
     // This wraps the different approaches we take to grabbing tweet data:
     // hitting the oEmbed endpoint? Firing up headless chrome and scraping?
     // Taking a screenshot? etc.
@@ -564,12 +517,12 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   getParent(tweet: TwitterPost, sameUser = true) {
-    if (tweet.isReplyToTweet === undefined) {
+    if (tweet.opId === undefined) {
       return undefined;
-    } else if (sameUser && (tweet.isReplyToUser !== tweet.handle)) {
+    } else if (sameUser && (tweet.opHandle !== tweet.handle)) {
       return undefined;
     } else {
-      return this.cacheData.tweets.get(tweet.isReplyToTweet);
+      return this.cacheData.tweets.get(tweet.opId);
     }
   }
 
@@ -609,7 +562,7 @@ export function isGPRDMedia(input: unknown): input is MediaGDPREntity {
 }
 
 export function isRetweet(t: PartialTweet): boolean {
-  return (t.retweeted_status !== undefined || !!t.retweeted);
+  return (!!t.retweeted_status || !!t.retweeted);
 }
 
 export function isReply(t: PartialTweet): boolean {
@@ -626,9 +579,7 @@ function makeFreshCache(): TwitterImportCache {
     tweets: new Map<string, TwitterPost>(),
     threads: new Map<string, Set<string>>(),
     media: new Map<string, TwitterMedia>(),
-    metrics: new Map<string, TwitterAnalyticsRow[]>(),
     tweetIndex: new TweetIndex(),
-    userIndex: new TwitterUserIndex()
   }
 }
 
@@ -636,7 +587,6 @@ function isEmptyCache(cache: TwitterImportCache) {
   return (
     cache.archives.length === 0 &&
     cache.tweets.size === 0 &&
-    cache.media.size === 0 &&
-    cache.metrics.size === 0
+    cache.media.size === 0
   )
 }

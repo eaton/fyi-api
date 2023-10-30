@@ -1,5 +1,5 @@
 import { ArchiveSyntheticInfo } from "twitter-archive-reader";
-import { BaseImportOptions, TwitterUserIndex, FoundUrl } from "../../index.js";
+import { BaseImportOptions, FoundUrl } from "../../index.js";
 import { TweetIndex } from "./tweet-index.js";
 
 // TODO: We can't really retrieve bookmarks proper from Twitter without
@@ -37,16 +37,6 @@ export type TwitterImportCache = {
    * An index of Tweet IDs to record interactions like retweeting, favoriting, bookmarking, etc.
    */
   tweetIndex: TweetIndex,
-
-  /**
-   * An index of user ID/handle/Display Name combinations seen during the import.
-   */
-  userIndex: TwitterUserIndex,
-
-  /**
-   * A list day-by-day analytics numbers for the specified Twitter user.
-   */
-  metrics: Map<string, TwitterAnalyticsRow[]>,
 }
 
 /**
@@ -70,11 +60,7 @@ export type TwitterLookupLevelFunction = ((tweet: TwitterPost) => TwitterLookupL
 
 export interface TwitterImportOptions extends BaseImportOptions {
 
-  scrape?: TwitterLookupLevel | TwitterLookupLevelFunction,
-
-  scrapingLimit?: number,
-
-  scrapingInterval?: number,
+  attemptLogin?: boolean,
 
   resolveUrls?: boolean,
 
@@ -97,14 +83,6 @@ export interface TwitterImportOptions extends BaseImportOptions {
   retweets?: boolean,
 
   /**
-   * Process standalone tweets (i.e., tweets that are not part of a thread)
-   * from saved Twitter Archives.
-   *
-   * @defaultValue `true`
-   */
-  singles?: boolean,
-
-  /**
    * Process multi-tweet threads by the Twitter Archive's user.
    *
    * @defaultValue `true`
@@ -112,44 +90,16 @@ export interface TwitterImportOptions extends BaseImportOptions {
   threads?: boolean
 
   /**
-   * Process replies to other users' tweets from saved Twitter Archives.
-   *
-   * @defaultValue `true`
-   */
-  replies?: boolean,
-
-  /**
-   * Look for day-by-day analytics exports in CSV format, and use them as
-   * a migration source.
-   *
-   * @defaultValue `true`
-   */
-  metrics?: boolean,
-
-  /**
    * Process favorited tweets from saved Twitter Archives.
    *
    * @defaultValue `true`
    */
-  favorites?: boolean | TwitterLookupLevel,
+  favorites?: boolean,
 
   /**
    * Process media details.
    */
   media?: boolean,
-
-  /**
-   * One or more list of tweets to retrieve and process, in addition to the
-   * tweets in the archive.
-   * 
-   * This can be an array of tweet URLS, a filename containing a list of tweet
-   * URLs, or a glob string matching multiple files full of tweet URLs. By default,
-   * or when set to `true`, it will treat any .txt files in the input directory as
-   * custom tweet lists.
-   * 
-   * @defaultValue: `*.txt`
-   */
-  custom?: boolean | string | string[];
 }
 
 export type TwitterUser = {
@@ -163,11 +113,10 @@ export type TwitterPost = TwitterUser & {
   id: string
   url?: string,
   status?: number,
-  isInThreadId?: string,
+  threadId?: string,
   threadChildren?: string[],
-  isReplyToTweet?: string,
-  isReplyToUser?: string,
-  isRetweetOf?: string,
+  opId?: string,
+  opHandle?: string,
   date?: string,
   text?: string,
   media?: TwitterMedia[],
@@ -178,7 +127,7 @@ export type TwitterPost = TwitterUser & {
   replies?: number,
   quotes?: number,
   bookmarks?: number,
-  incomplete?: boolean,
+  scraped?: boolean,
 }
 
 export type TwitterMedia = Record<string, unknown> & {
@@ -200,15 +149,7 @@ export type ScrapedTweet = TwitterPost & {
   screenshotFormat?: 'jpeg' | 'png',
 }
 
-export type TwitterAnalyticsSet = {
-  handle?: string,
-  start?: string,
-  end?: string,
-  locale?: string,
-  rows: TwitterAnalyticsRow[],
-}
-
-export type TwitterAnalyticsRow = Record<string, unknown> & {
+export type TwitterMetricsRow = Record<string, unknown> & {
   handle?: string,
   date: string,
   tweetsPublished?: number,

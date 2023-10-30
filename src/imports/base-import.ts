@@ -1,6 +1,6 @@
 import { Filestore, Database, FilestoreOptions } from "../index.js"
 import chalk from 'chalk';
-
+import { kebabCase } from "../index.js";
 
 /**
  * Core options supported by most imports
@@ -37,7 +37,7 @@ export interface ScraperImportOptions extends Record<string, unknown> {
  * Skeleton for raw migrations; it makes it easy-ish to avoid some of the frequent
  * boilerplate code when doing cycles of testing.
  */
-export abstract class BaseImport<CacheType = void> {
+export abstract class BaseImport<CacheType = unknown> {
   collections?: string[] = undefined;
   relationships?: string[] = undefined;
   cacheData?: CacheType;
@@ -54,7 +54,7 @@ export abstract class BaseImport<CacheType = void> {
   }
 
   get name(): string {
-    return this.options.name ?? this.constructor.name.toLocaleLowerCase();
+    return this.options.name ?? kebabCase(this.constructor.name);
   }
 
   get db(): Database {

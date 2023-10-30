@@ -14,7 +14,9 @@ type TwitterBrowserOptions = {
 
   template?: CheerioExtractTemplate,
 
-  screenshot?: TwitterScreenshotOptions
+  screenshot?: TwitterScreenshotOptions,
+
+  attemptLogin?: boolean,
 }
 
 type TwitterScreenshotOptions = {
@@ -131,23 +133,37 @@ export class TwitterBrowser {
         colorScheme,
         viewport,
         deviceScaleFactor: (retina) ? 2 : undefined
-      });  
+      });
     }
 
     if (this._page === undefined || this._page.isClosed()) {
       this._page = await this._context.newPage();
+      if (this._options.attemptLogin) {
+        await this.attemptLogin(this._page);
+      }  
     }
+
     return Promise.resolve(this._page);
+  }
+
+  async attemptLogin(page: Page) {
+    const ov = page.viewportSize()
+    await page.setViewportSize({ width: 1000, height: 1000 });
+    page.goto('https://twitter.com/i/flow/login');
+    await page.locator('#react-root header').waitFor({ state: 'visible', timeout: 0 });
+    if (ov) return page.setViewportSize(ov);
+    return Promise.resolve();
   }
 
   async capture(idOrUrl: string, screenshot?: boolean): Promise<ScrapedTweet> {
     let page = await this.setup();
-    await page.close();
-    page = await this.setup();
 
     const tweet = new TweetUrl(idOrUrl);
   
-    await page.goto(tweet.href);
+    const response = await page.goto(tweet.href, { waitUntil: 'domcontentloaded' });
+    if (!response?.ok) {
+      console.log(response?.url(), response?.status, response?.statusText);
+    }
 
     let results: ScrapedTweet = {
       id: tweet.id,
@@ -155,21 +171,28 @@ export class TwitterBrowser {
     }
 
     await page.locator('main').waitFor({ state: 'visible' });
-    const html = await page.content();
-    const errors = await page.locator('#react-root div[data-testid="error-detail"] span').allInnerTexts();
-
+    // const html = await page.content();
+    const errors = [];
     const locator = page.locator('#react-root article');
-    const tweetHtml = await locator.innerHTML({ timeout: 2000 }).catch((err: unknown) => {
-      if (err instanceof Error) errors.push(err.message);
-      return '';
+    const tweetHtml = await locator.first().innerHTML({ timeout: 2000 }).catch((err: unknown) => {
+      if (err instanceof Error) {
+        errors.push(err.message);
+      } else {
+        errors.push('Tweet timeout');
+      }
+      return page.innerHTML('body');
     });
+
+    if (tweetHtml.includes('Try searching for something else.')) errors.push('Tweet deleted.');
+    if (tweetHtml.includes('Something went wrong. Try reloading.')) {
+      errors.push(page.url(), 'Something went wrong.');
+    }
 
     // Check for error strings on the page; tweets may be deleted or protected.
     if (errors.length) {
       return Promise.resolve({
         success: false,
         ...results,
-        html,
         errors,
       });
     } else {
@@ -184,6 +207,10 @@ export class TwitterBrowser {
           ...results,
           ...extracted,
         };
+
+        for (const m of results.media ?? []) {
+          if (m.imageUrl) m.imageUrl = fixUrl(m.imageUrl);
+        }
       }
 
       if (screenshot) {
@@ -232,4 +259,13 @@ export class TwitterBrowser {
       quality: opt.quality
     });
   }
+}
+
+function fixUrl(url: string) {
+  const u = new URL(url, 'https://twitter.com');
+  if (u.hostname === 'pbs.twimg.com') {
+    u.pathname += '.' + u.searchParams.get('format');
+    u.search = '';
+  }
+  return u.href;
 }
