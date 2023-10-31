@@ -1,6 +1,6 @@
 import is from '@sindresorhus/is';
 import { Browser, BrowserContext, Page, PageScreenshotOptions, chromium } from 'playwright';
-import { BaseImport, BaseImportOptions, extractWithCheerio, CheerioExtractTemplate, uuid} from "../index.js";
+import { BaseImport, BaseImportOptions, Html, CheerioExtractTemplate, uuid} from "../index.js";
 import { fileTypeFromBuffer } from 'file-type';
 import slugify from '@sindresorhus/slugify';
 import humanizeUrl from 'humanize-url';
@@ -205,7 +205,7 @@ export class UrlImport extends BaseImport {
 
     if (opt.saveData) {
       await page.content()
-        .then(html => extractWithCheerio(html, opt.saveData!))
+        .then(html => Html.extract(html, opt.saveData!))
         .then(data => this.files.writeCache(`${name ?? 'page'}-data.json`, data));
     }
   }

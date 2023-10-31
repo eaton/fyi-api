@@ -39,7 +39,7 @@ export async function scrapeTweetOembed(idOrUrl: string) {
     });
   
   if (json) {
-    const parsed = await Html.extractWithCheerio(json.html ?? '', {
+    const parsed = await Html.extract(json.html ?? '', {
       text: 'blockquote.twitter-tweet > p | html',
       date: 'blockquote.twitter-tweet > a | text',
       urls: [{

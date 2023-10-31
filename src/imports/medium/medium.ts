@@ -1,7 +1,6 @@
 import { JsonTemplate } from 'cheerio-json-mapper';
-import { BaseImport, extractWithCheerio } from '../../index.js';
+import { BaseImport, Html } from '../../index.js';
 import { MediumUserInfo, MediumArticle } from './types.js';
-import { Html } from '../../index.js';
 
 export class Medium extends BaseImport {
   collections = ['medium_post', 'medium_user'];
@@ -48,7 +47,7 @@ export class Medium extends BaseImport {
       }];
       for (const file of files.claps) {
         const extracted = await this.files.readInput(file)
-          .then(data => Html.extractWithCheerio(data, template));
+          .then(data => Html.extract(data, template));
         claps.push(...extracted as Record<string, unknown>[]);
       }
       await this.files.writeCache('claps.json', claps);
@@ -68,7 +67,7 @@ export class Medium extends BaseImport {
       };
       for (const file of files.lists) {
         const extracted = await this.files.readInput(file)
-          .then(data => Html.extractWithCheerio(data, template)) as Record<string, unknown>;
+          .then(data => Html.extract(data, template)) as Record<string, unknown>;
         lists[extracted?.title?.toString() ?? ''] = extracted;
       }
       await this.files.writeCache('lists.json', lists);
@@ -84,7 +83,7 @@ export class Medium extends BaseImport {
       }];
       for (const file of files.bookmarks) {
         const extracted = await this.files.readInput(file)
-          .then(data => Html.extractWithCheerio(data, template));
+          .then(data => Html.extract(data, template));
         bookmarks.push(...extracted as Record<string, unknown>[]);
       }
       await this.files.writeCache('bookmarks.json', bookmarks);
@@ -120,7 +119,7 @@ export class Medium extends BaseImport {
     };
 
     const profile = await this.files.readInput('profile/profile.html')
-      .then(data => data ? extractWithCheerio(data, template) : {}) as Record<string, unknown>
+      .then(data => data ? Html.extract(data, template) : {}) as Record<string, unknown>
     
     template = {
       editor: [{
@@ -135,7 +134,7 @@ export class Medium extends BaseImport {
       }],
     };
     const publications = await this.files.readInput('profile/publications.html')
-      .then(data => data ? extractWithCheerio(data, template) : {}) as Record<string, unknown>
+      .then(data => data ? Html.extract(data, template) : {}) as Record<string, unknown>
 
     return Promise.resolve({
       ...profile,
@@ -163,7 +162,7 @@ export class Medium extends BaseImport {
       },
     };
     const extracted = await this.files.readInput(file)
-      .then(data => data ? extractWithCheerio(data, template) : {})
+      .then(data => data ? Html.extract(data, template) : {})
     const post: Partial<MediumArticle> = { id, filename, ...extracted, draft };
     return Promise.resolve(post);
   }

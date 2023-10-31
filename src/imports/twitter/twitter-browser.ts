@@ -1,5 +1,5 @@
 import { Browser, BrowserContext, Page } from 'playwright';
-import { extractWithCheerio, CheerioExtractTemplate, ScrapedTweet, TweetUrl } from '../../index.js';
+import { Html, CheerioExtractTemplate, ScrapedTweet, TweetUrl } from '../../index.js';
 
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -196,7 +196,7 @@ export class TwitterBrowser {
         errors,
       });
     } else {
-      const extracted = await extractWithCheerio(tweetHtml, this._options.template!);
+      const extracted = await Html.extract(tweetHtml, this._options.template!);
 
       if (Array.isArray(extracted)) {
         // We shouldn't get here — our template was not, in fact, designed to return multiple results.

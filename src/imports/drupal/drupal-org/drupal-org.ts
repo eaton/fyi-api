@@ -1,5 +1,5 @@
 import { BaseImport, BaseImportOptions, DrupalOrgProfile, DrupalOrgActivity, ScraperImportOptions, DrupalOrgIssue, DrupalOrgRelease, DrupalOrgProject, DrupalOrgTopic } from "../../index.js";
-import { DateTime, extractWithCheerio } from "../../../index.js";
+import { DateTime, Html } from "../../../index.js";
 import { CheerioCrawler, log } from "crawlee";
 import is from '@sindresorhus/is';
 import { ParsedUrl } from "@autogram/url-tools";
@@ -130,7 +130,7 @@ function getPageType(url: string) {
 }
 
 export async function extractProfile(html: string) {
-  return extractWithCheerio(html, {
+  return Html.extract(html, {
     handle: 'meta[property=profile:username] | attr:content',
     name: 'h1#page-title',
     date: '#user-user-full-group-profile-main > p:first-child',
@@ -168,7 +168,7 @@ export async function extractProfile(html: string) {
 }
 
 export async function extractTrackerActivity(html: string, targetUid?: number) {
-  return extractWithCheerio(html, {
+  return Html.extract(html, {
     posts: [{
       $: 'div#content-inner table tbody tr:not(:first-child)',
       type: 'td:nth-child(1)',
@@ -189,7 +189,7 @@ export async function extractTrackerActivity(html: string, targetUid?: number) {
 }
 
 export async function extractIssue(html: string, userId?: number) {
-  return extractWithCheerio(html, {
+  return Html.extract(html, {
     title: '#page-subtitle',
     nid: 'head link[rel="shortlink"] | attr:href | split:/ | pop',
     url: 'head link[rel="canonical"] | attr:href',
@@ -222,7 +222,7 @@ export async function extractIssue(html: string, userId?: number) {
 }
 
 export async function extractProject(html: string) {
-  return extractWithCheerio(html, {
+  return Html.extract(html, {
     title: '#page-subtitle',
     nid: 'head link[rel="shortlink"] | attr:href | split:/ | pop',
     url: 'head link[rel="canonical"] | attr:href',
@@ -242,7 +242,7 @@ export async function extractProject(html: string) {
 }
 
 export async function extractTopic(html: string, userId?: number) {
-  return extractWithCheerio(html, {
+  return Html.extract(html, {
     title: '#page-subtitle',
     nid: 'head link[rel="shortlink"] | attr:href | split:/ | pop',
     url: 'head link[rel="canonical"] | attr:href',
@@ -268,7 +268,7 @@ export async function extractTopic(html: string, userId?: number) {
 }
 
 export async function extractRelease(html: string) {
-  return extractWithCheerio(html, {
+  return Html.extract(html, {
     title: '#page-subtitle',
     nid: 'head link[rel="shortlink"] | attr:href | split:/ | pop',
     url: 'head link[rel="canonical"] | attr:href',
