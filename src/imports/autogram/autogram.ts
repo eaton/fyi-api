@@ -1,4 +1,5 @@
-import { BaseImport, BaseImportOptions } from "../../index.js";
+import slugify from "@sindresorhus/slugify";
+import { BaseImport, BaseImportOptions, uuid } from "../../index.js";
 import { sanitizeBio } from "./bio.js";
 import matter, { GrayMatterFile } from 'gray-matter';
 
@@ -24,7 +25,7 @@ export class AutogramImport extends BaseImport<AutogramImportCache> {
       const newEntity = await this.files.readInput(file)
         .then(data => matter(data))
         .then(matter => sanitizeBio(matter));
-      console.log(newEntity);
+      await this.files.writeCache(makeFileName(newEntity), newEntity);
     }
 
     const linkFiles = await this.files.findInput('links/*.md');
@@ -32,15 +33,8 @@ export class AutogramImport extends BaseImport<AutogramImportCache> {
       const newEntity = await this.files.readInput(file)
         .then(data => matter(data))
         .then(matter => sanitizeBookmark(matter));
-      console.log(newEntity);
-    }
 
-    const appearanceFiles = await this.files.findInput('clips/*.md');
-    for (const file of appearanceFiles) {
-      const newEntity = await this.files.readInput(file)
-        .then(data => matter(data))
-        .then(matter => sanitizeAppearance(matter));
-      console.log(newEntity);
+      await this.files.writeCache(makeFileName(newEntity), newEntity);
     }
 
     return Promise.resolve();
@@ -51,6 +45,9 @@ export class AutogramImport extends BaseImport<AutogramImportCache> {
   }
 }
 
+function makeFileName(entity: Record<string, unknown>) {
+  return entity?._type + '/' + uuid(entity) + '-' + slugify(entity.title as string) + '.json';
+}
 
 export function sanitizeBookmark(matter: GrayMatterFile<Buffer>) {
   return {
@@ -65,6 +62,7 @@ export function sanitizeBookmark(matter: GrayMatterFile<Buffer>) {
 export function sanitizeAppearance(matter: GrayMatterFile<Buffer>) {
   const partners: string[] = Array.isArray(matter.data?.partners) ? matter.data?.partners : [];
   return {
+    _type: 'appearance',
     title: matter.data.title,
     shortTitle: matter.data.shortTitle,
     teaser: matter.data.dek ?? matter.data.description,

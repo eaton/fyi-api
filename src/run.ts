@@ -1,16 +1,6 @@
 import 'dotenv/config';
-import { Twitter } from './index.js';
+import { toPortableText, simpleStyledTextSchema } from './index.js';
 
-const t = new Twitter({
-  name: '2007-twitter',
-  files: { input: process.env.TWITTER_INPUT },
-  threads: true,
-  favorites: true,
-  retweets: true,
-  attemptLogin: true,
-});
-await t.loadCache();
-
-t.log(t.cacheStats());
-// await t.populateAltText();
-// t.log(t.cacheStats());
+console.log(JSON.stringify(toPortableText(
+  '![alt text](https://example.com/image.jpeg)',
+  { markdown: true, schema: simpleStyledTextSchema() }), undefined, 2));

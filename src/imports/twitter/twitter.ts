@@ -73,7 +73,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }  
 
   async fillCache(): Promise<TwitterImportCache> {
-    // Look for all available archive files; batch em up an let em rip
+    // Look for all available archive files; batch em up and let em rip
     let archives = (await this.files.findInput('twitter-*.zip')).sort();
       if (this.options.archive === 'newest') {
       archives = archives.slice(-1);
@@ -169,6 +169,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
             const buffer = Buffer.from(ab as ArrayBuffer);
             await this.files.writeCache(`media/${filename}`, buffer);
           } catch(err: unknown) {
+            this.log(`Couldn't read ${filename} from archive`);
             // Swallow this; it generally means the tweet is a RT with media,
             // and the original files aren't in the local archive.
           }
