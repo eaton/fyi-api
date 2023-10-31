@@ -1,7 +1,11 @@
-// Use markdown-it and kramdown
+import { parse } from 'marked';
+import TurndownService from 'turndown';
 
-// toHmtl()
+export function toHtml(input: string) {
+  return parse(input);
+}
 
-// toText()
-
-// fromHtml()
+export function fromHtml(input: string) {
+  const turndownService = new TurndownService();
+  return turndownService.turndown(input);
+}

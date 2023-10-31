@@ -2,20 +2,18 @@ import { Schema } from '@sanity/schema'
 import { ArraySchemaType } from '@sanity/types';
 import { htmlToBlocks, normalizeBlock } from '@sanity/block-tools';
 import { JSDOM } from 'jsdom';
-import { parse } from 'marked';
 
-type Options = {
-  markdown?: boolean,
-  schema?: ArraySchemaType<unknown>
+
+export function toText() {
+
 }
 
 /**
- * Converts HTML or Markdown to Sanity PortableText; this is a relatively
- * naive conversion and shouldn't be treated as The Best Way To Do Things.
+ * Converts HTML to Sanity PortableText; this is a relatively naive conversion
+ * and shouldn't be treated as The Best Way To Do Things.
  */
-export function toPortableText(input: string, options: Options = {}) {
-  if (options.markdown) input = parse(input);
-  let schema = options.schema ?? getDefaultSchema();
+export function fromHtml(input: string, schema?: ArraySchemaType<unknown>) {
+  schema ??= getDefaultSchema();
 
   const blocks = htmlToBlocks(
     input,
@@ -30,7 +28,7 @@ type SanityField = Record<string, unknown> & {
   type: ArraySchemaType<unknown>,
 }
 
-export function simpleStyledTextSchema() {
+export function simpleStyleSchema() {
   const def = {
     name: 'schema',
     types: [
