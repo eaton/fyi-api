@@ -126,6 +126,7 @@
     "twitter-archive-reader": "^7.2.0",
     "type-fest": "^4.3.3",
     "typescript": "^5.2.0",
+    "url-regex": "^5.0.0",
     "uuid": "^9.0.1",
     "yaml": "^2.3.2"
   }

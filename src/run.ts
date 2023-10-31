@@ -1,5 +1,4 @@
-import 'dotenv/config';
-import { Textile } from './index.js';
-
-const html = Textile.toHtml('Textile integrations are available for "a wide range of platforms":/article/.');
-console.log(html);
+import { findUrls } from "./index.js";
+const raw = `https://foo.bar.baz
+http://www.example.com?hello=foo`;
+console.log(findUrls(raw, { humanize: true, resolve: true }));
