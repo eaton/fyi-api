@@ -1,5 +1,5 @@
 import { BaseImport, BaseImportOptions, DrupalOrgProfile, DrupalOrgActivity, ScraperImportOptions, DrupalOrgIssue, DrupalOrgRelease, DrupalOrgProject, DrupalOrgTopic } from "../../index.js";
-import { dateFromOffset, extractWithCheerio } from "../../../index.js";
+import { DateTime, extractWithCheerio } from "../../../index.js";
 import { CheerioCrawler, log } from "crawlee";
 import is from '@sindresorhus/is';
 import { ParsedUrl } from "@autogram/url-tools";
@@ -158,7 +158,7 @@ export async function extractProfile(html: string) {
   })
   .then(data => data as DrupalOrgProfile)
   .then(profile => {
-    if (profile.date) profile.date = dateFromOffset(profile.date);
+    if (profile.date) profile.date = DateTime.fromOffset(profile.date);
     if (profile.name) profile.name = profile.name.split('(').shift()?.trim();
     if (profile.socialLinks) profile.socialLinks = profile.socialLinks.map(v => (v as unknown as { value: string }).value)
     if (profile.events) profile.events = profile.events.map(v => (v as unknown as { value: string }).value)
@@ -182,7 +182,7 @@ export async function extractTrackerActivity(html: string, targetUid?: number) {
   })
   .then(data => (data.posts ?? []) as DrupalOrgActivity[])
   .then(activity => activity.map(a => {
-    a.updated = dateFromOffset(a.updated);
+    a.updated = DateTime.fromOffset(a.updated);
     return a;
   }))
   .then(activity => activity.filter(a => targetUid ? a.uid === targetUid : true));

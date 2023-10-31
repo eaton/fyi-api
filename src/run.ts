@@ -1,6 +1,5 @@
 import 'dotenv/config';
-import { toPortableText, simpleStyledTextSchema } from './index.js';
+import { Textile } from './index.js';
 
-console.log(JSON.stringify(toPortableText(
-  '![alt text](https://example.com/image.jpeg)',
-  { markdown: true, schema: simpleStyledTextSchema() }), undefined, 2));
+const html = Textile.toHtml('Textile integrations are available for "a wide range of platforms":/article/.');
+console.log(html);

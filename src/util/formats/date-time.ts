@@ -1,3 +1,4 @@
+import { parse, format } from 'date-fns';
 import { add, sub } from 'date-fns';
 
 /**
@@ -5,7 +6,7 @@ import { add, sub } from 'date-fns';
  * and subtracts it from or adds it to the given date. If no date is provided,
  * the offset is subtracted from or added to the current date. 
  */
-export function dateFromOffset(timeAgo: string, date?: Date, past = true) {
+export function fromOffset(timeAgo: string, date?: Date, past = true) {
   date ??= new Date(Date.now());
   const offset: Record<string, number> = {};
   const units = (timeAgo.match(/(\d+\s[\w]+)\s(\d+\s[\w]+)/) ?? []).slice(1)
@@ -44,4 +45,20 @@ export function dateFromOffset(timeAgo: string, date?: Date, past = true) {
     add(date, offset).toISOString();
 
   return output;
+}
+
+export function reformat(date: Date, output: string): string;
+export function reformat(date: string, input: string, output?: string): string;
+export function reformat(date: string | Date, inputOrOutput: string, output = 'yyyy-MM-dd'): string {
+  let parsed = new Date();
+  let outputFormat = 'yyyy-MM-dd';
+  
+  if (typeof(date) === 'string') {
+    parsed = parse(date, inputOrOutput, new Date());
+    outputFormat = output;
+  } else {
+    outputFormat = inputOrOutput;
+  }
+
+  return format(parsed, outputFormat);
 }

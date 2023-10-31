@@ -3,10 +3,8 @@ import { ArraySchemaType } from '@sanity/types';
 import { htmlToBlocks, normalizeBlock } from '@sanity/block-tools';
 import { JSDOM } from 'jsdom';
 
-
-export function toText() {
-
-}
+export { toPlainText as toText } from '@portabletext/toolkit'
+export { toHTML as toHtml } from '@portabletext/to-html'
 
 /**
  * Converts HTML to Sanity PortableText; this is a relatively naive conversion
