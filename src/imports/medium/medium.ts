@@ -1,6 +1,7 @@
 import { JsonTemplate } from 'cheerio-json-mapper';
-import { BaseImport, Html } from '../../index.js';
+import { BaseImport } from '../../index.js';
 import { MediumUserInfo, MediumArticle } from './types.js';
+import { Html } from 'mangler';
 
 export class Medium extends BaseImport {
   collections = ['medium_post', 'medium_user'];

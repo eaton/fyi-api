@@ -1,5 +1,6 @@
 import { Browser, BrowserContext, Page } from 'playwright';
-import { Html, CheerioExtractTemplate, ScrapedTweet, TweetUrl } from '../../index.js';
+import { ScrapedTweet, TweetUrl } from '../../index.js';
+import { Html } from 'mangler';
 
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -12,7 +13,7 @@ type TwitterBrowserOptions = {
 
   headless?: boolean,
 
-  template?: CheerioExtractTemplate,
+  template?: Html.CheerioExtractTemplate,
 
   screenshot?: TwitterScreenshotOptions,
 

@@ -104,6 +104,7 @@
     "humanize-url": "^3.0.0",
     "jsdom": "^22.1.0",
     "ky": "^1.0.1",
+    "mangler": "github:eaton/mangler#main",
     "marked": "^9.1.4",
     "mysql2": "^3.6.1",
     "ndjson": "^2.0.0",

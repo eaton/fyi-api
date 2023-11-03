@@ -1,6 +1,7 @@
-import { FoundUrl, Html } from "../index.js";
+import { FoundUrl } from "../index.js";
 import urlRegex from 'url-regex';
 import humanizeUrl from "humanize-url";
+import { Html } from 'mangler';
 
 type Options = {
   mode?: 'text' | 'html',

@@ -3,8 +3,9 @@
 // YAML front matter). It pulls in files as atomic units, and doesn't take advantage of
 // any template logic for processing etc.
 import path from "path";
-import { BaseImport, BaseImportOptions, uuid } from "../index.js";
+import { BaseImport, BaseImportOptions } from "../index.js";
 import matter from 'gray-matter';
+import { Ids } from "mangler";
 
 export type JekyllPost = {
   [key: string]: unknown,
@@ -99,7 +100,7 @@ export class Jekyll extends BaseImport {
 
       if (this.parser) data = this.parser(data);
       const cachePath = await this.files.writeCache(
-        path.join('posts', uuid(filePath) + '.json'),
+        path.join('posts', Ids.uuid(filePath) + '.json'),
         data
       );
       this.log(`${filePath} -> ${cachePath}`);

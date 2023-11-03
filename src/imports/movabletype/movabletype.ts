@@ -1,5 +1,5 @@
 import { BaseImport, BaseImportOptions, DatabaseImportOptions } from '../../index.js';
-import { Textile } from '../../index.js';
+import { Textile } from 'mangler';
 import is from '@sindresorhus/is';
 import slugify from '@sindresorhus/slugify';
 import mysql from 'mysql2/promise';

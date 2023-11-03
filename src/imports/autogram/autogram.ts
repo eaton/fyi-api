@@ -1,6 +1,7 @@
-import { BaseImport, BaseImportOptions, uuid } from "../../index.js";
+import { BaseImport, BaseImportOptions } from "../../index.js";
 import matter from 'gray-matter';
 import { z } from 'zod';
+import { Ids } from 'mangler';
 
 const partners: Record<string, string> = {
   'jeff': 'e5228665-a06d-4d89-af72-b4fcb92f5d3b',
@@ -29,14 +30,14 @@ export class AutogramImport extends BaseImport<AutogramImportCache> {
     for (const file of linkFiles) {
       const raw = await this.files.readInput(file).then(data => matter(data));
       const parsed = parseBookmark(raw);
-      await this.files.writeCache(`bookmarks/${parsed.date}-${uuid(parsed)}.json`, parsed)
+      await this.files.writeCache(`bookmarks/${parsed.date}-${Ids.uuid(parsed)}.json`, parsed)
     }
 
     const clipFiles = await this.files.findInput('clips/*.md');
     for (const file of clipFiles) {
       const raw = await this.files.readInput(file).then(data => matter(data));
       const parsed = parseAppearance(raw);
-      await this.files.writeCache(`appearances/${parsed.date}-${uuid(parsed)}.json`, parsed)
+      await this.files.writeCache(`appearances/${parsed.date}-${Ids.uuid(parsed)}.json`, parsed)
     }
 
     return Promise.resolve();

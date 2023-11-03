@@ -1,6 +1,7 @@
-import { Html, BaseImport } from '../../index.js';
+import { BaseImport } from '../../index.js';
 import { decode } from 'entities';
 import path from 'path';
+import { Html } from 'mangler';
 
 type LivejournalEntry = {
   itemid: number,

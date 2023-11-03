@@ -1,6 +1,7 @@
 import is from '@sindresorhus/is';
 import ky from 'ky';
-import { Html, DateTime, ScrapedTweet, TweetUrl } from '../../index.js';
+import { ScrapedTweet, TweetUrl } from '../../index.js';
+import { Html, Dates } from 'mangler';
 
 type TweetOEmbedResponse = {
   url?: string,
@@ -50,7 +51,7 @@ export async function scrapeTweetOembed(idOrUrl: string) {
     });
 
     if (typeof(parsed.date) == 'string') {
-      parsed.date = DateTime.reformat(parsed.date, 'LLLL d, yyyy', 'yyyy-MM-dd');
+      parsed.date = Dates.reformat(parsed.date, 'LLLL d, yyyy', 'yyyy-MM-dd');
     };
 
     if (typeof(parsed.text) === 'string' && parsed.text.length > 0) {

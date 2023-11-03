@@ -1,9 +1,10 @@
 import is from '@sindresorhus/is';
 import { Browser, BrowserContext, Page, PageScreenshotOptions, chromium } from 'playwright';
-import { BaseImport, BaseImportOptions, Html, CheerioExtractTemplate, uuid} from "../index.js";
+import { BaseImport, BaseImportOptions } from "../index.js";
 import { fileTypeFromBuffer } from 'file-type';
 import slugify from '@sindresorhus/slugify';
 import humanizeUrl from 'humanize-url';
+import { Html, Ids } from 'mangler';
 
 interface UrlImportOptions extends BaseImportOptions {
   /**
@@ -57,7 +58,7 @@ interface UrlImportOptions extends BaseImportOptions {
    * it using the CheerioExtractor. See the `CheerioExtractTemplate` interface
    * for details.  
    */
-  saveData?: CheerioExtractTemplate
+  saveData?: Html.CheerioExtractTemplate
 }
 
 type PdfOptions = Parameters<Page['pdf']>[0];
@@ -214,7 +215,7 @@ export class UrlImport extends BaseImport {
     const page = await this.setup();
     
     // this is absolutely terrible, but we need a way to avoid screenshots overwriting each other
-    const hash = uuid(options).slice(0,8);
+    const hash = Ids.uuid(options).slice(0,8);
     if (options.viewport) {
       await page.setViewportSize(options.viewport);
     }

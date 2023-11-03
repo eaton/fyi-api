@@ -1,7 +1,7 @@
 import { BaseImport, BaseImportOptions } from '../index.js';
 import { TwitterMetricsRow } from "./types.js";
 import { parseString } from '@fast-csv/parse';
-import { camelCase } from '../../index.js';
+import { Text } from 'mangler';
 
 export interface TwitterMetricsOptions extends BaseImportOptions {
   outputFormat?: 'csv' | 'json',
@@ -38,7 +38,7 @@ export class TwitterMetrics extends BaseImport<TwitterMetricsRow[]> {
           .on('error', error => this.log(error))
           .on('data', row => {
               const mappedRow = Object.fromEntries(
-              Object.entries(row).map(([k, v]) => [camelCase(k), (v === '-') ? undefined : v])
+              Object.entries(row).map(([k, v]) => [Text.camelCase(k), (v === '-') ? undefined : v])
             ) as TwitterMetricsRow;
             this.cacheData?.push({ handle, ...mappedRow });
           })

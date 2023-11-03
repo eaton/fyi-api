@@ -1,5 +1,6 @@
-import { BaseImport, makeMedia, uuid } from '../../index.js';
+import { BaseImport, makeMedia } from '../../index.js';
 import { IGCachedPost, InstagramPost, InstagramProfileChunk } from './types.js';
+import { Ids } from 'mangler';
 
 type InstagramCache = {
   posts: IGCachedPost[],
@@ -25,7 +26,7 @@ export class Instagram extends BaseImport<InstagramCache> {
       const raw = await this.files.readInput(file) as InstagramPost[];
       for (const incoming of raw) {
         const post: IGCachedPost = {
-          id: uuid(incoming),
+          id: Ids.uuid(incoming),
           date: incoming.creation_timestamp ? new Date(incoming.creation_timestamp * 1000).toISOString() : undefined,
           title: incoming.title?.toString() ?? '',
           media: []

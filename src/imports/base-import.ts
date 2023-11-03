@@ -1,6 +1,6 @@
 import { Filestore, Database, FilestoreOptions } from "../index.js"
 import chalk from 'chalk';
-import { kebabCase } from "../index.js";
+import { Text } from 'mangler';
 
 /**
  * Core options supported by most imports
@@ -54,7 +54,7 @@ export abstract class BaseImport<CacheType = unknown> {
   }
 
   get name(): string {
-    return this.options.name ?? kebabCase(this.constructor.name);
+    return this.options.name ?? Text.kebabCase(this.constructor.name);
   }
 
   get db(): Database {
