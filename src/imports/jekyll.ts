@@ -1,48 +1,46 @@
-
 // Placeholder for an importer that imports a jekyll blog (primarily markdown files with
 // YAML front matter). It pulls in files as atomic units, and doesn't take advantage of
 // any template logic for processing etc.
-import path from "path";
-import { BaseImport, BaseImportOptions } from "../index.js";
+import path from 'path';
+import { BaseImport, BaseImportOptions } from '../index.js';
 import matter from 'gray-matter';
-import { Ids } from "mangler";
+import { Ids } from 'mangler';
 
 export type JekyllPost = {
-  [key: string]: unknown,
-  published?: boolean,
-  date?: string,
-  format?: string,
-  slug?: string,
-  excerpt?: string,
-  content: string,
-  frontmatter: Record<string, unknown>,
-  skipOnOutput?: boolean
-}
+  [key: string]: unknown;
+  published?: boolean;
+  date?: string;
+  format?: string;
+  slug?: string;
+  excerpt?: string;
+  content: string;
+  frontmatter: Record<string, unknown>;
+  skipOnOutput?: boolean;
+};
 
 export type JekyllConfig = {
-  [key: string]: unknown,
-
-}
+  [key: string]: unknown;
+};
 
 export interface JekyllImportOptions extends BaseImportOptions {
   /**
    * An array of folders inside the jekyll project to scan for blog posts
-   * 
+   *
    * @default ['_posts', '_drafts']
    */
-  folders?: string[],
+  folders?: string[];
 
   /**
    * An array of file extensions to treat as blog posts
-   * 
+   *
    * @default ['md', 'markdown', 'htm', 'html']
    */
-  fileTypes?: string[],
+  fileTypes?: string[];
 
   /**
    * An optional callback to manipulate the post data before it's cached or saved.
    */
-  parser?: (post: JekyllPost) => JekyllPost
+  parser?: (post: JekyllPost) => JekyllPost;
 }
 
 export class Jekyll extends BaseImport {
@@ -59,12 +57,11 @@ export class Jekyll extends BaseImport {
   }
 
   async doImport(): Promise<void> {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.');
   }
 
   async fillCache(): Promise<void> {
     if (this.files.existsInput('_config.yml')) {
-
       // The config file may also have useful bits we can use later in the import;
       //
       // `permalink`: would let us predict the rendered filename; defaults to `date`
@@ -73,18 +70,19 @@ export class Jekyll extends BaseImport {
       // `defaults`: Arbitary frontmatter defaults. See https://jekyllrb.com/docs/configuration/front-matter-defaults/
 
       const config = await this.files.readInput('_config.yml');
-      await this.files.writeCache('config.json', config)
+      await this.files.writeCache('config.json', config);
       this.log(`Jekyll _config file written to ${this.files.cache}`);
     }
 
     // Right now we're not importing any jekyll data files. we probably want to.
-    
+
     const postFiles = await this.files.findInput(
       `**/{${this.folders.join(',')}}/**/*.{${this.fileTypes.join(',')}}`
     );
 
     for (const filePath of postFiles) {
-      const [originalPath, date, slug, format] = filePath.match(/.*(\d{4}-\d{2}-\d{2})-(.*)\.(\w+)$/) ?? [];
+      const [originalPath, date, slug, format] =
+        filePath.match(/.*(\d{4}-\d{2}-\d{2})-(.*)\.(\w+)$/) ?? [];
       const parsedPost = matter.read(path.join(this.files.input, filePath));
 
       let data: JekyllPost = {
@@ -95,8 +93,8 @@ export class Jekyll extends BaseImport {
         frontmatter: parsedPost.data,
         published: filePath.includes('/_posts/'),
         content: parsedPost.content,
-        excerpt: parsedPost.excerpt,
-      }
+        excerpt: parsedPost.excerpt
+      };
 
       if (this.parser) data = this.parser(data);
       const cachePath = await this.files.writeCache(

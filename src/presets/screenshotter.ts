@@ -18,7 +18,7 @@ const ui = new UrlImport({
     '1999-home': 'https://eaton-fyi-cold-storage.netlify.app/home-1999/',
     '2000-home': 'https://eaton-fyi-cold-storage.netlify.app/home-2000/',
     '2002-home': 'https://eaton-fyi-cold-storage.netlify.app/home-2002/',
-    '2003-home': 'https://eaton-fyi-cold-storage.netlify.app/home-2003/',
+    '2003-home': 'https://eaton-fyi-cold-storage.netlify.app/home-2003/'
   }
 });
 

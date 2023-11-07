@@ -1,77 +1,77 @@
-import { ParsedUrl } from '@autogram/url-tools'
+import { ParsedUrl } from '@autogram/url-tools';
 import { CheerioCrawler, Request } from 'crawlee';
 import * as cheerio from 'cheerio';
 
-import { BaseImport, BaseImportOptions } from "../index.js";
+import { BaseImport, BaseImportOptions } from '../index.js';
 import { isString } from '@sindresorhus/is';
 
 export type MetafilterUserData = Record<string, unknown> & {
-  id: number,
-  handle?: string,
-  fullname?: string,
-  website?: string,
-  social?: string[],
-  activity?: Record<string, string[]>
-  raw: string,
+  id: number;
+  handle?: string;
+  fullname?: string;
+  website?: string;
+  social?: string[];
+  activity?: Record<string, string[]>;
+  raw: string;
 };
 
 export type MetafilterPostData = {
-  id: string,
-  url: string,
-  raw: string,
-  site?: string,
-  title?: string,
-  date?: string,
-  author?: string,
-  authorId?: number,
-  comments?: number,
-  favorites?: number,
-  askSection?: string
-  tags?: string[],
-  links?: string[],
-  body?: string,
-  summary?: string,
-  details?: string,
-  savedComments?: MetafilterCommentData[],
-}
+  id: string;
+  url: string;
+  raw: string;
+  site?: string;
+  title?: string;
+  date?: string;
+  author?: string;
+  authorId?: number;
+  comments?: number;
+  favorites?: number;
+  askSection?: string;
+  tags?: string[];
+  links?: string[];
+  body?: string;
+  summary?: string;
+  details?: string;
+  savedComments?: MetafilterCommentData[];
+};
 
 export type MetafilterCommentData = {
-  id: string,
-  raw: string,
-  date?: string,
-  author?: string,
-  authorId?: number,
-  favorites?: number,
-  body?: string,
-}
+  id: string;
+  raw: string;
+  date?: string;
+  author?: string;
+  authorId?: number;
+  favorites?: number;
+  body?: string;
+};
 
 export interface MetafilterImportOptions extends BaseImportOptions {
   /**
    * The ID of the MetaFilter user to grab
    */
-  userId?: string,
-  
+  userId?: string;
+
   /**
    * Download and cache user metadata even if it already exists.
    */
-  forceUser?: boolean,
+  forceUser?: boolean;
 
   /**
    * Download and cache all user post and comments even if they already exist.
    */
-  forcePosts?: boolean,
+  forcePosts?: boolean;
 
   /**
    * Re-parse profile, post, and comment details from the cached HTML.
    */
-  forceParse?: boolean,
+  forceParse?: boolean;
 }
 
 export class Metafilter extends BaseImport {
   declare options: MetafilterImportOptions;
 
   collections = ['metafilter_user', 'metafilter_post', 'metafilter_comment'];
-    
+
   constructor(options: MetafilterImportOptions = {}) {
     super(options);
   }
@@ -79,7 +79,7 @@ export class Metafilter extends BaseImport {
   async doImport(): Promise<void> {
     const cachedUser = (await this.files.findCache('user-*.json')).pop();
     const cachedPosts = await this.files.findCache('**/post-*.json');
-    
+
     await this.ensureSchema();
 
     const saved = {
@@ -89,28 +89,34 @@ export class Metafilter extends BaseImport {
     };
 
     if (cachedUser === undefined || cachedPosts.length === 0) {
-      this.log('No Metafilter data to import.')
+      this.log('No Metafilter data to import.');
       return Promise.resolve();
     }
 
     if (this.db === undefined) {
-      this.log('No ArangoDB connection.')
+      this.log('No ArangoDB connection.');
       return Promise.resolve();
     }
 
-    const user = await this.files.readCache(cachedUser) as MetafilterUserData;
+    const user = (await this.files.readCache(cachedUser)) as MetafilterUserData;
     if (this.options.forceParse) this.extractUserProperties(user);
 
     user.raw = '';
     user.activity = undefined;
 
-    await this.db.collection('metafilter_user').save({
-      _key: user.id.toString(),
-      ...user
-    }, { overwriteMode: 'update' }).then(() => saved.users++);
+    await this.db
+      .collection('metafilter_user')
+      .save(
+        {
+          _key: user.id.toString(),
+          ...user
+        },
+        { overwriteMode: 'update' }
+      )
+      .then(() => saved.users++);
 
     for (const postFile of cachedPosts) {
-      const post = await this.files.readCache(postFile) as MetafilterPostData;
+      const post = (await this.files.readCache(postFile)) as MetafilterPostData;
       if (this.options.forceParse) this.extractPostProperties(post);
 
       for (const comment of post.savedComments ?? []) {
@@ -119,24 +125,38 @@ export class Metafilter extends BaseImport {
         // Bulky and unecessary, we don't likes it
         comment.raw = '';
 
-        await this.db.collection('metafilter_comment').save({
-          _key: `${post.site}-${comment.id}`,
-          post: `metafilter_post/${post.site}-${post.id}`,
-          ...comment
-        }, { overwriteMode: 'update' }).then(() => saved.comments++);
+        await this.db
+          .collection('metafilter_comment')
+          .save(
+            {
+              _key: `${post.site}-${comment.id}`,
+              post: `metafilter_post/${post.site}-${post.id}`,
+              ...comment
+            },
+            { overwriteMode: 'update' }
+          )
+          .then(() => saved.comments++);
       }
 
       // Bulky and unecessary, we don't likes it
       post.raw = '';
       post.savedComments = undefined;
 
-      await this.db.collection('metafilter_post').save({
-        _key: `${post.site}-${post.id}`,
-        ...post
-      }, { overwriteMode: 'update' }).then(() => saved.posts++);
+      await this.db
+        .collection('metafilter_post')
+        .save(
+          {
+            _key: `${post.site}-${post.id}`,
+            ...post
+          },
+          { overwriteMode: 'update' }
+        )
+        .then(() => saved.posts++);
     }
 
-    this.log(`Saved ${saved.users} users, ${saved.posts} posts, and ${saved.comments} comments.`)
+    this.log(
+      `Saved ${saved.users} users, ${saved.posts} posts, and ${saved.comments} comments.`
+    );
     return Promise.resolve();
   }
 
@@ -148,16 +168,24 @@ export class Metafilter extends BaseImport {
     const uid = Number.parseInt(process.env.METAFILTER_USER_ID ?? '');
 
     // If there's no cached user file, retrieve it and save it.
-    if (!this.files.existsCache(this.userFileName(uid)) || this.options.forceUser) {
+    if (
+      !this.files.existsCache(this.userFileName(uid)) ||
+      this.options.forceUser
+    ) {
       await this.cacheUserData(uid);
     }
 
-    const user = (await this.files.readCache(this.userFileName(uid))) as MetafilterUserData;
+    const user = (await this.files.readCache(
+      this.userFileName(uid)
+    )) as MetafilterUserData;
     if (this.options.forceParse) this.extractUserProperties(user);
 
     const postsToCache: Record<string, string[]> = {};
     for (const [url, commentIds] of Object.entries(user.activity ?? [])) {
-      if (this.files.exists(this.postFileName(url)) === false || this.options.forcePosts) {
+      if (
+        this.files.exists(this.postFileName(url)) === false ||
+        this.options.forcePosts
+      ) {
         postsToCache[url] = commentIds;
       }
     }
@@ -172,7 +200,7 @@ export class Metafilter extends BaseImport {
 
   protected postFileName(url: URL | string) {
     const parsed = new ParsedUrl(url.toString());
-    return `${parsed.subdomain}/post-${parsed.path.slice(-2,1)}.json`;
+    return `${parsed.subdomain}/post-${parsed.path.slice(-2, 1)}.json`;
   }
 
   async cacheUserData(uid: number) {
@@ -195,26 +223,30 @@ export class Metafilter extends BaseImport {
           user.raw = $('div.content[role="main"] > div.container').html() ?? '';
           this.extractUserProperties(user);
         } else if (context.request.url.startsWith(activityUrl + 'posts')) {
-
           // Enqueue additional pages of comments
-          await context.enqueueLinks({ globs: [`**/activity/${uid}/comments/**`] });
-          
+          await context.enqueueLinks({
+            globs: [`**/activity/${uid}/comments/**`]
+          });
+
           // Extract post URLs
-          $("h1.posttitle a").toArray()
-            .forEach(e => {
+          $('h1.posttitle a')
+            .toArray()
+            .forEach((e) => {
               const link = $(e).attr('href');
               if (link && !Object.keys(activity).includes(link)) {
                 activity[link] = new Set<string>();
               }
             });
-
         } else if (context.request.url.startsWith(activityUrl + 'comments')) {
           // Enqueue additional pages of comments
-          await context.enqueueLinks({ globs: [`**/activity/${uid}/comments/**`] });
+          await context.enqueueLinks({
+            globs: [`**/activity/${uid}/comments/**`]
+          });
 
           // Extract post URLs and comment IDs
-          $("blockquote > span.smallcopy > a").toArray()
-            .forEach(e => {
+          $('blockquote > span.smallcopy > a')
+            .toArray()
+            .forEach((e) => {
               const url = $(e).attr('href');
               if (url && url.match(/.*metafilter.com\/\d+\/.*\#\d+/)) {
                 const [link, commentId] = url.split('#');
@@ -228,21 +260,28 @@ export class Metafilter extends BaseImport {
         }
 
         // Turn the set into a simple array for serialization
-        user.activity = Object.fromEntries(Object.entries(activity).map(entry => [entry[0], [...entry[1]]]));
-        
+        user.activity = Object.fromEntries(
+          Object.entries(activity).map((entry) => [entry[0], [...entry[1]]])
+        );
+
         await this.files.writeCache(this.userFileName(uid), user);
         return Promise.resolve();
       }
     });
 
-    await crawler.run([profileUrl, activityUrl + 'posts/', activityUrl + 'comments/']);
+    await crawler.run([
+      profileUrl,
+      activityUrl + 'posts/',
+      activityUrl + 'comments/'
+    ]);
 
     return Promise.resolve({
       ...user,
       activity: Object.fromEntries(
         Object.entries(activity).map(([p, c]) => {
-        return [p, [...c]]
-      }))
+          return [p, [...c]];
+        })
+      )
     });
   }
 
@@ -260,8 +299,11 @@ export class Metafilter extends BaseImport {
         const post: MetafilterPostData = {
           id: pid,
           url: url,
-          raw: $('#posts h1.posttitle, #posts div.copy, #threadside').toArray().map(e => $(e).prop('outerHTML')).join()
-        }
+          raw: $('#posts h1.posttitle, #posts div.copy, #threadside')
+            .toArray()
+            .map((e) => $(e).prop('outerHTML'))
+            .join()
+        };
         this.extractPostProperties(post);
 
         const savedComments: MetafilterCommentData[] = [];
@@ -269,8 +311,8 @@ export class Metafilter extends BaseImport {
         for (const cid of cids) {
           const comment: MetafilterCommentData = {
             id: cid,
-            raw: $(`a[name="${cid}"] + div`).html() ?? '',
-          }
+            raw: $(`a[name="${cid}"] + div`).html() ?? ''
+          };
           if (comment.raw.length === 0) continue;
           this.extractCommentProperties(comment);
           savedComments.push(comment);
@@ -282,18 +324,24 @@ export class Metafilter extends BaseImport {
       }
     });
 
-    const requests = Object.entries(activity)
-      .map(([url, comments]) => new Request({ url: url, userData: { comments } }));
+    const requests = Object.entries(activity).map(
+      ([url, comments]) => new Request({ url: url, userData: { comments } })
+    );
     await crawler.run(requests);
     return Promise.resolve();
   }
 
   extractUserProperties(user: MetafilterUserData) {
     const $ = cheerio.load(user.raw, {}, false);
-    user.handle = $('h2.monthday').text().match(/\s*([\w-]+)'s profile/)?.[1];
+    user.handle = $('h2.monthday')
+      .text()
+      .match(/\s*([\w-]+)'s profile/)?.[1];
     user.fullname = $('span.fn').text();
     user.website = $('h2.monthday a').first().attr('href') ?? '';
-    user.social = $('a[rel=me]').toArray().map(e => $(e).attr('href')).filter(isString);
+    user.social = $('a[rel=me]')
+      .toArray()
+      .map((e) => $(e).attr('href'))
+      .filter(isString);
   }
 
   extractPostProperties(post: MetafilterPostData) {
@@ -302,47 +350,78 @@ export class Metafilter extends BaseImport {
 
     post.site = new ParsedUrl(post.url).subdomain;
     post.title = $('h1.posttitle').text().replace(dateline, '').trim();
-    post.date = dateline.match(/([a-zA-Z]+\s+\d+,\s+\d+\s+\d+\:\d+\s+[AP]M)\s+Subscribe/)?.[1];
+    post.date = dateline.match(
+      /([a-zA-Z]+\s+\d+,\s+\d+\s+\d+\:\d+\s+[AP]M)\s+Subscribe/
+    )?.[1];
     post.author = $('span.postbyline a').first().text();
-    post.authorId = Number.parseInt($('span.postbyline a').first().attr('href')?.split('/').pop() ?? '') ?? undefined;
-    post.askSection = $('span.postbyline').text().match(/\s+to\s+(\w+)\s+at/)?.[1];
+    post.authorId =
+      Number.parseInt(
+        $('span.postbyline a').first().attr('href')?.split('/').pop() ?? ''
+      ) ?? undefined;
+    post.askSection = $('span.postbyline')
+      .text()
+      .match(/\s+to\s+(\w+)\s+at/)?.[1];
 
-    post.comments = Number.parseInt($('span.postbyline').text().trim().match(/\((\d+) comment/)?.[1] ?? '0');
-    post.favorites = Number.parseInt($('span.postbyline span[id^="favcnt"]').text().split(' ')?.shift() ?? '0');
-    post.tags = $('#taglist a.taglink').toArray().map(e => $(e).text().trim());
+    post.comments = Number.parseInt(
+      $('span.postbyline')
+        .text()
+        .trim()
+        .match(/\((\d+) comment/)?.[1] ?? '0'
+    );
+    post.favorites = Number.parseInt(
+      $('span.postbyline span[id^="favcnt"]').text().split(' ')?.shift() ?? '0'
+    );
+    post.tags = $('#taglist a.taglink')
+      .toArray()
+      .map((e) => $(e).text().trim());
 
     $('span.postbyline').remove();
-    post.links = $('div.copy a').toArray().map(e => $(e).attr('href') ?? ''),
-    post.details = brToNl($('div.copy div.miseperator').html() ?? undefined),
-
-    $('div.copy div.miseperator').remove();
+    (post.links = $('div.copy a')
+      .toArray()
+      .map((e) => $(e).attr('href') ?? '')),
+      (post.details = brToNl(
+        $('div.copy div.miseperator').html() ?? undefined
+      )),
+      $('div.copy div.miseperator').remove();
     post.summary = brToNl($('div.copy').html() ?? undefined);
 
     // Let's think about this. Maybe we don't need the unified field.
     post.body = undefined;
   }
-  
+
   extractCommentProperties(comment: MetafilterCommentData) {
     const $ = cheerio.load(comment.raw, {}, false);
 
-    const time = $('span.smallcopy').text().match(/ at (\d+:\d+ [AP]M)\s+on /)?.[1];
-    const date = $('span.smallcopy').text().match(/\s+on ([a-zA-Z]+ \d+, \d+)/)?.[1];
+    const time = $('span.smallcopy')
+      .text()
+      .match(/ at (\d+:\d+ [AP]M)\s+on /)?.[1];
+    const date = $('span.smallcopy')
+      .text()
+      .match(/\s+on ([a-zA-Z]+ \d+, \d+)/)?.[1];
 
     comment.date = `${date} ${time}`;
     comment.author = $('span.smallcopy a').first().text();
-    comment.authorId = Number.parseInt($('span.smallcopy a').first().attr('href')?.split('/').pop() ?? '') ?? undefined;
-    comment.favorites = Number.parseInt($('span.smallcopy').text().match(/\[(\d+) favorite/)?.[1] ?? '0');
+    comment.authorId =
+      Number.parseInt(
+        $('span.smallcopy a').first().attr('href')?.split('/').pop() ?? ''
+      ) ?? undefined;
+    comment.favorites = Number.parseInt(
+      $('span.smallcopy')
+        .text()
+        .match(/\[(\d+) favorite/)?.[1] ?? '0'
+    );
 
     $('span.smallcopy').remove();
     comment.body = brToNl($.html()) ?? undefined;
   }
 }
 
-function brToNl(val?: string){
+function brToNl(val?: string) {
   if (val) {
     return val
       .replaceAll('<span></span>', '')
       .replaceAll(/<br[\w/]*>/g, '\n\n')
-      .replaceAll(/\n\n+/g, '\n\n').trim();
+      .replaceAll(/\n\n+/g, '\n\n')
+      .trim();
   } else return val;
 }

@@ -9,9 +9,13 @@ export class TweetUrl extends URL {
     if (is.numericString(idOrUrl)) {
       // We handle defaulting the name to 'twitter' later
     } else if (idOrUrl.includes('/i/web/status/')) {
-      id = idOrUrl.match(/^https?\:\/\/twitter.com\/i\/web\/status\/(\d+)/)?.[1] ?? '';  
+      id =
+        idOrUrl.match(/^https?\:\/\/twitter.com\/i\/web\/status\/(\d+)/)?.[1] ??
+        '';
     } else if (idOrUrl.includes('/status/')) {
-      const match = idOrUrl.match(/^https?\:\/\/twitter.com\/([a-zA-Z0-9_-]+)\/status\/(\d+)/);
+      const match = idOrUrl.match(
+        /^https?\:\/\/twitter.com\/([a-zA-Z0-9_-]+)\/status\/(\d+)/
+      );
       if (match) {
         name ??= match[1];
         id = match[2];

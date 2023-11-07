@@ -1,21 +1,13 @@
-export type WordpressExport = {
-}
+export type WordpressExport = {};
 
-export type WordpressExportCategory = {
-}
+export type WordpressExportCategory = {};
 
-export type WordpressExportTag = {
-}
+export type WordpressExportTag = {};
 
-export type WordpressExportTerm = {
-}
+export type WordpressExportTerm = {};
 
-export type WordpressExportAuthor = {
-}
+export type WordpressExportAuthor = {};
 
+export type WordpressExportSite = {};
 
-export type WordpressExportSite = {
-}
-
-export type WordpressExportItem = {
-}
+export type WordpressExportItem = {};

@@ -1,11 +1,11 @@
-import { NormalizedUrl, UrlMutators } from "@autogram/url-tools";
-import { FoundUrl } from "./index.js";
-import got from "got";
+import { NormalizedUrl, UrlMutators } from '@autogram/url-tools';
+import { FoundUrl } from './index.js';
+import got from 'got';
 
 export interface ResolverOptions {
-  normalizer?: false | UrlMutators.UrlMutator,
-  known?: FoundUrl[],
-  timeout?: number,
+  normalizer?: false | UrlMutators.UrlMutator;
+  known?: FoundUrl[];
+  timeout?: number;
 }
 
 /**
@@ -20,9 +20,9 @@ export class UrlResolver {
     if (options.normalizer === undefined) {
       // do nothing here; we just use the fallback
     } else if (options.normalizer === false) {
-      NormalizedUrl.normalizer = u => u;
+      NormalizedUrl.normalizer = (u) => u;
     } else {
-      NormalizedUrl.normalizer = options.normalizer;;
+      NormalizedUrl.normalizer = options.normalizer;
     }
 
     this.timeout = options.timeout ?? 5000;
@@ -41,7 +41,7 @@ export class UrlResolver {
     const normalized = new NormalizedUrl(url).href;
     return this.known.get(normalized);
   }
-  
+
   // This WON'T detect anything other than 301 and 302 redirects,
   // unfortunately. META and JS redirects will take additional work.
   async resolve(url: string, base?: URL) {
@@ -52,50 +52,51 @@ export class UrlResolver {
     }
 
     output = {
-      normalized, 
+      normalized,
       resolved: undefined,
       status: undefined,
       message: undefined,
-      redirects: [],
-    }    
+      redirects: []
+    };
 
-    return got.head(normalized, {
-      throwHttpErrors: false,
-      followRedirect: true,
-      timeout: { request: this.timeout },
-      hooks: {
-        beforeRedirect: [
-          (options) => {
-            // This allows us to queue up all of the redirects we encounter, even if
-            // a domain fails to resolve.
-            if ('url' in options && options.url instanceof URL) {
-              const url = options.url.toString();
-              output?.redirects?.push(url);
+    return got
+      .head(normalized, {
+        throwHttpErrors: false,
+        followRedirect: true,
+        timeout: { request: this.timeout },
+        hooks: {
+          beforeRedirect: [
+            (options) => {
+              // This allows us to queue up all of the redirects we encounter, even if
+              // a domain fails to resolve.
+              if ('url' in options && options.url instanceof URL) {
+                const url = options.url.toString();
+                output?.redirects?.push(url);
+              }
             }
-          }
-        ]
-      }
-    })
-    .then(res => {
-      output!.resolved = output?.redirects?.pop() ?? res.url;
-      output!.status = res.statusCode;
-      output!.message = res.statusMessage;
-      if (output?.redirects?.length === 0) output!.redirects = undefined;
-      this.known.set(normalized, output!);
-      return output;
-    })
-    .catch((err: unknown) => {
-      if (err instanceof Error) {
-        output!.resolved = output?.redirects?.pop() ?? output?.normalized;
-        output!.status = -1;
-        output!.message = err.message;
+          ]
+        }
+      })
+      .then((res) => {
+        output!.resolved = output?.redirects?.pop() ?? res.url;
+        output!.status = res.statusCode;
+        output!.message = res.statusMessage;
         if (output?.redirects?.length === 0) output!.redirects = undefined;
-      } else {
-        output!.status = -2;
-      }
-      this.known.set(normalized, output!);
-      return output;
-    });
+        this.known.set(normalized, output!);
+        return output;
+      })
+      .catch((err: unknown) => {
+        if (err instanceof Error) {
+          output!.resolved = output?.redirects?.pop() ?? output?.normalized;
+          output!.status = -1;
+          output!.message = err.message;
+          if (output?.redirects?.length === 0) output!.redirects = undefined;
+        } else {
+          output!.status = -2;
+        }
+        this.known.set(normalized, output!);
+        return output;
+      });
   }
 
   values() {

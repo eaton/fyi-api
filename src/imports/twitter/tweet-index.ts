@@ -1,4 +1,3 @@
-
 /**
  * Allows us to quickly build index of bookmark/favorite/retweet style
  * Tweet interactions for specific users. It can be used as a quick and
@@ -10,25 +9,25 @@ type TweetIndexEntry = {
   /**
    * The ID of an individual Tweet
    */
-  id: string,
+  id: string;
 
   /**
    * The handle of the user who added the tweet
    *
    * @type {?string}
    */
-  handle?: string,
+  handle?: string;
 
   /**
    * The date the Tweet was added to a particular list, in ISO format
    */
-  date?: string,
+  date?: string;
 
   /**
    * The name of the list the tweet was added to
    */
-  list?: string,
-}
+  list?: string;
+};
 
 export class TweetIndex extends Map<string, TweetIndexEntry> {
   constructor(items?: string[] | TweetIndexEntry[]) {
@@ -37,7 +36,7 @@ export class TweetIndex extends Map<string, TweetIndexEntry> {
       this.add(item);
     }
   }
-  
+
   add(item: string | TweetIndexEntry) {
     super.set(this.keyFor(item), this.valueFor(item));
   }
@@ -46,7 +45,9 @@ export class TweetIndex extends Map<string, TweetIndexEntry> {
     if (typeof input === 'string') {
       return this.keyFor({ id: input });
     } else {
-      return `${input.list ?? 'default'}\t${input.handle ?? 'unknown'}\t${input.id}\t${input.date ?? '1970-01-01T00:00:00'}`;
+      return `${input.list ?? 'default'}\t${input.handle ?? 'unknown'}\t${
+        input.id
+      }\t${input.date ?? '1970-01-01T00:00:00'}`;
     }
   }
 
@@ -64,7 +65,7 @@ export class TweetIndex extends Map<string, TweetIndexEntry> {
       list: 'default',
       date: '1970-01-01T00:00:00',
       ...input
-    }
+    };
   }
 
   /**

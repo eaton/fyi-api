@@ -7,36 +7,42 @@ type Options = {
    *
    * @defaultValue 9000
    */
-  port?: number,
+  port?: number;
 
   /**
    * Launch a browser window and open a URL; if set to TRUE, `http://localhost:port` is used.
-   * 
+   *
    * @defaultValue `false`
    */
-  launchBrowser?: boolean | string,
+  launchBrowser?: boolean | string;
 
   /**
    * A callback function that can write to the response, and optionally tell
    * the server to keep listening for additional requests.
-   * 
+   *
    * Returning TRUE will keep the server running; returning FALSE or returning
    * no value will cause it to close, resolving the promise.
    */
-  listen?: (req: http.IncomingMessage, body: string | null, res: http.ServerResponse<http.IncomingMessage>) => boolean | void,
-}
+  listen?: (
+    req: http.IncomingMessage,
+    body: string | null,
+    res: http.ServerResponse<http.IncomingMessage>
+  ) => boolean | void;
+};
 
 type Result = {
-  request: http.IncomingMessage,
-  body: string | null
-}
+  request: http.IncomingMessage;
+  body: string | null;
+};
 
 /**
  * Launches an HTTP server and listens for an incoming connection; returns a
  * promise that resolves to the request and request body.
  */
-export async function listenOnLocalhost(options: Options = {}): Promise<Result> {
-  const port = options.port ??= 9000;
+export async function listenOnLocalhost(
+  options: Options = {}
+): Promise<Result> {
+  const port = (options.port ??= 9000);
   let keepListening = false;
   let body: string | null = null;
 
@@ -60,7 +66,7 @@ export async function listenOnLocalhost(options: Options = {}): Promise<Result> 
     });
 
     server.on('listening', () => {
-      if (typeof(options.launchBrowser) === 'string') {
+      if (typeof options.launchBrowser === 'string') {
         open(options.launchBrowser);
       } else if (options.launchBrowser === true) {
         open(`http://localhost:${port}`);

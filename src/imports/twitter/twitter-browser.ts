@@ -9,16 +9,16 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
  * Description placeholder
  */
 type TwitterBrowserOptions = {
-  stealth?: boolean,
+  stealth?: boolean;
 
-  headless?: boolean,
+  headless?: boolean;
 
-  template?: Html.CheerioExtractTemplate,
+  template?: Html.CheerioExtractTemplate;
 
-  screenshot?: TwitterScreenshotOptions,
+  screenshot?: TwitterScreenshotOptions;
 
-  attemptLogin?: boolean,
-}
+  attemptLogin?: boolean;
+};
 
 type TwitterScreenshotOptions = {
   /**
@@ -26,38 +26,38 @@ type TwitterScreenshotOptions = {
    *
    * @defaultValue 'jpeg'
    */
-  format?: 'jpeg' | 'png',
+  format?: 'jpeg' | 'png';
 
   /**
    * For JPEG format screenshots, the quality of the image
    *
    * @defaultValue 70
    */
-  quality?: number,
+  quality?: number;
 
   /**
    * Take double-resolution screenshots
    *
    * @defaultValue false
    */
-  retina?: boolean,
+  retina?: boolean;
 
   /**
    * Enforce light or dark mode for screenshot consistency
    *
    * @defaultValue 'light'
    */
-  colorScheme?: 'light' | 'dark',
+  colorScheme?: 'light' | 'dark';
 
   viewport?: {
-    height: number,
-    width: number,
-  }
+    height: number;
+    width: number;
+  };
 
-  hideFollow?: boolean,
-  
-  hideActions?: boolean,
-}
+  hideFollow?: boolean;
+
+  hideActions?: boolean;
+};
 
 const browserDefaults: TwitterBrowserOptions = {
   headless: true,
@@ -67,23 +67,27 @@ const browserDefaults: TwitterBrowserOptions = {
     fullname: 'div[data-testid="User-Name"] a | text | split:@ | shift',
     posted: 'a time | attr:datetime',
     text: 'div[data-testid="tweetText"] span | text',
-    urls: [{
-      $: 'a[href*="t.co"]',
-      url: '$ | attr:href',
-      label: '$ | attr:aria-label',
-      text: '$ | text',
-    }],
-    media: [{
-      $: 'a[href*="/photo/"]',
-      url: '$ | attr:href',
-      imageUrl: 'img | attr:src',
-      alt: 'img | attr:alt'
-    }],
+    urls: [
+      {
+        $: 'a[href*="t.co"]',
+        url: '$ | attr:href',
+        label: '$ | attr:aria-label',
+        text: '$ | text'
+      }
+    ],
+    media: [
+      {
+        $: 'a[href*="/photo/"]',
+        url: '$ | attr:href',
+        imageUrl: 'img | attr:src',
+        alt: 'img | attr:alt'
+      }
+    ],
     favorites: 'a[href$="/likes"] > div > span',
     retweets: 'a[href$="/retweets"] > div > span',
-    quotes: 'a[href$="/retweets/with_comments"] > div > span',
+    quotes: 'a[href$="/retweets/with_comments"] > div > span'
   }
-}
+};
 
 const screenshotDefaults: TwitterScreenshotOptions = {
   colorScheme: 'light',
@@ -93,7 +97,7 @@ const screenshotDefaults: TwitterScreenshotOptions = {
   hideActions: true,
   hideFollow: true,
   viewport: { height: 2048, width: 1024 }
-}
+};
 
 export class TwitterBrowser {
   protected _browser?: Browser;
@@ -110,7 +114,7 @@ export class TwitterBrowser {
     this._options.screenshot = {
       ...screenshotDefaults,
       ...options.screenshot
-    }
+    };
   }
 
   async teardown() {
@@ -125,15 +129,17 @@ export class TwitterBrowser {
       this._browser = browser;
     } else if (this._browser === undefined) {
       if (this._options.stealth) chromium.use(StealthPlugin());
-      this._browser = await chromium.launch({ headless: this._options.headless });
+      this._browser = await chromium.launch({
+        headless: this._options.headless
+      });
     }
-    
+
     if (this._context === undefined) {
       const { colorScheme, viewport, retina } = this._options.screenshot ?? {};
       this._context = await this._browser!.newContext({
         colorScheme,
         viewport,
-        deviceScaleFactor: (retina) ? 2 : undefined
+        deviceScaleFactor: retina ? 2 : undefined
       });
     }
 
@@ -141,17 +147,19 @@ export class TwitterBrowser {
       this._page = await this._context.newPage();
       if (this._options.attemptLogin) {
         await this.attemptLogin(this._page);
-      }  
+      }
     }
 
     return Promise.resolve(this._page);
   }
 
   async attemptLogin(page: Page) {
-    const ov = page.viewportSize()
+    const ov = page.viewportSize();
     await page.setViewportSize({ width: 1000, height: 1000 });
     page.goto('https://twitter.com/i/flow/login');
-    await page.locator('#react-root header').waitFor({ state: 'visible', timeout: 0 });
+    await page
+      .locator('#react-root header')
+      .waitFor({ state: 'visible', timeout: 0 });
     if (ov) return page.setViewportSize(ov);
     return Promise.resolve();
   }
@@ -160,31 +168,37 @@ export class TwitterBrowser {
     let page = await this.setup();
 
     const tweet = new TweetUrl(idOrUrl);
-  
-    const response = await page.goto(tweet.href, { waitUntil: 'domcontentloaded' });
+
+    const response = await page.goto(tweet.href, {
+      waitUntil: 'domcontentloaded'
+    });
     if (!response?.ok) {
       console.log(response?.url(), response?.status, response?.statusText);
     }
 
     let results: ScrapedTweet = {
       id: tweet.id,
-      url: page.url(),
-    }
+      url: page.url()
+    };
 
     await page.locator('main').waitFor({ state: 'visible' });
     // const html = await page.content();
     const errors = [];
     const locator = page.locator('#react-root article');
-    const tweetHtml = await locator.first().innerHTML({ timeout: 2000 }).catch((err: unknown) => {
-      if (err instanceof Error) {
-        errors.push(err.message);
-      } else {
-        errors.push('Tweet timeout');
-      }
-      return page.innerHTML('body');
-    });
+    const tweetHtml = await locator
+      .first()
+      .innerHTML({ timeout: 2000 })
+      .catch((err: unknown) => {
+        if (err instanceof Error) {
+          errors.push(err.message);
+        } else {
+          errors.push('Tweet timeout');
+        }
+        return page.innerHTML('body');
+      });
 
-    if (tweetHtml.includes('Try searching for something else.')) errors.push('Tweet deleted.');
+    if (tweetHtml.includes('Try searching for something else.'))
+      errors.push('Tweet deleted.');
     if (tweetHtml.includes('Something went wrong. Try reloading.')) {
       errors.push(page.url(), 'Something went wrong.');
     }
@@ -194,7 +208,7 @@ export class TwitterBrowser {
       return Promise.resolve({
         success: false,
         ...results,
-        errors,
+        errors
       });
     } else {
       const extracted = await Html.extract(tweetHtml, this._options.template!);
@@ -206,7 +220,7 @@ export class TwitterBrowser {
         results = {
           success: true,
           ...results,
-          ...extracted,
+          ...extracted
         };
 
         for (const m of results.media ?? []) {
@@ -233,25 +247,33 @@ export class TwitterBrowser {
       ...screenshotDefaults,
       ...this._options.screenshot,
       ...options
-    }
+    };
 
     // TODO: On media tweets, wait for the thumb to load.
 
     await this._page.evaluate(() => {
       // The top bar, which can cut off the top of long tweets
-      document.querySelector('#react-root div[aria-label="Home timeline"] > div:first-child')?.remove();
+      document
+        .querySelector(
+          '#react-root div[aria-label="Home timeline"] > div:first-child'
+        )
+        ?.remove();
       if (opt.hideFollow) {
         // The Follow button, which is enormous and blue
-        document.querySelector('#react-root article div[role="button"]')?.remove();
+        document
+          .querySelector('#react-root article div[role="button"]')
+          ?.remove();
       }
       if (opt.hideActions) {
         // The like/retweet/bookmark buttons, which are pointless in a screenshot
-        document.querySelectorAll("#react-root div[role=group]")[1]?.remove();
+        document.querySelectorAll('#react-root div[role=group]')[1]?.remove();
       }
       // The "Don't miss what's happening" banner, which covers up the end of long tweets
       document.querySelector('#react-root #layers')?.remove();
       // The big ol popup dialog
-      document.querySelectorAll('#react-root div[role=dialog]')?.forEach(n => n.remove());
+      document
+        .querySelectorAll('#react-root div[role=dialog]')
+        ?.forEach((n) => n.remove());
     });
 
     return this._page.locator('#react-root article').screenshot({

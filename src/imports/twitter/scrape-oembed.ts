@@ -4,13 +4,13 @@ import { ScrapedTweet, TweetUrl } from '../../index.js';
 import { Html, Dates } from 'mangler';
 
 type TweetOEmbedResponse = {
-  url?: string,
-  author_name?: string,
-  author_url?: string,
-  html?: string,
-  type?: string,
-  error?: string,
-}
+  url?: string;
+  author_name?: string;
+  author_url?: string;
+  html?: string;
+  type?: string;
+  error?: string;
+};
 
 /**
  * Description placeholder
@@ -22,15 +22,20 @@ type TweetOEmbedResponse = {
  */
 export async function scrapeTweetOembed(idOrUrl: string) {
   let tweet = new TweetUrl(idOrUrl);
-  let result: ScrapedTweet = { id: tweet.id }
+  let result: ScrapedTweet = { id: tweet.id };
 
-  const json = await ky.get(tweet.oembed, { throwHttpErrors: false })
-    .then(r => {
+  const json = await ky
+    .get(tweet.oembed, { throwHttpErrors: false })
+    .then((r) => {
       if (r.status === 404) result.deleted = true;
       if (r.status === 403) result.protected = true;
       return r;
     })
-    .then(r => r.json<TweetOEmbedResponse>().catch(() => { return {} as TweetOEmbedResponse }))
+    .then((r) =>
+      r.json<TweetOEmbedResponse>().catch(() => {
+        return {} as TweetOEmbedResponse;
+      })
+    )
     .catch((err: unknown) => {
       result.status ??= -1;
       if (err instanceof Error) {
@@ -38,23 +43,25 @@ export async function scrapeTweetOembed(idOrUrl: string) {
       }
       return undefined;
     });
-  
+
   if (json) {
     const parsed = await Html.extract(json.html ?? '', {
       text: 'blockquote.twitter-tweet > p | html',
       date: 'blockquote.twitter-tweet > a | text',
-      urls: [{
-        $: 'blockquote.twitter-tweet > p a',
-        text: '$ | text',
-        url: '$ | attr:href'
-      }],
+      urls: [
+        {
+          $: 'blockquote.twitter-tweet > p a',
+          text: '$ | text',
+          url: '$ | attr:href'
+        }
+      ]
     });
 
-    if (typeof(parsed.date) == 'string') {
+    if (typeof parsed.date == 'string') {
       parsed.date = Dates.reformat(parsed.date, 'LLLL d, yyyy', 'yyyy-MM-dd');
-    };
+    }
 
-    if (typeof(parsed.text) === 'string' && parsed.text.length > 0) {
+    if (typeof parsed.text === 'string' && parsed.text.length > 0) {
       parsed.text = toPlainText(parsed.text);
     } else {
       parsed.text = undefined;
@@ -78,9 +85,7 @@ function toPlainText(html: string) {
   const options: Html.HtmlToTextOptions = {
     decodeEntities: true,
     wordwrap: false,
-    selectors: [
-      { selector: 'a', options: { ignoreHref: true } },
-    ],
+    selectors: [{ selector: 'a', options: { ignoreHref: true } }]
   };
   return Html.toText(html, options);
 }

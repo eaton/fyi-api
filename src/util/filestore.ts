@@ -1,43 +1,54 @@
-import path from "path"
+import path from 'path';
 
 import gpkg from 'fast-glob';
 const { async: glob } = gpkg;
 type GlobOptions = Parameters<typeof glob>[1];
 
 import fpkg, { PathLike } from 'fs-extra';
-const { readFile, readJson, writeFile, writeJson, createReadStream, createWriteStream, statSync, existsSync, ensureDirSync, remove } = fpkg;
+const {
+  readFile,
+  readJson,
+  writeFile,
+  writeJson,
+  createReadStream,
+  createWriteStream,
+  statSync,
+  existsSync,
+  ensureDirSync,
+  remove
+} = fpkg;
 import { parse as parseYaml, stringify as serializeYaml } from 'yaml';
 
-import is from "@sindresorhus/is";
+import is from '@sindresorhus/is';
 
 import ndjson from 'ndjson';
 
 export interface FilestoreOptions extends Record<string, unknown> {
-  base?: string,
-  input?: string,
-  output?: string,
-  cache?: string,
-  bucket?: string,
-  readableOutput?: boolean,
+  base?: string;
+  input?: string;
+  output?: string;
+  cache?: string;
+  bucket?: string;
+  readableOutput?: boolean;
 }
 
 export interface FilestoreReadOptions {
-  [key: string]: unknown,
-  parse?: boolean,
-  throw?: boolean 
+  [key: string]: unknown;
+  parse?: boolean;
+  throw?: boolean;
 }
 
 export interface FilestoreWriteOptions {
-  [key: string]: unknown,
-  serialize?: boolean,
-  ensure?: boolean
+  [key: string]: unknown;
+  serialize?: boolean;
+  ensure?: boolean;
 }
 
 /**
  * A light wrapper for a bunch of file system manipulation tasks we do during import
  * and processing.
- * 
- * Right now it just wraps the 'correct' directories for raw files to live in: the 
+ *
+ * Right now it just wraps the 'correct' directories for raw files to live in: the
  * goal is to establish a 'root' for all files that can be used consistently whether
  * it's on the local filesystem or an S3 bucket or whatever.
  */
@@ -59,7 +70,7 @@ export class Filestore {
     if (this._bucket) return path.join(Filestore.input, this._bucket);
     return Filestore.input;
   }
-  
+
   set input(value: string | undefined) {
     this._input = value;
   }
@@ -77,7 +88,7 @@ export class Filestore {
   get output(): string {
     if (this._output) return this._output;
     if (this._bucket) return path.join(Filestore.output, this._bucket);
-    return Filestore.output
+    return Filestore.output;
   }
 
   set output(value: string | undefined) {
@@ -89,7 +100,7 @@ export class Filestore {
     this._input = options?.input;
     this._cache = options?.cache;
     this._output = options?.output;
-    this._bucket =  options?.bucket;
+    this._bucket = options?.bucket;
     this.readableOutput = options?.readableOutput ?? true;
   }
 
@@ -121,30 +132,29 @@ export class Filestore {
     return this.stat(this.prefix(path, 'output'));
   }
 
-
   /**
-   * Creates a full directory path if it doesn't already exist. 
+   * Creates a full directory path if it doesn't already exist.
    */
   ensure(path: string) {
     ensureDirSync(path);
   }
 
   /**
-   * A version of `ensure` auto-prefixed to the input directory. 
+   * A version of `ensure` auto-prefixed to the input directory.
    */
   ensureInput(path: string = '') {
     this.ensure(this.prefix(path, 'input'));
   }
 
   /**
-   * A version of `ensure` auto-prefixed to the cache directory. 
+   * A version of `ensure` auto-prefixed to the cache directory.
    */
   ensureCache(path: string = '') {
     this.ensure(this.prefix(path, 'cache'));
   }
-  
+
   /**
-   * A version of `ensure` auto-prefixed to the output directory. 
+   * A version of `ensure` auto-prefixed to the output directory.
    */
   ensureOutput(path: string = '') {
     this.ensure(this.prefix(path, 'output'));
@@ -184,12 +194,17 @@ export class Filestore {
   /**
    * Finds files and directories matching a particular glob string.
    */
-  async find(input: string | string[], options?: GlobOptions, prefix?: string): Promise<string[]> {
+  async find(
+    input: string | string[],
+    options?: GlobOptions,
+    prefix?: string
+  ): Promise<string[]> {
     let globs: string | string[] = input;
     if (prefix) {
-      globs = typeof(input) === 'string' ?
-        this.prefix(input, prefix) :
-        input.map(i => this.prefix(i, prefix));
+      globs =
+        typeof input === 'string'
+          ? this.prefix(input, prefix)
+          : input.map((i) => this.prefix(i, prefix));
     }
     return glob(globs, options);
   }
@@ -197,46 +212,58 @@ export class Filestore {
   /**
    * Wrapper for the `find` function that works inside the current input directory.
    */
-  async findInput(globs: string | string[], options?: GlobOptions): Promise<string[]> {
-    return this.find(globs, options, this.input)
-      .then(paths => paths.map(
-        p => p.startsWith(this.input) ? path.relative(this.input, p) : p
-      ));
+  async findInput(
+    globs: string | string[],
+    options?: GlobOptions
+  ): Promise<string[]> {
+    return this.find(globs, options, this.input).then((paths) =>
+      paths.map((p) =>
+        p.startsWith(this.input) ? path.relative(this.input, p) : p
+      )
+    );
   }
 
   /**
    * Wrapper for the `find` function that prefixes all paths with the current cache directory.
    */
-  async findCache(globs: string | string[], options: GlobOptions = {}): Promise<string[]> {
-    return this.find(globs, options, this.cache)
-      .then(paths => paths.map(
-        p => p.startsWith(this.cache) ? path.relative(this.cache, p) : p
-      ));
+  async findCache(
+    globs: string | string[],
+    options: GlobOptions = {}
+  ): Promise<string[]> {
+    return this.find(globs, options, this.cache).then((paths) =>
+      paths.map((p) =>
+        p.startsWith(this.cache) ? path.relative(this.cache, p) : p
+      )
+    );
   }
 
   /**
    * Wrapper for the `find` function that prefixes all paths with the current cache directory.
    */
-  async findOutput(globs: string | string[], options: GlobOptions = {}): Promise<string[]> {
-    return this.find(globs, options, Filestore.output)
-      .then(paths => paths.map(
-        p => p.startsWith(this.output) ? path.relative(this.output, p) : p
-      ));
+  async findOutput(
+    globs: string | string[],
+    options: GlobOptions = {}
+  ): Promise<string[]> {
+    return this.find(globs, options, Filestore.output).then((paths) =>
+      paths.map((p) =>
+        p.startsWith(this.output) ? path.relative(this.output, p) : p
+      )
+    );
   }
 
   /**
    * Writes a file to the filesystem; if the name ends with 'json' the data
    * is automatically deserialized.
-   * 
+   *
    * By default, it will attempt to parse JSON and YAML files, returning them
    * as deserialized data structures.
-   * 
+   *
    * By default, it will swallow read errors and simply return `undefined` if
    * files don't exist.
    */
   async read(file: PathLike, options?: FilestoreReadOptions) {
     const errorHandler = (err: unknown) => {
-      if ((options?.throw === true) && (err instanceof Error)) {
+      if (options?.throw === true && err instanceof Error) {
         throw err;
       } else {
         return undefined;
@@ -244,12 +271,14 @@ export class Filestore {
     };
 
     if (options?.parse !== false) {
-      const extension = path.parse(file.toLocaleString()).ext.toLocaleLowerCase();
+      const extension = path
+        .parse(file.toLocaleString())
+        .ext.toLocaleLowerCase();
       if (extension === '.json') {
         return readJson(file).catch(errorHandler);
       } else if (extension === '.yaml' || extension === '.yml') {
         return readFile(file)
-          .then(data => parseYaml(data.toString()))
+          .then((data) => parseYaml(data.toString()))
           .catch(errorHandler);
       } else if (extension === '.ndjson') {
         const output: unknown[] = [];
@@ -260,9 +289,9 @@ export class Filestore {
         return Promise.resolve(output);
       }
     }
-    
+
     return readFile(file)
-      .then(buffer => (options?.parse !== false) ? buffer.toString() : buffer)
+      .then((buffer) => (options?.parse !== false ? buffer.toString() : buffer))
       .catch(errorHandler);
   }
 
@@ -291,20 +320,28 @@ export class Filestore {
    * Writes a file to the filesystem; if the name ends with 'json' the data
    * is automatically serialized.
    */
-  async write(file: string, data: unknown, options?: FilestoreWriteOptions): Promise<void> {
+  async write(
+    file: string,
+    data: unknown,
+    options?: FilestoreWriteOptions
+  ): Promise<void> {
     if (options?.ensurePath !== false && path.parse(file).dir !== '') {
       this.ensure(path.parse(file).dir);
     }
 
-    if (typeof(data) !== 'string' && options?.autoSerialize !== false) {
-      const extension = path.parse(file.toLocaleString()).ext.toLocaleLowerCase();
+    if (typeof data !== 'string' && options?.autoSerialize !== false) {
+      const extension = path
+        .parse(file.toLocaleString())
+        .ext.toLocaleLowerCase();
       if (extension === '.json') {
         return writeJson(file, data, this.readableOutput ? { spaces: 2 } : {});
       } else if (extension === '.yaml' || extension === '.yml') {
         return writeFile(file, serializeYaml(data));
       } else if (extension === '.ndjson' && Array.isArray(data)) {
-        const stream = createWriteStream(file)
-        const serialize = ndjson.stringify().on('data', (line) => stream.write(line));
+        const stream = createWriteStream(file);
+        const serialize = ndjson
+          .stringify()
+          .on('data', (line) => stream.write(line));
         for (const d of data) {
           serialize.write(d);
         }
@@ -323,43 +360,51 @@ export class Filestore {
 
   /**
    * Prefixed version of `write` that directs output to the current cache directory.
-   * 
+   *
    * Returns a promise that resolves to the fully prefixed filename that was generated.
    */
-  async writeCache(file: string, data: unknown, options?: FilestoreWriteOptions): Promise<string> {
+  async writeCache(
+    file: string,
+    data: unknown,
+    options?: FilestoreWriteOptions
+  ): Promise<string> {
     const path = this.prefix(file, this.cache);
-    return this.write(path, data, options)
-      .then(() => path);
+    return this.write(path, data, options).then(() => path);
   }
 
   /**
    * Prefixed version of `write` that directs output to the current cache directory.
-   * 
+   *
    * Returns a promise that resolves to the fully prefixed filename that was generated.
    */
-  async writeOutput(file: string, data: unknown, options?: FilestoreWriteOptions): Promise<string> {
+  async writeOutput(
+    file: string,
+    data: unknown,
+    options?: FilestoreWriteOptions
+  ): Promise<string> {
     const path = this.prefix(file, this.output);
-    return this.write(path, data, options)
-      .then(() => path);
+    return this.write(path, data, options).then(() => path);
   }
 
   async delete(fileOrDirectory: string | string[]) {
-    const files = Array.isArray(fileOrDirectory) ? fileOrDirectory : [fileOrDirectory];
-    return Promise.allSettled(files.map(f => remove(f)));
+    const files = Array.isArray(fileOrDirectory)
+      ? fileOrDirectory
+      : [fileOrDirectory];
+    return Promise.allSettled(files.map((f) => remove(f)));
   }
 
   async deleteCache(fileOrDirectory: string | string[]) {
-    const files = Array.isArray(fileOrDirectory) ? fileOrDirectory : [fileOrDirectory];
-    return this.delete(
-      files.map(f => this.prefix(f, 'cache'))
-    );
+    const files = Array.isArray(fileOrDirectory)
+      ? fileOrDirectory
+      : [fileOrDirectory];
+    return this.delete(files.map((f) => this.prefix(f, 'cache')));
   }
 
   async deleteOutput(fileOrDirectory: string) {
-    const files = Array.isArray(fileOrDirectory) ? fileOrDirectory : [fileOrDirectory];
-    return this.delete(
-      files.map(f => this.prefix(f, 'output'))
-    );
+    const files = Array.isArray(fileOrDirectory)
+      ? fileOrDirectory
+      : [fileOrDirectory];
+    return this.delete(files.map((f) => this.prefix(f, 'output')));
   }
 
   getPath(fileOrDirectory: string, prefix?: string) {
@@ -378,11 +423,10 @@ export class Filestore {
     return this.getPath(fileOrDirectory, 'output');
   }
 
-  
   /**
    * Internal utility function for prefixing a path; attempts to be smart about a lot
    * of potential weird scenarios but can be faked out.
-   * 
+   *
    * - Absolute paths (ie, those that start with *are not* prefixed
    * - `input`, `cache`, and `output` are expanded to the current Filestore directories
    * - If the input already starts with the prefix, it won't be added a second time.
@@ -406,10 +450,11 @@ export class Filestore {
         fullPrefix = this.output;
         break;
     }
-    
+
     if (base) {
       if (fullPrefix) {
-        if (!fullPrefix.startsWith(base)) fullPrefix = path.join(base, fullPrefix);
+        if (!fullPrefix.startsWith(base))
+          fullPrefix = path.join(base, fullPrefix);
       } else {
         fullPrefix = base;
       }

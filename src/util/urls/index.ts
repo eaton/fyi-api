@@ -1,6 +1,6 @@
 // Wrapper for a suite of tools to un-shorten URLs, remap URLs based on known redirects,
 // remap twitter URLs, and so on.
-// 
+//
 // How to do that?
 //
 // - Generate an internal list of old URL and the internal content IDs they map to while
@@ -18,7 +18,6 @@
 // The shortener should be usable in 'quickly correct internal links' mode as well as
 // 'hunt down that link no matter what' mode.
 
-
-export * from './url-resolver.js'
+export * from './url-resolver.js';
 export * from './find-urls.js';
 export * from './types.js';

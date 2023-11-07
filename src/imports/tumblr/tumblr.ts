@@ -1,24 +1,20 @@
-import { BaseImport, BaseImportOptions } from "../../index.js";
+import { BaseImport, BaseImportOptions } from '../../index.js';
 import { Client } from 'tumblr.js';
-import { TumblrUser, TumblrPost, TumblrBlog } from "./types.js";
+import { TumblrUser, TumblrPost, TumblrBlog } from './types.js';
 
 export interface TumblrImportOptions extends BaseImportOptions {
   auth?: {
-    consumer_key: string,
-    consumer_secret: string,
-    token: string,
-    token_secret: string
-  }
+    consumer_key: string;
+    consumer_secret: string;
+    token: string;
+    token_secret: string;
+  };
 }
 
 export class Tumblr extends BaseImport {
   declare options: TumblrImportOptions;
 
-  collections = [
-    'tumblr_user',
-    'tumblr_blog',
-    'tumblr_post',
-  ];
+  collections = ['tumblr_user', 'tumblr_blog', 'tumblr_post'];
 
   constructor(options: TumblrImportOptions = {}) {
     super(options);
@@ -37,15 +33,26 @@ export class Tumblr extends BaseImport {
 
     const userInfoResponse: TumblrUser = await t.userInfo();
     const user = userInfoResponse.user;
-    await this.files.writeCache(`user-${user.name}.json`, this.tidyUser(userInfoResponse));
+    await this.files.writeCache(
+      `user-${user.name}.json`,
+      this.tidyUser(userInfoResponse)
+    );
 
     for (const blogInfo of user.blogs) {
-      await this.files.writeCache(`${blogInfo.name}/blog-${blogInfo.name}.json`, this.tidyBlog(blogInfo));
+      await this.files.writeCache(
+        `${blogInfo.name}/blog-${blogInfo.name}.json`,
+        this.tidyBlog(blogInfo)
+      );
 
-      const blogPostsResponse = await t.blogPosts(blogInfo.name) as { posts: TumblrPost[] };
+      const blogPostsResponse = (await t.blogPosts(blogInfo.name)) as {
+        posts: TumblrPost[];
+      };
       for (const post of blogPostsResponse.posts) {
         const date = post.date.split(' ')[0];
-        await this.files.writeCache(`${blogInfo.name}/post-${date}-${post.slug}.json`, this.tidyPost(post));
+        await this.files.writeCache(
+          `${blogInfo.name}/post-${date}-${post.slug}.json`,
+          this.tidyPost(post)
+        );
       }
     }
 
@@ -63,12 +70,22 @@ export class Tumblr extends BaseImport {
       slug: post.slug,
       date: post.date,
       title: post.title ?? undefined,
-      url: post.url ?? post.permalink_url ?? post.photos?.[0].original_size['url'] ?? post.image_permalink ??undefined,
+      url:
+        post.url ??
+        post.permalink_url ??
+        post.photos?.[0].original_size['url'] ??
+        post.image_permalink ??
+        undefined,
       source_title: post.source_title ?? post.publisher ?? undefined,
       source_url: post.source_url ?? undefined,
-      body: post.caption ?? post.description ?? post.body ?? post.summary ?? undefined,
-      tags: post.tags.length ? post.tags : undefined,
-    }
+      body:
+        post.caption ??
+        post.description ??
+        post.body ??
+        post.summary ??
+        undefined,
+      tags: post.tags.length ? post.tags : undefined
+    };
   }
 
   protected tidyUser(user: TumblrUser) {
@@ -76,12 +93,12 @@ export class Tumblr extends BaseImport {
       name: user.user.name,
       likes: user.user.likes,
       following: user.user.following,
-      blogs: user.user.blogs.map(b => this.tidyBlog(b))
-    }
+      blogs: user.user.blogs.map((b) => this.tidyBlog(b))
+    };
   }
 
   protected tidyBlog(blog: TumblrBlog) {
-    return { 
+    return {
       id: blog.uuid,
       name: blog.name,
       url: blog.url,
@@ -89,7 +106,7 @@ export class Tumblr extends BaseImport {
       description: blog.description,
       posts: blog.total_posts,
       nsfw: blog.is_nsfw,
-      guidelines: blog?.submission_terms?.guidelines,
-    }
+      guidelines: blog?.submission_terms?.guidelines
+    };
   }
 }

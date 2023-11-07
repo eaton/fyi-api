@@ -1,3 +1,1 @@
-export class KnowledgeGraph {
-  
-}
+export class KnowledgeGraph {}
