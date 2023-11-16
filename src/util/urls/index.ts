@@ -19,5 +19,4 @@
 // 'hunt down that link no matter what' mode.
 
 export * from './url-resolver.js';
-export * from './find-urls.js';
 export * from './types.js';
