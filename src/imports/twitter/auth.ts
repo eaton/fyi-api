@@ -1,6 +1,7 @@
 import { TwitterApi } from 'twitter-api-v2';
-import { Filestore, listenOnLocalhost } from '../../index.js';
+import { listenOnLocalhost } from '../../index.js';
 import { TwitterApiRateLimitPlugin } from '@twitter-api-v2/plugin-rate-limit';
+import { Disk } from 'mangler';
 
 /**
  * There are five basic ways of accessing Twitter data:
@@ -85,12 +86,12 @@ export type TwitterAuthData = {
 export async function getOAuth1Client(
   appKey: string,
   appSecret: string,
-  cache?: Filestore
+  cache?: typeof Disk
 ): Promise<TwitterApi> {
   const file = 'twitter-v1-credentials.json';
 
-  if (cache && cache.existsCache(file)) {
-    const { accessToken, accessSecret } = await cache.readCache(file);
+  if (cache && cache.exists(file)) {
+    const { accessToken, accessSecret } = cache.read(file, 'auto');
     return new TwitterApi({ appKey, appSecret, accessToken, accessSecret });
   } else {
     const { client, accessToken, accessSecret } = await authorizeOAuth1(
@@ -98,7 +99,7 @@ export async function getOAuth1Client(
       appSecret
     );
     if (cache) {
-      await cache.writeCache(file, { accessToken, accessSecret });
+      cache.write(file, { accessToken, accessSecret });
     }
     return Promise.resolve(client);
   }
@@ -152,21 +153,21 @@ export async function authorizeOAuth1(apiKey: string, apiSecret: string) {
 export async function getOAuth2Client(
   clientId: string,
   clientSecret: string,
-  cache?: Filestore,
+  cache?: typeof Disk,
   scope?: string[]
 ) {
   const file = 'twitter-v2-credentials.json';
 
-  if (cache && cache.existsCache(file)) {
+  if (cache && cache.exists(file)) {
     // Check for cached credentials. If they exist, things are easy peasy.
     // TODO: check refreshToken and expiresIn, and renew accessToken if necessary.
-    const { accessToken } = await cache.readCache(file);
+    const { accessToken } = cache.read(file, 'auto');
     return new TwitterApi(accessToken);
   } else {
     const { client, accessToken, refreshToken, expiresIn } =
       await authorizeOAuth2(clientId, clientSecret, scope);
     if (cache) {
-      await cache.writeCache(file, { accessToken, refreshToken, expiresIn });
+      cache.write(file, { accessToken, refreshToken, expiresIn });
     }
     return Promise.resolve(client);
   }

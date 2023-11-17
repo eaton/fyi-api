@@ -52,13 +52,6 @@ in the project that get used and reused across the various importers.
   console.log() bits all over code that you eventually want to *be quiet*. Generally speaking,
   it tries to make sure a given import only needs to bother with parsing a data sourc and
   sanitizing data to "fully participate" in a bulk migration.
-- **Filestore**: While optional, this helper class wraps works well with the assumptions
-  outlined above; it maintains three parallel "buckets" for files: Input, Cache, and Output.
-  It exposes wrapped versions of `stat`, `readFile`, `writeFile`, `ensureDir`, and `find`
-  that are sandboxed to a particular bucket, making it easy to call `findInput(globPattern)`,
-  `readInput(fileName)`, then `writeCache(newFile)` with the resulting data. Its read and
-  write methods can optionally auto-parse and auto-serialize data based on filenames (json,
-  yaml, xml, csv, and tsv).
 - **Database**: An extremely light wrapper around the `arangodbjs` library. It provides
   helper functions that automate setting up document and relationship collections in bulk,
   automatically generating "correct" IDs for entities when they're saved, and so on.
