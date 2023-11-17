@@ -67,7 +67,7 @@ export class Facebook extends BaseImport<FacebookCacheData> {
       await this.cache.writeAsync(`profile.json`, cacheData.profile);
     }
 
-    const postFiles = await this.input.findAsync('posts/your_posts_*.json');
+    const postFiles = await this.input.findAsync({ matching: 'posts/your_posts_*.json' });
     for (const postFile of postFiles ?? []) {
       const posts =
         ((await this.input.readAsync(postFile, "auto")) as FBPostsFile) ?? [];
@@ -78,7 +78,7 @@ export class Facebook extends BaseImport<FacebookCacheData> {
     if (!is.emptyArray(cacheData.posts))
       await this.cache.writeAsync(`posts.json`, cacheData.posts);
 
-    const albumFiles = await this.input.findAsync('posts/album/*.json');
+    const albumFiles = await this.input.findAsync({ matching: 'posts/album/*.json' });
     for (const albumFile of albumFiles ?? []) {
       const album = (await this.input.readAsync(albumFile, "auto")) as
         | FBAlbum

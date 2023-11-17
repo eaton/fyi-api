@@ -76,9 +76,9 @@ export class Jekyll extends BaseImport {
 
     // Right now we're not importing any jekyll data files. we probably want to.
 
-    const postFiles = await this.input.findAsync(
+    const postFiles = await this.input.findAsync({ matching: 
       `**/{${this.folders.join(',')}}/**/*.{${this.fileTypes.join(',')}}`
-    );
+  });
 
     for (const filePath of postFiles) {
       const [originalPath, date, slug, format] =

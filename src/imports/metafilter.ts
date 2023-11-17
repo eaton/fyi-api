@@ -77,8 +77,8 @@ export class Metafilter extends BaseImport {
   }
 
   async doImport(): Promise<void> {
-    const cachedUser = (await this.cache.findAsync('user-*.json')).pop();
-    const cachedPosts = await this.cache.findAsync('**/post-*.json');
+    const cachedUser = (await this.cache.findAsync({ matching: 'user-*.json' })).pop();
+    const cachedPosts = await this.cache.findAsync({ matching: '**/post-*.json' });
 
     await this.ensureSchema();
 

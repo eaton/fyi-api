@@ -58,7 +58,7 @@ export class Livejournal extends BaseImport {
    * just a vestigial `<lj-poll>` element in the markup pointing to a long-dead ID. Alas.
    */
   async parseXmlFiles() {
-    const xmlFiles = await this.input.findAsync('*.xml');
+    const xmlFiles = await this.input.findAsync({ matching: '*.xml' });
 
     for (const path of xmlFiles) {
       const $ = await this.input
@@ -143,7 +143,7 @@ export class Livejournal extends BaseImport {
    * somewhere, but I only have like 20 of these files so this is good enough.
    */
   async parseSemagicFiles() {
-    let tempFiles = await this.input.findAsync('*.slj');
+    let tempFiles = await this.input.findAsync({ matching: '*.slj' });
     const entries: LivejournalEntry[] = [];
 
     for (const file of tempFiles) {

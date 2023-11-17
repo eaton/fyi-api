@@ -31,10 +31,10 @@ export class Medium extends BaseImport {
 
     let template: JsonTemplate = {};
     const files = {
-      posts: await this.input.findAsync('posts/*.html'),
-      lists: await this.input.findAsync('lists/*:*.html'),
-      claps: await this.input.findAsync('claps/claps-*.html'),
-      bookmarks: await this.input.findAsync('bookmarks/bookmarks-*.html')
+      posts: await this.input.findAsync({ matching: 'posts/*.html' }),
+      lists: await this.input.findAsync({ matching: 'lists/*:*.html' }),
+      claps: await this.input.findAsync({ matching: 'claps/claps-*.html' }),
+      bookmarks: await this.input.findAsync({ matching: 'bookmarks/bookmarks-*.html' })
     };
 
     if (!this.cache.exists(`claps.json`)) {

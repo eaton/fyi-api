@@ -49,9 +49,9 @@ export class MovableType extends BaseImport<MTData> {
   }
 
   async loadCache(): Promise<MTData> {
-    let files = await this.cache.findAsync(
+    let files = await this.cache.findAsync({ matching:
       '(authors,blogs,categories,comments,entries)/*.json'
-    );
+    });
     if (files.length === 0) {
       return this.fillCache();
     }

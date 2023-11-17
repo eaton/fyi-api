@@ -78,7 +78,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   async loadCache(): Promise<TwitterImportCache> {
     this.cacheData = makeFreshCache();
 
-    const tweetFiles = await this.cache.findAsync('tweets/tweet-*.json');
+    const tweetFiles = await this.cache.findAsync({ matching: 'tweets/tweet-*.json' });
     for (const tf of tweetFiles) {
       const t = this.cache.read(tf, 'auto') as TwitterPost;
       this.cacheData.tweets.set(t.id, t);
@@ -94,7 +94,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
   async fillCache(): Promise<TwitterImportCache> {
     // Look for all available archive files; batch em up and let em rip
-    let archives = (await this.input.findAsync('twitter-*.zip')).sort();
+    let archives = (await this.input.findAsync({ matching: 'twitter-*.zip' })).sort();
     if (this.options.archive === 'newest') {
       archives = archives.slice(-1);
     } else if (this.options.archive === 'oldest') {

@@ -4,7 +4,7 @@ import { BaseImport } from '../base-import.js';
 export class Wordpress extends BaseImport {
   async fillCache(): Promise<void> {
     const glob = '**/*.WordPress.*.xml';
-    const foundFiles = await this.input.findAsync(glob);
+    const foundFiles = await this.input.findAsync({ matching: glob });
     for (const file of foundFiles) {
       await this.fillCacheFromExport(file);
     }

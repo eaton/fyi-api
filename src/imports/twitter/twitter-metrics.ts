@@ -29,9 +29,9 @@ export class TwitterMetrics extends BaseImport<TwitterMetricsRow[]> {
   }
 
   async fillCache(): Promise<TwitterMetricsRow[]> {
-    const metrics = await this.input.findAsync(
+    const metrics = await this.input.findAsync({ matching:
       'daily_tweet_activity_metrics_*.csv'
-    );
+    });
     const metricsRegex =
       /daily_tweet_activity_metrics_(.+)_\d{8}_\d{8}_(\w+).csv/;
     for (const file of metrics) {
