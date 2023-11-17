@@ -100,7 +100,7 @@ export class DrupalOrg extends BaseImport<DrupalOrgCache> {
         const html = context.body.toString();
         if (pageType === 'profile') {
           cache.profile = await extractProfile(html);
-          await this.files.writeCache(
+          await this.cache.writeAsync(
             `${cache.profile.handle}-profile.json`,
             cache.profile
           );

@@ -22,29 +22,27 @@ export class TwitterMetrics extends BaseImport<TwitterMetricsRow[]> {
   }
 
   async loadCache(): Promise<void> {
-    this.cacheData = (await this.files.readCache(
-      'metrics.json'
-    )) as TwitterMetricsRow[];
+    this.cacheData = this.cache.read('metrics.json', 'auto') as TwitterMetricsRow[];
     if (!this.cacheData || this.cacheData.length === 0) {
       await this.fillCache();
     }
   }
 
   async fillCache(): Promise<TwitterMetricsRow[]> {
-    const metrics = await this.files.findInput(
+    const metrics = await this.input.findAsync(
       'daily_tweet_activity_metrics_*.csv'
     );
     const metricsRegex =
       /daily_tweet_activity_metrics_(.+)_\d{8}_\d{8}_(\w+).csv/;
     for (const file of metrics) {
       const [handle] = file.match(metricsRegex)?.slice(1) ?? [];
-      await this.files.readInput(file, { parse: false }).then((raw) =>
-        parseString(raw, { headers: true })
+      await this.input.readAsync(file, "utf8").then((raw) =>
+        parseString(raw ?? '', { headers: true })
           .on('error', (error) => this.log(error))
           .on('data', (row) => {
             const mappedRow = Object.fromEntries(
               Object.entries(row).map(([k, v]) => [
-                Text.camelCase(k),
+                Text.toCase.camel(k),
                 v === '-' ? undefined : v
               ])
             ) as TwitterMetricsRow;
@@ -52,7 +50,7 @@ export class TwitterMetrics extends BaseImport<TwitterMetricsRow[]> {
           })
       );
     }
-    await this.files.writeCache(`metrics.json`, this.cacheData);
+    await this.cache.writeAsync(`metrics.json`, this.cacheData ?? []);
     this.log(
       `Cached ${metrics.length} files (covering ${
         this.cacheData?.length || 0

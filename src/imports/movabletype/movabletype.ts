@@ -49,7 +49,7 @@ export class MovableType extends BaseImport<MTData> {
   }
 
   async loadCache(): Promise<MTData> {
-    let files = await this.files.findCache(
+    let files = await this.cache.findAsync(
       '(authors,blogs,categories,comments,entries)/*.json'
     );
     if (files.length === 0) {
@@ -66,19 +66,19 @@ export class MovableType extends BaseImport<MTData> {
 
     for (const file of files) {
       if (file.startsWith('blogs')) {
-        const data = (await this.files.readCache(file)) as MTBlog;
+        const data = this.cache.read(file, "auto") as MTBlog;
         results.blogs[data.id] = data;
       } else if (file.startsWith('authors')) {
-        const data = (await this.files.readCache(file)) as MTAuthor;
+        const data = this.cache.read(file, "auto") as MTAuthor;
         results.authors[data.id] = data;
       } else if (file.startsWith('categories')) {
-        const data = (await this.files.readCache(file)) as MTCategory;
+        const data = this.cache.read(file, "auto") as MTCategory;
         results.categories[data.id] = data;
       } else if (file.startsWith('entries')) {
-        const data = (await this.files.readCache(file)) as MTEntry;
+        const data = this.cache.read(file, "auto") as MTEntry;
         results.entries[data.id] = data;
       } else if (file.startsWith('comments')) {
-        const data = (await this.files.readCache(file)) as MTComment;
+        const data = this.cache.read(file, "auto") as MTComment;
         results.comments[data.id] = data;
       }
     }
@@ -135,7 +135,7 @@ export class MovableType extends BaseImport<MTData> {
       await conn
         .execute(`select * from ${table}`)
         .then((results) =>
-          this.files.writeCache(`tables/${name}.json`, results[0])
+          this.cache.write(`tables/${name}.json`, results[0])
         )
         .catch((err: unknown) => this.log(err));
     }
@@ -152,7 +152,7 @@ export class MovableType extends BaseImport<MTData> {
           record.title?.toString() ??
           record.name?.toString() ??
           'unknown';
-        await this.files.writeCache(
+        await this.cache.writeAsync(
           `${dataType}/${dataType}-${id}-${slugify(slug)}.json`,
           record
         );

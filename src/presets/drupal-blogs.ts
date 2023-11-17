@@ -8,7 +8,7 @@ const auth = {
 };
 
 const vpj = new Drupal6Import({
-  name: '2005-viapositiva2',
+  importName: '2005-viapositiva2',
   nodeTypesWithFields: ['oldsite', 'photo', 'review'],
   ignoreNodeTypes: ['lj', 'amazonnode', 'banner', 'amazon_node'],
   extraTables: [
@@ -31,7 +31,7 @@ const vpj = new Drupal6Import({
 await vpj.fillCache();
 
 const goddy = new Drupal7Import({
-  name: '2007-goddy',
+  importName: '2007-goddy',
   database: { dbName: 'goddy-2013', ...auth },
   nodeFields: {
     field_product: ['asin'],
@@ -47,7 +47,7 @@ const goddy = new Drupal7Import({
 await goddy.fillCache();
 
 const predicateOld = new Drupal6Import({
-  name: '2010-predicate2',
+  importName: '2010-predicate2',
   ignoreNodeTypes: ['lj', 'amazonnode', 'banner'],
   extraTables: ['poll_choices', 'files', 'links', 'links_node'],
   nodeTypesWithFields: ['game', 'turn', 'quotes', 'recipe'],
@@ -60,14 +60,14 @@ const predicateOld = new Drupal6Import({
 await predicateOld.fillCache();
 
 const alt = new Drupal7Import({
-  name: '2011-angrylittletree1',
+  importName: '2011-angrylittletree1',
   extraTables: ['file_managed'],
   database: { dbName: 'angrylittletree-2012', ...auth }
 });
 await alt.fillCache();
 
 const predicate = new Drupal7Import({
-  name: '2013-predicate3',
+  importName: '2013-predicate3',
   extraTables: [
     'poll_choice',
     'bestreply',

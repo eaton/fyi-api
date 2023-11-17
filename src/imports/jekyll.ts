@@ -61,7 +61,7 @@ export class Jekyll extends BaseImport {
   }
 
   async fillCache(): Promise<void> {
-    if (this.files.existsInput('_config.yml')) {
+    if (this.input.exists('_config.yml')) {
       // The config file may also have useful bits we can use later in the import;
       //
       // `permalink`: would let us predict the rendered filename; defaults to `date`
@@ -69,21 +69,21 @@ export class Jekyll extends BaseImport {
       // `data_dir`: Directory where data files live. Defaults to "_data"
       // `defaults`: Arbitary frontmatter defaults. See https://jekyllrb.com/docs/configuration/front-matter-defaults/
 
-      const config = await this.files.readInput('_config.yml');
-      await this.files.writeCache('config.json', config);
-      this.log(`Jekyll _config file written to ${this.files.cache}`);
+      const config = await this.input.readAsync('_config.yml', "auto");
+      await this.cache.writeAsync('config.json', config);
+      this.log(`Jekyll _config file written to ${this.cache.path()}`);
     }
 
     // Right now we're not importing any jekyll data files. we probably want to.
 
-    const postFiles = await this.files.findInput(
+    const postFiles = await this.input.findAsync(
       `**/{${this.folders.join(',')}}/**/*.{${this.fileTypes.join(',')}}`
     );
 
     for (const filePath of postFiles) {
       const [originalPath, date, slug, format] =
         filePath.match(/.*(\d{4}-\d{2}-\d{2})-(.*)\.(\w+)$/) ?? [];
-      const parsedPost = matter.read(path.join(this.files.input, filePath));
+      const parsedPost = matter.read(this.input.path(filePath));
 
       let data: JekyllPost = {
         path: originalPath,
@@ -97,7 +97,7 @@ export class Jekyll extends BaseImport {
       };
 
       if (this.parser) data = this.parser(data);
-      const cachePath = await this.files.writeCache(
+      const cachePath = await this.cache.writeAsync(
         path.join('posts', Ids.uuid(filePath) + '.json'),
         data
       );

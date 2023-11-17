@@ -33,13 +33,13 @@ export class Tumblr extends BaseImport {
 
     const userInfoResponse: TumblrUser = await t.userInfo();
     const user = userInfoResponse.user;
-    await this.files.writeCache(
+    await this.cache.writeAsync(
       `user-${user.name}.json`,
       this.tidyUser(userInfoResponse)
     );
 
     for (const blogInfo of user.blogs) {
-      await this.files.writeCache(
+      await this.cache.writeAsync(
         `${blogInfo.name}/blog-${blogInfo.name}.json`,
         this.tidyBlog(blogInfo)
       );
@@ -49,7 +49,7 @@ export class Tumblr extends BaseImport {
       };
       for (const post of blogPostsResponse.posts) {
         const date = post.date.split(' ')[0];
-        await this.files.writeCache(
+        await this.cache.writeAsync(
           `${blogInfo.name}/post-${date}-${post.slug}.json`,
           this.tidyPost(post)
         );

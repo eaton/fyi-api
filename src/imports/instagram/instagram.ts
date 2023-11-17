@@ -20,10 +20,10 @@ export class Instagram extends BaseImport<InstagramCache> {
       profile: {}
     };
 
-    const files = await this.files.findInput('content/posts_*.json');
+    const files = await this.input.findAsync({ matching: 'content/posts_*.json' });
     let mediaCount = 0;
     for (const file of files) {
-      const raw = (await this.files.readInput(file)) as InstagramPost[];
+      const raw = (await this.input.readAsync(file, "auto")) as InstagramPost[];
       for (const incoming of raw) {
         const post: IGCachedPost = {
           id: Ids.uuid(incoming),
@@ -46,7 +46,7 @@ export class Instagram extends BaseImport<InstagramCache> {
       'personal_information/personal_information.json'
     ];
     for (const file of profileFiles) {
-      const raw = (await this.files.readInput(file)) as Record<
+      const raw = (await this.input.readAsync(file, "auto")) as Record<
         string,
         InstagramProfileChunk[]
       >;
@@ -67,12 +67,12 @@ export class Instagram extends BaseImport<InstagramCache> {
       }
     }
 
-    await this.files.writeCache(
+    await this.cache.writeAsync(
       `profile-${cache.profile['Username']}.json`,
       cache.profile
     );
     for (const p of cache.posts) {
-      await this.files.writeCache(`posts/post-${p.id}.json`, p);
+      await this.cache.writeAsync(`posts/post-${p.id}.json`, p);
     }
 
     this.log(

@@ -18,9 +18,7 @@ export class Pinboard extends BaseImport {
   async doImport(): Promise<void> {
     await this.ensureSchema();
 
-    const favs = (await this.files.read(
-      'input/pinboard.json'
-    )) as PinboardBookmark[];
+    const favs = this.input.read('input/pinboard.json', 'auto') as PinboardBookmark[];
 
     for (const fav of favs) {
       this.db.push({

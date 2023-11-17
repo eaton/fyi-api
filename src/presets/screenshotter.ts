@@ -1,7 +1,7 @@
 import { UrlImport } from '../index.js';
 
 const ui = new UrlImport({
-  name: 'screenshots',
+  importName: 'screenshots',
   saveScreenshot: [
     { viewport: { width: 640, height: 480 } },
     { viewport: { width: 640, height: 480 }, fullPage: true }

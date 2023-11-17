@@ -58,51 +58,52 @@ export class Facebook extends BaseImport<FacebookCacheData> {
     };
 
     const inprofile =
-      ((await this.files.readInput(
-        'profile_information/profile_information.json'
+      ((await this.input.readAsync(
+        'profile_information/profile_information.json',
+        "auto"
       )) as FBProfileFile) ?? {};
     if (inprofile) {
       cacheData.profile = makeProfile(inprofile);
-      await this.files.writeCache(`profile.json`, cacheData.profile);
+      await this.cache.writeAsync(`profile.json`, cacheData.profile);
     }
 
-    const postFiles = await this.files.findInput('posts/your_posts_*.json');
+    const postFiles = await this.input.findAsync('posts/your_posts_*.json');
     for (const postFile of postFiles ?? []) {
       const posts =
-        ((await this.files.readInput(postFile)) as FBPostsFile) ?? [];
+        ((await this.input.readAsync(postFile, "auto")) as FBPostsFile) ?? [];
       for (const post of posts) {
         cacheData.posts.push(makePost(post));
       }
     }
     if (!is.emptyArray(cacheData.posts))
-      await this.files.writeCache(`posts.json`, cacheData.posts);
+      await this.cache.writeAsync(`posts.json`, cacheData.posts);
 
-    const albumFiles = await this.files.findInput('posts/album/*.json');
+    const albumFiles = await this.input.findAsync('posts/album/*.json');
     for (const albumFile of albumFiles ?? []) {
-      const album = (await this.files.readInput(albumFile)) as
+      const album = (await this.input.readAsync(albumFile, "auto")) as
         | FBAlbum
         | undefined;
       if (album) cacheData.albums.push(makeAlbum(album));
     }
     if (!is.emptyArray(cacheData.albums))
-      await this.files.writeCache(`albums.json`, cacheData.albums);
+      await this.cache.writeAsync(`albums.json`, cacheData.albums);
 
     const videosFile =
-      ((await this.files.readInput(
-        'posts/your_videos.json'
+      ((await this.input.readAsync(
+        'posts/your_videos.json', "auto"
       )) as FBVideosFile) ?? {};
     if (videosFile) {
       cacheData.videos = videosFile.videos_v2.map(makeVideo);
-      await this.files.writeCache(`videos.json`, cacheData.videos);
+      await this.cache.writeAsync(`videos.json`, cacheData.videos);
     }
 
     const commentsFile =
-      ((await this.files.readInput(
-        'comments_and_reactions/comments.json'
+      ((await this.input.readAsync(
+        'comments_and_reactions/comments.json', "auto"
       )) as FBCommentsFile) ?? {};
     if (commentsFile) {
       cacheData.comments = commentsFile.comments_v2.map(makeComment);
-      await this.files.writeCache(`comments.json`, cacheData.comments);
+      await this.cache.writeAsync(`comments.json`, cacheData.comments);
     }
 
     return Promise.resolve(cacheData);

@@ -58,12 +58,12 @@ export class Livejournal extends BaseImport {
    * just a vestigial `<lj-poll>` element in the markup pointing to a long-dead ID. Alas.
    */
   async parseXmlFiles() {
-    const xmlFiles = await this.files.findInput('*.xml');
+    const xmlFiles = await this.input.findAsync('*.xml');
 
     for (const path of xmlFiles) {
-      const $ = await this.files
-        .readInput(path)
-        .then((data) => Html.toCheerio(data, { xmlMode: true }));
+      const $ = await this.input
+        .readAsync(path)
+        .then((data) => Html.toCheerio(data ?? '', { xmlMode: true }));
       const entries: LivejournalEntry[] = [];
       const comments: LivejournalComment[] = [];
 
@@ -118,10 +118,10 @@ export class Livejournal extends BaseImport {
         });
 
       for (const entry of entries) {
-        this.files.writeCache(`entries/${entry.itemid}.json`, entry);
+        this.cache.write(`entries/${entry.itemid}.json`, entry);
       }
       for (const comment of comments) {
-        this.files.writeCache(`comments/${comment.itemid}.json`, comment);
+        this.cache.write(`comments/${comment.itemid}.json`, comment);
       }
 
       this.log(
@@ -143,14 +143,14 @@ export class Livejournal extends BaseImport {
    * somewhere, but I only have like 20 of these files so this is good enough.
    */
   async parseSemagicFiles() {
-    let tempFiles = await this.files.findInput('*.slj');
+    let tempFiles = await this.input.findAsync('*.slj');
     const entries: LivejournalEntry[] = [];
 
     for (const file of tempFiles) {
       const tempId = Number.parseInt(
         path.parse(file).name.replace('predicate.predicate.', '')
       );
-      const tempDate = this.files.inputStat(file).mtime.toISOString();
+      const tempDate = this.input.inspect(file)?.birthTime?.toISOString();
 
       entries.push(
         await this.populateFromSljBuffer(
@@ -165,7 +165,7 @@ export class Livejournal extends BaseImport {
 
     const toExport = entries.filter((e) => e.itemid > 0);
     for (const entry of toExport) {
-      this.files.writeCache(`entries/${entry.itemid}.json`, entry);
+      this.cache.write(`entries/${entry.itemid}.json`, entry);
     }
     this.log(`${toExport.length} entries found in in .slj files.`);
 
@@ -176,7 +176,7 @@ export class Livejournal extends BaseImport {
     entry: Partial<LivejournalEntry>,
     path: string
   ): Promise<LivejournalEntry> {
-    const data = await this.files.readInput(path, { parse: false });
+    const data = await this.input.readAsync(path, "buffer") ?? "";
     const text = data.toString('utf16le');
 
     return Promise.resolve({

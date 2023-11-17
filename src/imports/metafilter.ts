@@ -77,8 +77,8 @@ export class Metafilter extends BaseImport {
   }
 
   async doImport(): Promise<void> {
-    const cachedUser = (await this.files.findCache('user-*.json')).pop();
-    const cachedPosts = await this.files.findCache('**/post-*.json');
+    const cachedUser = (await this.cache.findAsync('user-*.json')).pop();
+    const cachedPosts = await this.cache.findAsync('**/post-*.json');
 
     await this.ensureSchema();
 
@@ -98,7 +98,7 @@ export class Metafilter extends BaseImport {
       return Promise.resolve();
     }
 
-    const user = (await this.files.readCache(cachedUser)) as MetafilterUserData;
+    const user = this.cache.read(cachedUser, 'auto') as MetafilterUserData;
     if (this.options.forceParse) this.extractUserProperties(user);
 
     user.raw = '';
@@ -116,7 +116,7 @@ export class Metafilter extends BaseImport {
       .then(() => saved.users++);
 
     for (const postFile of cachedPosts) {
-      const post = (await this.files.readCache(postFile)) as MetafilterPostData;
+      const post = this.cache.read(postFile, 'auto') as MetafilterPostData;
       if (this.options.forceParse) this.extractPostProperties(post);
 
       for (const comment of post.savedComments ?? []) {
@@ -169,21 +169,19 @@ export class Metafilter extends BaseImport {
 
     // If there's no cached user file, retrieve it and save it.
     if (
-      !this.files.existsCache(this.userFileName(uid)) ||
+      !this.cache.exists(this.userFileName(uid)) ||
       this.options.forceUser
     ) {
       await this.cacheUserData(uid);
     }
 
-    const user = (await this.files.readCache(
-      this.userFileName(uid)
-    )) as MetafilterUserData;
+    const user = this.cache.read(this.userFileName(uid), 'auto') as MetafilterUserData;
     if (this.options.forceParse) this.extractUserProperties(user);
 
     const postsToCache: Record<string, string[]> = {};
     for (const [url, commentIds] of Object.entries(user.activity ?? [])) {
       if (
-        this.files.exists(this.postFileName(url)) === false ||
+        this.cache.exists(this.postFileName(url)) === false ||
         this.options.forcePosts
       ) {
         postsToCache[url] = commentIds;
@@ -264,7 +262,7 @@ export class Metafilter extends BaseImport {
           Object.entries(activity).map((entry) => [entry[0], [...entry[1]]])
         );
 
-        await this.files.writeCache(this.userFileName(uid), user);
+        await this.cache.writeAsync(this.userFileName(uid), user);
         return Promise.resolve();
       }
     });
@@ -319,7 +317,7 @@ export class Metafilter extends BaseImport {
         }
         post.savedComments = savedComments;
 
-        await this.files.writeCache(this.postFileName(url), post);
+        await this.cache.writeAsync(this.postFileName(url), post);
         return Promise.resolve();
       }
     });

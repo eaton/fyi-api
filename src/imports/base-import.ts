@@ -1,13 +1,19 @@
-import { Filestore, Database, FilestoreOptions } from '../index.js';
+import { Database } from '../index.js';
+import { Disk } from 'mangler';
 import chalk from 'chalk';
 import { Text } from 'mangler';
+import path from 'path';
 
 /**
  * Core options supported by most imports
  */
 export interface BaseImportOptions extends Record<string, unknown> {
-  name?: string;
-  files?: Filestore | FilestoreOptions;
+  importName?: string;
+  files?: {
+    input?: string,
+    cache?: string,
+    output?: string,
+  },
   db?: Database;
   logger?: (...data: unknown[]) => void;
 }
@@ -41,20 +47,18 @@ export abstract class BaseImport<CacheType = unknown> {
   collections?: string[] = undefined;
   relationships?: string[] = undefined;
   cacheData?: CacheType;
+  input: typeof Disk;
+  cache: typeof Disk;
+  output: typeof Disk;
 
-  constructor(protected options: BaseImportOptions = {}) {}
-
-  get status() {
-    return {
-      name: this.name,
-      input: this.files.input,
-      cache: this.files.cache,
-      output: this.files.output
-    };
+  constructor(protected options: BaseImportOptions = {}) {
+    this.input = Disk.dir(options?.files?.input ?? path.join('input', this.name));
+    this.cache = Disk.dir(options?.files?.cache ?? path.join('cache', this.name));
+    this.output = Disk.dir(options?.files?.input ?? path.join('output', this.name));
   }
 
   get name(): string {
-    return this.options.name ?? Text.kebabCase(this.constructor.name);
+    return this.options.importName ?? Text.toCase.kabob(this.constructor.name);
   }
 
   get db(): Database {
@@ -62,18 +66,6 @@ export abstract class BaseImport<CacheType = unknown> {
       this.options.db = new Database();
     }
     return this.options.db;
-  }
-
-  get files(): Filestore {
-    if (this.options.files instanceof Filestore) {
-      return this.options.files;
-    } else {
-      this.options.files = new Filestore({
-        bucket: this.name,
-        ...this.options.files
-      });
-      return this.options.files;
-    }
   }
 
   log(...data: unknown[]) {

@@ -78,9 +78,9 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   async loadCache(): Promise<TwitterImportCache> {
     this.cacheData = makeFreshCache();
 
-    const tweetFiles = await this.files.findCache('tweets/tweet-*.json');
+    const tweetFiles = await this.cache.findAsync('tweets/tweet-*.json');
     for (const tf of tweetFiles) {
-      const t = (await this.files.readCache(tf)) as TwitterPost;
+      const t = this.cache.read(tf, 'auto') as TwitterPost;
       this.cacheData.tweets.set(t.id, t);
       this.addToThread(t);
     }
@@ -94,7 +94,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
   async fillCache(): Promise<TwitterImportCache> {
     // Look for all available archive files; batch em up and let em rip
-    let archives = (await this.files.findInput('twitter-*.zip')).sort();
+    let archives = (await this.input.findAsync('twitter-*.zip')).sort();
     if (this.options.archive === 'newest') {
       archives = archives.slice(-1);
     } else if (this.options.archive === 'oldest') {
@@ -102,8 +102,8 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     }
 
     for (const a of archives) {
-      const buffer = this.files.readInput(a, { parse: false });
-      const archive = new TwitterArchive(buffer, {
+      const buffer = this.input.read(a, 'buffer');
+      const archive = new TwitterArchive(buffer!, {
         ignore: ['ad', 'block', 'dm', 'moment', 'mute']
       });
       await archive.ready();
@@ -112,7 +112,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
         archive.generation_date,
         'yyyy-MM-dd'
       )}-archive.json`;
-      if (this.files.existsCache(archiveInfoPath)) {
+      if (this.cache.exists(archiveInfoPath)) {
         this.log(
           'Skipping %s archive for %s (already cached)',
           formatDate(archive.generation_date, 'yyyy-MM-dd'),
@@ -129,7 +129,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
         );
       }
 
-      await this.files.writeCache(archiveInfoPath, {
+      await this.cache.writeAsync(archiveInfoPath, {
         hash: archive.synthetic_info.hash,
         ...archive.synthetic_info.info.user,
         tweets: archive.synthetic_info.tweet_count ?? 0,
@@ -188,11 +188,11 @@ export class Twitter extends BaseImport<TwitterImportCache> {
           .parse(variant?.url ?? me.media_url_https)
           .base.split('?')[0];
 
-        if (!this.files.existsCache(filename)) {
+        if (!this.cache.exists(filename)) {
           try {
             const ab = await archive.medias.fromTweetMediaEntity(me, true);
             const buffer = Buffer.from(ab as ArrayBuffer);
-            await this.files.writeCache(`media/${filename}`, buffer);
+            await this.cache.writeAsync(`media/${filename}`, buffer);
           } catch (err: unknown) {
             this.log(`Couldn't read ${filename} from archive`);
             // Swallow this; it generally means the tweet is a RT with media,
@@ -209,7 +209,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
       this.cacheData.tweetIndex.batchedvalues()
     )) {
       for (const [list, tweets] of Object.entries(lists)) {
-        this.files.writeCache(`${handle}/${list}.json`, tweets);
+        this.cache.write(`${handle}/${list}.json`, tweets);
       }
     }
   }
@@ -230,19 +230,19 @@ export class Twitter extends BaseImport<TwitterImportCache> {
   }
 
   async getTweet(id: string | number): Promise<TwitterPost | undefined> {
-    return this.files.readCache(`tweet/tweed-${id}.json`);
+    return this.cache.readAsync(`tweet/tweed-${id}.json`, 'auto');
   }
 
   protected tweetIsCached(id: string) {
-    return this.files.existsCache(
+    return this.cache.exists(
       `(tweets, favorites, retweets)/tweet-${id}.json`
     );
   }
 
   protected tweetHasScreenshot(id: string) {
     return (
-      this.files.existsCache(`screenshots/tweet-${id}.jpeg`) ||
-      this.files.existsCache(`screenshots/tweet-${id}.png`)
+      this.cache.exists(`screenshots/tweet-${id}.jpeg`) ||
+      this.cache.exists(`screenshots/tweet-${id}.png`)
     );
   }
 
@@ -351,7 +351,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
     // If the tweet isn't already written to disk, push it to be sure
     if (!this.tweetIsCached(tweet.id) || options.force) {
-      await this.files.writeCache(this.pathToTweet(tweet), tweet);
+      await this.cache.writeAsync(this.pathToTweet(tweet), tweet);
     }
 
     return Promise.resolve(tweet);
@@ -417,8 +417,8 @@ export class Twitter extends BaseImport<TwitterImportCache> {
 
   async populateFavorites() {
     let favs = 0;
-    for (const file of await this.files.findCache('favorites/tweet-*.json')) {
-      let tweet = (await this.files.readCache(file)) as TwitterPost;
+    for (const file of this.cache.find({ matching: 'favorites/tweet-*.json' })) {
+      let tweet = this.cache.read(file, 'auto') as TwitterPost;
       if (tweet.fromFav && !tweet.favScraped) {
         tweet = await this.scrapeTweet(tweet, 'basic');
         if (!tweet.errors) tweet.favScraped = true;
@@ -450,7 +450,7 @@ export class Twitter extends BaseImport<TwitterImportCache> {
     tweet = this._mergeScrapedData(tweet, scraped);
     if (screenshot) {
       const screenshotPath = `screenshots/${tweet.id}.${screenshotFormat}`;
-      await this.files.writeCache(screenshotPath, screenshot);
+      await this.cache.writeAsync(screenshotPath, screenshot);
       tweet.screenshot = screenshotPath;
     }
     return Promise.resolve(tweet);

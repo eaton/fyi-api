@@ -181,7 +181,7 @@ export class UrlImport extends BaseImport {
       if (opt.saveBody) {
         const ft = await fileTypeFromBuffer(buffer);
         const extension = ft?.ext ?? 'bin';
-        await this.files.writeCache(
+        await this.cache.writeAsync(
           `${name ?? 'page'}-body.${extension}`,
           buffer
         );
@@ -196,7 +196,7 @@ export class UrlImport extends BaseImport {
         await page
           .content()
           .then((html) =>
-            this.files.writeCache(`${name ?? 'page'}-response.json`, raw)
+            this.cache.write(`${name ?? 'page'}-response.json`, raw)
           );
       }
     }
@@ -213,13 +213,13 @@ export class UrlImport extends BaseImport {
       await page
         .content()
         .then((html) =>
-          this.files.writeCache(`${name ?? 'page'}-dom.html`, html)
+          this.cache.write(`${name ?? 'page'}-dom.html`, html)
         );
     }
 
     if (opt.savePdf && opt.savePdf !== true) {
       const buffer = await page.pdf(opt.savePdf);
-      await this.files.writeCache(`${name ?? 'page'}.pdf`, buffer);
+      await this.cache.writeAsync(`${name ?? 'page'}.pdf`, buffer);
     }
 
     if (opt.saveScreenshot && opt.saveScreenshot !== true) {
@@ -236,7 +236,7 @@ export class UrlImport extends BaseImport {
         .content()
         .then((html) => Html.extract(html, opt.saveData!))
         .then((data) =>
-          this.files.writeCache(`${name ?? 'page'}-data.json`, data)
+          this.cache.write(`${name ?? 'page'}-data.json`, data)
         );
     }
   }
@@ -250,7 +250,7 @@ export class UrlImport extends BaseImport {
       await page.setViewportSize(options.viewport);
     }
     const buffer = await page.screenshot(options);
-    return this.files.writeCache(
+    return this.cache.write(
       `${name ?? 'page'}.${hash}.${options.type}`,
       buffer
     );

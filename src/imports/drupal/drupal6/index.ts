@@ -134,7 +134,7 @@ export class Drupal6Import extends BaseImport<Drupal6CacheData> {
       data.nodes[v.nid] = v;
 
       // Write the node
-      await this.files.writeCache(`nodes/node-${v.type}-${v.nid}.json`, v);
+      await this.cache.writeAsync(`nodes/node-${v.type}-${v.nid}.json`, v);
     }
 
     for (const v of tables.users) {
@@ -142,27 +142,27 @@ export class Drupal6Import extends BaseImport<Drupal6CacheData> {
 
       fixDate(v);
       data.users[v.uid] = v;
-      await this.files.writeCache(
+      await this.cache.writeAsync(
         `users/user-${slugify(v.name)}-${v.uid}.json`,
         v
       );
     }
     for (const v of tables.terms) {
       data.terms[v.tid] = v;
-      await this.files.writeCache(`terms/term-${v.tid}.json`, v);
+      await this.cache.writeAsync(`terms/term-${v.tid}.json`, v);
     }
     for (const v of tables.comments) {
       fixDate(v);
       data.comments[v.cid] = v;
-      await this.files.writeCache(`comments/comment-${v.cid}.json`, v);
+      await this.cache.writeAsync(`comments/comment-${v.cid}.json`, v);
     }
     for (const v of tables.aliases) {
       data.aliases[v.alias] = v.source;
     }
-    await this.files.writeCache(`aliases.json`, data.aliases);
+    await this.cache.writeAsync(`aliases.json`, data.aliases);
 
     for (const [table, values] of Object.entries(tables.extraTables)) {
-      await this.files.writeCache(`${table}.json`, values);
+      await this.cache.writeAsync(`${table}.json`, values);
     }
 
     return Promise.resolve(data);

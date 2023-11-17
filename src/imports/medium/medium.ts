@@ -25,19 +25,19 @@ export class Medium extends BaseImport {
    */
   async fillCache() {
     const user = await this.parseUserProfile();
-    if (!this.files.existsCache(`user-${user.name}.json`)) {
-      await this.files.writeCache(`user-${user.name}.json`, user);
+    if (!this.cache.exists(`user-${user.name}.json`)) {
+      await this.cache.writeAsync(`user-${user.name}.json`, user);
     }
 
     let template: JsonTemplate = {};
     const files = {
-      posts: await this.files.findInput('posts/*.html'),
-      lists: await this.files.findInput('lists/*:*.html'),
-      claps: await this.files.findInput('claps/claps-*.html'),
-      bookmarks: await this.files.findInput('bookmarks/bookmarks-*.html')
+      posts: await this.input.findAsync('posts/*.html'),
+      lists: await this.input.findAsync('lists/*:*.html'),
+      claps: await this.input.findAsync('claps/claps-*.html'),
+      bookmarks: await this.input.findAsync('bookmarks/bookmarks-*.html')
     };
 
-    if (!this.files.existsCache(`claps.json`)) {
+    if (!this.cache.exists(`claps.json`)) {
       const claps: Record<string, unknown>[] = [];
       template = [
         {
@@ -49,15 +49,15 @@ export class Medium extends BaseImport {
         }
       ];
       for (const file of files.claps) {
-        const extracted = await this.files
-          .readInput(file)
-          .then((data) => Html.extract(data, template));
+        const extracted = await this.input
+          .readAsync(file)
+          .then((data) => Html.extract(data ?? '', template));
         claps.push(...(extracted as Record<string, unknown>[]));
       }
-      await this.files.writeCache('claps.json', claps);
+      await this.cache.writeAsync('claps.json', claps);
     }
 
-    if (!this.files.existsCache(`lists.json`)) {
+    if (!this.cache.exists(`lists.json`)) {
       const lists: Record<string, unknown> = {};
       template = {
         title: 'h1.p-name',
@@ -71,19 +71,20 @@ export class Medium extends BaseImport {
           }
         ]
       };
+      
       for (const file of files.lists) {
-        const extracted = (await this.files
-          .readInput(file)
-          .then((data) => Html.extract(data, template))) as Record<
+        const extracted = await this.input
+          .readAsync(file)
+          .then((data) => Html.extract(data ?? '', template)) as Record<
           string,
           unknown
         >;
         lists[extracted?.title?.toString() ?? ''] = extracted;
       }
-      await this.files.writeCache('lists.json', lists);
+      await this.cache.writeAsync('lists.json', lists);
     }
 
-    if (!this.files.existsCache(`bookmarks.json`)) {
+    if (!this.cache.exists(`bookmarks.json`)) {
       const bookmarks: Record<string, unknown>[] = [];
       template = [
         {
@@ -94,12 +95,12 @@ export class Medium extends BaseImport {
         }
       ];
       for (const file of files.bookmarks) {
-        const extracted = await this.files
-          .readInput(file)
-          .then((data) => Html.extract(data, template));
+        const extracted = await this.input
+          .readAsync(file)
+          .then((data) => Html.extract(data ?? '', template));
         bookmarks.push(...(extracted as Record<string, unknown>[]));
       }
-      await this.files.writeCache('bookmarks.json', bookmarks);
+      await this.cache.writeAsync('bookmarks.json', bookmarks);
     }
 
     const posts: Record<string, Partial<MediumArticle>> = {};
@@ -109,8 +110,8 @@ export class Medium extends BaseImport {
     }
 
     for (const post of Object.values(posts)) {
-      if (!this.files.existsCache(`posts/post-${post.id}.json`)) {
-        await this.files.writeCache(`posts/post-${post.id}.json`, post);
+      if (!this.cache.exists(`posts/post-${post.id}.json`)) {
+        await this.cache.writeAsync(`posts/post-${post.id}.json`, post);
       }
     }
 
@@ -119,7 +120,7 @@ export class Medium extends BaseImport {
 
   protected async parseUserProfile(): Promise<Partial<MediumUserInfo>> {
     let $ = Html.toCheerio(
-      (await this.files.readInput('profile/about.html')) ?? ''
+      (await this.input.readAsync('profile/about.html')) ?? ''
     );
     const archive_exported_at = $('footer p').text().slice(24, -1).trim();
 
@@ -133,8 +134,8 @@ export class Medium extends BaseImport {
       twitter_id: 'li:nth(6) | split:: | pop'
     };
 
-    const profile = (await this.files
-      .readInput('profile/profile.html')
+    const profile = (await this.input
+      .readAsync('profile/profile.html')
       .then((data) => (data ? Html.extract(data, template) : {}))) as Record<
       string,
       unknown
@@ -156,8 +157,8 @@ export class Medium extends BaseImport {
         }
       ]
     };
-    const publications = (await this.files
-      .readInput('profile/publications.html')
+    const publications = (await this.input
+      .readAsync('profile/publications.html')
       .then((data) => (data ? Html.extract(data, template) : {}))) as Record<
       string,
       unknown
@@ -192,8 +193,8 @@ export class Medium extends BaseImport {
         url: '| attr:href'
       }
     };
-    const extracted = await this.files
-      .readInput(file)
+    const extracted = await this.input
+      .readAsync(file)
       .then((data) => (data ? Html.extract(data, template) : {}));
     const post: Partial<MediumArticle> = { id, filename, ...extracted, draft };
     return Promise.resolve(post);
