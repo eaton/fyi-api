@@ -6,6 +6,8 @@ import * as ss from 'superstruct';
 export interface ArticleScraperOptions extends BaseImportOptions, ScraperImportOptions {
   template?: Html.CheerioExtractTemplate,
   images?: boolean | string,
+  urls?: string[],
+  baseUrl?: string,
 }
 
 const ScrapedArticleSchema = ss.object({
@@ -68,7 +70,7 @@ export class ArticleScraper extends BaseImport<Map<string, ScrapedArticle>> {
       this.cacheData = new Map<string, ScrapedArticle>();
     }
     
-    const toScrape: string[] = [];
+    const toScrape: string[] = this.options.urls ?? [];
 
     // Find any of the incoming urls that aren't in the already-cached data.
     this.input.find({ matching: '*.{csv,txt,tsv}' }).forEach(f => {
@@ -79,13 +81,13 @@ export class ArticleScraper extends BaseImport<Map<string, ScrapedArticle>> {
     });
 
     if (toScrape.length) {
-      await this.scrape(toScrape);
+      await this.scrape(toScrape.map(u => new URL(u, this.options.baseUrl)));
     }
 
     return Promise.resolve(this.cacheData);    
   }
 
-  async scrape(urls: string[]) {
+  async scrape(urls: URL[]) {
     return new PlaywrightCrawler({
       requestHandler: async (context) => {
 
@@ -110,6 +112,6 @@ export class ArticleScraper extends BaseImport<Map<string, ScrapedArticle>> {
         }
         return Promise.resolve();
       }
-    }).run(urls);
+    }).run(urls.map(u => u.href));
   }
 }
