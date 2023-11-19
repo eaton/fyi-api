@@ -1,7 +1,7 @@
 import { finished } from 'stream/promises';
 import { Readable } from "stream";
 import { ReadableStream } from "stream/web";
-import { ArticleScraper } from "./index.js";
+import { ArticleScraper } from "../index.js";
 import { Dates, Html, Markdown } from 'mangler';
 import path from 'path';
 

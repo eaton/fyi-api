@@ -1,8 +1,9 @@
+import { BaseImport, BaseImportOptions } from './base-import.js';
+
 import { ParsedUrl } from '@autogram/url-tools';
 import { CheerioCrawler, Request } from 'crawlee';
 import * as cheerio from 'cheerio';
 
-import { BaseImport, BaseImportOptions } from '../index.js';
 import { isString } from '@sindresorhus/is';
 
 export type MetafilterUserData = Record<string, unknown> & {

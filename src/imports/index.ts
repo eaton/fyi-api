@@ -16,3 +16,4 @@ export * from './wordpress/index.js';
 export * from './drupal/index.js';
 export * from './facebook/index.js';
 export * from './url-import.js';
+export * from './scraped-articles.js';

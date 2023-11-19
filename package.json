@@ -119,6 +119,7 @@
     "protocolify": "^4.0.0",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "remeda": "^1.27.1",
+    "superstruct": "^1.0.3",
     "textile-js": "^2.1.1",
     "ts-node": "^10.9.1",
     "tumblr.js": "^4.0.1",
