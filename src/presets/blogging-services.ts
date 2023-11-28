@@ -12,14 +12,14 @@ const lj = new Livejournal({
   importName: '2001-livejournal',
   files: { input: process.env.LIVEJOURNAL_INPUT }
 });
-await lj.doImport();
+if ( 0 ) await lj.doImport();
 
 const mt = new MovableType({
   importName: '2004-viapositiva1',
   authors: [4],
   database: { ...auth, dbName: process.env.MOVABLETYPE_DBNAME ?? '' }
 });
-await mt.doImport();
+if ( 0 ) await mt.doImport();
 
 const tbl = new Tumblr({
   importName: '2005-tumblr',
@@ -36,4 +36,4 @@ const med = new Medium({
   importName: '2013-medium',
   files: { input: process.env.MEDIUM_INPUT }
 });
-await med.fillCache();
+if ( 0 ) await med.fillCache();

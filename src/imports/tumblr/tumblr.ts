@@ -1,6 +1,7 @@
 import { BaseImport, BaseImportOptions } from '../../index.js';
 import { Client } from 'tumblr.js';
 import { TumblrUser, TumblrPost, TumblrBlog } from './types.js';
+import { Dates, Markdown } from 'mangler';
 
 export interface TumblrImportOptions extends BaseImportOptions {
   auth?: {
@@ -11,7 +12,12 @@ export interface TumblrImportOptions extends BaseImportOptions {
   };
 }
 
-export class Tumblr extends BaseImport {
+type TumblrCache = {
+  blogs: Record<string, TidyBlog>,
+  posts: TidyPost[],
+};
+
+export class Tumblr extends BaseImport<TumblrCache> {
   declare options: TumblrImportOptions;
 
   collections = ['tumblr_user', 'tumblr_blog', 'tumblr_post'];
@@ -20,15 +26,94 @@ export class Tumblr extends BaseImport {
     super(options);
   }
 
-  async fillCache(): Promise<void> {
-    if (this.options.auth) {
-      return this.fillCacheFromApi();
-    } else {
-      this.log('No cached data, no API auth keys provided.');
+  async doImport(): Promise<void> {
+    const cache = await this.loadCache();
+    const out = this.output;
+
+    for (const post of cache.posts) {
+      if (post.body) {
+        let content = Markdown.fromHtml(post.body);
+        const extraData: Record<string, unknown> = {};
+
+        if (post.tags && post.tags.length) {
+          extraData['tags'] = post.tags;
+        }
+
+        if (post.type === 'photo') {
+          if (post.source_url) {
+            content = `[![${post.source_title}](${post.url})](${post.source_url})\n\n${content}`;
+          } else {
+            content = `![](${post.url})\n\n${content}`;
+          }
+        } else if (post.type === 'link') {
+          if (post.source_title === 'metafilter.com') continue;
+          if (post.source_url) {
+            // Via...
+            content = `Via [${post.source_title}](${post.source_url})], [${post.title}](${post.url})]\n\n${content}`;
+          } else {
+            content = `[${post.title}](${post.url})]\n\n${content}`;
+          }
+        } else if (post.type === 'video') {
+          
+        }
+
+        const file = {
+          data: {
+            title: post.title ?? '',
+            date: post.date,
+            slug: post.slug ?? '',
+            from: post.blog,
+            fromLink: post.post_url,
+            ...extraData
+          },
+          content
+        };
+        const date = post.date.split(' ')[0];
+        out.write(`${date}-${post.slug}.md`, file);
+      } else { 
+        this.log(`No body; skipping ${post.post_url}`);
+      }
     }
+
+    return Promise.resolve();
   }
 
-  async fillCacheFromApi(): Promise<void> {
+  async loadCache(): Promise<TumblrCache> {
+    this.cacheData = {
+      blogs: {},
+      posts: []
+    };
+
+    this.cache.find({ matching: '*/blog-*.json' })
+      .forEach(file => {
+        const blog = this.cache.read(file, 'auto') as TidyBlog;
+        this.cacheData!.blogs[blog.name] = blog;
+      });
+
+    this.cache.find({ matching: '*/post-*.json' })
+      .forEach(file => {
+        const post = this.cache.read(file, 'auto') as TidyPost;
+        this.cacheData!.posts.push(post);
+      });
+    
+    if (!Object.entries(this.cacheData.blogs).length && !this.cacheData.posts.length) {
+      await this.fillCache();
+    }
+
+    return Promise.resolve(this.cacheData); 
+  }
+
+  async fillCache(): Promise<TumblrCache> {
+    this.cacheData ??= {
+      blogs: {},
+      posts: []
+    };
+
+    if (!this.options.auth) {
+      this.log('No cached data, no API auth keys provided.');
+      return Promise.resolve(this.cacheData);
+    }
+
     const t = new Client(this.options.auth);
 
     const userInfoResponse: TumblrUser = await t.userInfo();
@@ -40,9 +125,9 @@ export class Tumblr extends BaseImport {
 
     for (const blogInfo of user.blogs) {
       await this.cache.writeAsync(
-        `${blogInfo.name}/blog-${blogInfo.name}.json`,
-        this.tidyBlog(blogInfo)
+        `${blogInfo.name}/blog-${blogInfo.name}.json`, this.tidyBlog(blogInfo)
       );
+      this.cacheData.blogs[blogInfo.name] = this.tidyBlog(blogInfo);
 
       const blogPostsResponse = (await t.blogPosts(blogInfo.name)) as {
         posts: TumblrPost[];
@@ -53,22 +138,23 @@ export class Tumblr extends BaseImport {
           `${blogInfo.name}/post-${date}-${post.slug}.json`,
           this.tidyPost(post)
         );
+        this.cacheData.posts.push(this.tidyPost(post));
       }
     }
 
     this.log(`Cached ${user.blogs.length} blogs associated with ${user.name}`);
 
-    return Promise.resolve();
+    return Promise.resolve(this.cacheData);
   }
 
-  protected tidyPost(post: TumblrPost) {
+  tidyPost(post: TumblrPost) {
     return {
       type: post.type,
       blog: post.blog_name,
       id: post.id_string,
       post_url: post.post_url,
       slug: post.slug,
-      date: post.date,
+      date: Dates.parseJSON(post.date).toISOString(),
       title: post.title ?? undefined,
       url:
         post.url ??
@@ -88,7 +174,7 @@ export class Tumblr extends BaseImport {
     };
   }
 
-  protected tidyUser(user: TumblrUser) {
+  tidyUser(user: TumblrUser) {
     return {
       name: user.user.name,
       likes: user.user.likes,
@@ -97,7 +183,7 @@ export class Tumblr extends BaseImport {
     };
   }
 
-  protected tidyBlog(blog: TumblrBlog) {
+  tidyBlog(blog: TumblrBlog) {
     return {
       id: blog.uuid,
       name: blog.name,
@@ -110,3 +196,6 @@ export class Tumblr extends BaseImport {
     };
   }
 }
+
+type TidyPost = ReturnType<Tumblr['tidyPost']>;
+type TidyBlog = ReturnType<Tumblr['tidyBlog']>;
