@@ -37,12 +37,10 @@ const goddy = new Drupal7Import({
     field_product: ['asin'],
     field_money_quote: ['value'],
     upload: ['fid', 'description'],
-    field_link: ['url', 'title']
+    field_link: ['url', 'title'],
   },
   extraTables: ['files', 'file_managed', 'amazon_item', 'amazon_book'],
-  ignoreUids: [
-    0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
-  ]
+  ignoreUids: [ 0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ]
 });
 await goddy.fillCache();
 

@@ -3,7 +3,7 @@ import {
   BaseImportOptions,
   DatabaseImportOptions
 } from '../../index.js';
-import { Textile } from 'mangler';
+import { Html, Markdown, Text, Textile } from 'mangler';
 import is from '@sindresorhus/is';
 import slugify from '@sindresorhus/slugify';
 import mysql from 'mysql2/promise';
@@ -162,15 +162,6 @@ export class MovableType extends BaseImport<MTData> {
     return Promise.resolve(output);
   }
 
-  async output11ty(data: MTData) {
-    /**
-    for (const entry of Object.values(data.entries)) {
-      const post = {}
-    }
-    return {}
-    */
-  }
-
   async outputArangoDb(data: MTData) {}
 
   protected tablesToData(tables: MovableTypeTables): MTData {
@@ -255,8 +246,58 @@ export class MovableType extends BaseImport<MTData> {
     return input;
   }
 
-  protected filterText(text: string, format: string) {
-    return text;
+  async output11ty(cache: MTData) {
+    // Let's stop pretending and hard code this.
+    const uid = 4;
+
+    for (const entry of Object.values(cache.entries)) {
+      if (entry.author !== uid) continue;
+
+      const blog = cache.blogs[entry.blog];
+      const comments = Object.values(cache.comments).filter(c => c.entry === entry.id);
+
+      let content = this.textToHtml(entry.body, entry.format);
+      if (entry.extended) {
+        content += this.textToHtml(entry.extended, entry.format);
+      }
+      content = Markdown.fromHtml(content);
+      content = genericizeImageUrls(content);
+
+      let longDate = '';
+      let shortDate = '';
+
+      if (is.date(entry.date)) {
+        shortDate = entry.date.toISOString().split('T')[0];
+        longDate = entry.date.toISOString();
+      } else {
+        shortDate = entry.date.split('T')[0];
+        longDate = entry.date;
+      }
+      const slug = Text.toSlug(entry.title);
+
+      const extra: Record<string, unknown> = {
+        platform: 'movabletype',
+        id: entry.id,
+        ...entry.keywords ?? {}
+      };
+      if (comments.length) extra.comments = comments.length;
+
+      const data = {
+        date: longDate,
+        title: entry.title,
+        slug,
+        publisher: Text.toSlug(blog.name),
+        extra
+      };
+
+      this.output.write(`${shortDate}-${slug}.md`, { data, content });
+      this.log(`Wrote ${shortDate}-${slug}.md`);
+    }
+    
+    return Promise.resolve();
+  }
+
+  protected textToHtml(text: string, format: string) {
     if (format === 'textile_2') {
       return Textile.toHtml(text);
     } else if (format === '__default__') {
@@ -267,8 +308,13 @@ export class MovableType extends BaseImport<MTData> {
   }
 }
 
+function genericizeImageUrls(markdown: string) {
+  const search = /http:\/\/.+\.viapositiva\.net\/images\//g;
+  return markdown.replace(search, '/images/viapositiva/')
+}
+
 function mtLinebreaks(text: string) {
-  return text;
+  return Html.fromText(text, { urls: false, entities: false });
 }
 
 function ultraTrim(input: string | null | undefined) {

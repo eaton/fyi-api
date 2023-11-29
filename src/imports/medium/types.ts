@@ -30,4 +30,5 @@ export type MediumArticle = {
   reading_time: number;
   responses_count: number;
   voters: number;
+  markdown?: string
 };

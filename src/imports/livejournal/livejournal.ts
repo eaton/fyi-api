@@ -1,7 +1,7 @@
 import { BaseImport } from '../../index.js';
 import { decode } from 'entities';
 import path from 'path';
-import { Html, Livejournal as LjMarkup } from 'mangler';
+import { Html, Livejournal as LjMarkup, Markdown, Text } from 'mangler';
 
 type LivejournalEntry = {
   itemid: number;
@@ -30,18 +30,91 @@ type LivejournalComment = {
   };
 };
 
-export class Livejournal extends BaseImport {
+type LjCacheData = {
+  entries: LivejournalEntry[],
+  comments: LivejournalComment[],
+}
+
+export class Livejournal extends BaseImport<LjCacheData> {
   collections = ['lj_entry', 'lj_comment'];
 
   async doImport(): Promise<void> {
     await this.ensureSchema();
-    await this.fillCache();
+    await this.loadCache();
+
+    for (const ent of this.cacheData?.entries ?? []) {
+      const entryDate = ent.eventtime.split('T')[0];
+
+      const extra: Record<string, string | number> = {
+        platform: 'livejournal',
+        id: ent.itemid
+      };
+      if (ent.current_mood) extra.mood = ent.current_mood;
+      if (ent.current_music) extra.music = ent.current_music;
+      if (ent.avatar) extra.avatar = ent.avatar;
+
+      const com = (this.cacheData?.comments.filter(c => c.entry_itemid === ent.itemid) ?? []).length;
+      if (com > 0) extra.comments = com;
+      
+      const data = {
+        title: ent.subject ? ent.subject : entryDate,
+        slug: Text.toSlug(ent.subject ? ent.subject : entryDate),
+        date: ent.eventtime,
+        publisher: 'livejournal',
+        extra,
+      };
+
+      const filename = entryDate + '-' + Text.toSlug(ent.subject ? ent.subject : 'untitled') + '.md';
+      const content = Markdown.fromHtml(
+        Html.fromText(ent.event, { entities: false, urls: false, paragraphs: true })
+      ).replaceAll('\\*', '*').replaceAll('\\_', '_');
+
+      if (ent.backdated) {
+        data.publisher = 'txt';
+        data.extra = {};
+        const textfiles = this.output.dir('../textfiles');
+        console.log(textfiles.path(filename));
+        textfiles.write(filename, { content, data });
+      } else {
+        console.log(this.output.path(filename));
+        this.output.write(filename, { content, data });
+      }
+    }
+
     return Promise.resolve();
   }
 
-  async fillCache(): Promise<void> {
+  async loadCache() {
+    this.cacheData ??= {
+      entries: [],
+      comments: []
+    }
+
+    for (const file of this.cache.find({ matching: 'entries/*.json' })) {
+      const entry = this.cache.read(file, 'auto') as LivejournalEntry;
+      this.cacheData.entries.push(entry);
+    }
+
+    for (const file of this.cache.find({ matching: 'comments/*.json' })) {
+      const comment = this.cache.read(file, 'auto') as LivejournalComment;
+      this.cacheData.comments.push(comment);
+    }
+
+    if (this.cacheData.entries.length === 0 && this.cacheData.entries.length === 0) {
+      return this.fillCache();
+    }
+    
+    return Promise.resolve(this.cacheData);
+  }
+
+  async fillCache() {
+    this.cacheData ??= {
+      entries: [],
+      comments: []
+    }
     await this.parseXmlFiles();
     await this.parseSemagicFiles();
+    return Promise.resolve(this.cacheData);
   }
 
   /**
@@ -64,8 +137,11 @@ export class Livejournal extends BaseImport {
       const $ = await this.input
         .readAsync(path)
         .then((data) => Html.toCheerio(data ?? '', { xmlMode: true }));
-      const entries: LivejournalEntry[] = [];
-      const comments: LivejournalComment[] = [];
+
+      this.cacheData ??= {
+        entries: [],
+        comments: []
+      }
 
       // Currently hard-coded for my own purposes. Blah.
       const firstPostDate = new Date('2001-06-04T21:45:00');
@@ -90,7 +166,7 @@ export class Livejournal extends BaseImport {
           entry.event = LjMarkup.cutBody(processed);
           if (entry.cut === entry.event) delete entry.cut;
 
-          entries.push(entry);
+          this.cacheData?.entries.push(entry);
 
           $(rawEntry)
             .find('comment')
@@ -113,19 +189,19 @@ export class Livejournal extends BaseImport {
                   email: $(rawComment).find('author email').text() ?? undefined
                 }
               };
-              comments.push(comment);
+              this.cacheData?.comments.push(comment);
             });
         });
 
-      for (const entry of entries) {
+      for (const entry of this.cacheData?.entries ?? []) {
         this.cache.write(`entries/${entry.itemid}.json`, entry);
       }
-      for (const comment of comments) {
+      for (const comment of this.cacheData?.comments ?? []) {
         this.cache.write(`comments/${comment.itemid}.json`, comment);
       }
 
       this.log(
-        `${entries.length} entries with ${comments.length} comments found in ${path}.`
+        `${this.cacheData?.entries?.length ?? 0} entries with ${this.cacheData?.comments?.length ?? 0} comments found in ${path}.`
       );
     }
 
@@ -143,6 +219,11 @@ export class Livejournal extends BaseImport {
    * somewhere, but I only have like 20 of these files so this is good enough.
    */
   async parseSemagicFiles() {
+    this.cacheData ??= {
+      entries: [],
+      comments: []
+    }
+
     let tempFiles = await this.input.findAsync({ matching: '*.slj' });
     const entries: LivejournalEntry[] = [];
 
@@ -150,7 +231,7 @@ export class Livejournal extends BaseImport {
       const tempId = Number.parseInt(
         path.parse(file).name.replace('predicate.predicate.', '')
       );
-      const tempDate = this.input.inspect(file)?.birthTime?.toISOString();
+      const tempDate = this.input.inspect(file, { times: true })?.birthTime?.toISOString();
 
       entries.push(
         await this.populateFromSljBuffer(
@@ -165,6 +246,7 @@ export class Livejournal extends BaseImport {
 
     const toExport = entries.filter((e) => e.itemid > 0);
     for (const entry of toExport) {
+      this.cacheData.entries.push(entry);
       this.cache.write(`entries/${entry.itemid}.json`, entry);
     }
     this.log(`${toExport.length} entries found in in .slj files.`);

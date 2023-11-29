@@ -15,7 +15,7 @@ const lj = new Livejournal({
 if ( 0 ) await lj.doImport();
 
 const mt = new MovableType({
-  importName: '2004-viapositiva1',
+  importName: '2004-viapositiva',
   authors: [4],
   database: { ...auth, dbName: process.env.MOVABLETYPE_DBNAME ?? '' }
 });
@@ -30,10 +30,10 @@ const tbl = new Tumblr({
     token_secret: process.env.TUMBLR_TOKEN_SECRET ?? ''
   }
 });
-await tbl.doImport();
+if ( 0 ) await tbl.doImport();
 
 const med = new Medium({
   importName: '2013-medium',
   files: { input: process.env.MEDIUM_INPUT }
 });
-if ( 0 ) await med.fillCache();
+await med.fillCache();

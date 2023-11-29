@@ -1,7 +1,7 @@
 import { JsonTemplate } from 'cheerio-json-mapper';
 import { BaseImport } from '../../index.js';
 import { MediumUserInfo, MediumArticle } from './types.js';
-import { Html } from 'mangler';
+import { Html, Markdown } from 'mangler';
 
 export class Medium extends BaseImport {
   collections = ['medium_post', 'medium_user'];
@@ -196,7 +196,15 @@ export class Medium extends BaseImport {
     const extracted = await this.input
       .readAsync(file)
       .then((data) => (data ? Html.extract(data, template) : {}));
-    const post: Partial<MediumArticle> = { id, filename, ...extracted, draft };
+
+    let markdown = '';
+    if ('content' in extracted && typeof extracted.content === 'string') {
+      markdown = Markdown.fromHtml(extracted.content)
+    }
+    
+    const post: Partial<MediumArticle> = {
+      id, filename, ...extracted, markdown, draft
+    };
     return Promise.resolve(post);
   }
 }

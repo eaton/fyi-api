@@ -44,6 +44,7 @@ export type MTEntry = {
   body: string;
   extended?: string;
   keywords?: Record<string, string>;
+  format: string,
 };
 
 export type MTComment = {

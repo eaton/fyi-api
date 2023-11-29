@@ -33,43 +33,43 @@ export class Tumblr extends BaseImport<TumblrCache> {
     for (const post of cache.posts) {
       if (post.body) {
         let content = Markdown.fromHtml(post.body);
-        const extraData: Record<string, unknown> = {};
+        const extra: Record<string, unknown> = {
+          platform: 'tumblr',
+          id: post.id,
+        };
 
-        if (post.tags && post.tags.length) {
-          extraData['tags'] = post.tags;
-        }
+        let originalUrl = post.post_url;
 
         if (post.type === 'photo') {
+          // download the photo
           if (post.source_url) {
             content = `[![${post.source_title}](${post.url})](${post.source_url})\n\n${content}`;
           } else {
             content = `![](${post.url})\n\n${content}`;
           }
-        } else if (post.type === 'link') {
+        } else if (post.type === 'link' || post.type === 'video') {
+          originalUrl = post.url?.toString() ?? originalUrl;
           if (post.source_title === 'metafilter.com') continue;
           if (post.source_url) {
-            // Via...
-            content = `Via [${post.source_title}](${post.source_url})], [${post.title}](${post.url})]\n\n${content}`;
-          } else {
-            content = `[${post.title}](${post.url})]\n\n${content}`;
+            content = `Via [${post.source_title}](${post.source_url})]...\n\n${content}`;
           }
-        } else if (post.type === 'video') {
-          
         }
 
-        const file = {
-          data: {
-            title: post.title ?? '',
-            date: post.date,
-            slug: post.slug ?? '',
-            from: post.blog,
-            fromLink: post.post_url,
-            ...extraData
-          },
-          content
+        const data: Record<string, unknown> = {
+          title: post.title ?? '',
+          date: post.date,
+          slug: post.slug ?? '',
+          publisher: post.blog,
+          url: originalUrl,
+          ...extra
         };
+
+        if (post.tags && post.tags.length) {
+          extra['tags'] = post.tags;
+        }
+
         const date = post.date.split(' ')[0];
-        out.write(`${date}-${post.slug}.md`, file);
+        out.write(`${post.blog}/${date}-${post.slug}.md`, { data, content });
       } else { 
         this.log(`No body; skipping ${post.post_url}`);
       }
