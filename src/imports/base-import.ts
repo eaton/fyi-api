@@ -57,11 +57,11 @@ export abstract class BaseImport<CacheType = unknown> {
       const base = Disk.dir(options.files?.base);
       this.input = base.dir(options?.files?.input ?? path.join('input', this.name));
       this.cache = base.dir(options?.files?.cache ?? path.join('cache', this.name));
-      this.output = base.dir(options?.files?.input ?? path.join('output', this.name));
+      this.output = base.dir(options?.files?.output ?? path.join('output', this.name));
     } else {
       this.input = Disk.dir(options?.files?.input ?? path.join('input', this.name));
       this.cache = Disk.dir(options?.files?.cache ?? path.join('cache', this.name));
-      this.output = Disk.dir(options?.files?.input ?? path.join('output', this.name));  
+      this.output = Disk.dir(options?.files?.output ?? path.join('output', this.name));  
     }
   }
 
